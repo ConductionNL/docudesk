@@ -19,27 +19,27 @@ DocuDesk provides services for generating and anonymizing PDF, Word, HTML or Exc
 
 **System Cron is currently required for this app to work**
 
-Requirements can be found [here](https://conduction.gitbook.io/openregister-nextcloud/installatie)
+Requirements can be found [here](https://conduction.gitbook.io/docudesk-nextcloud/installatie)
 
-The Roadmap is available [here](https://github.com/orgs/OpenRegister/projects/1/views/2)
+The Roadmap is available [here](https://github.com/orgs/docudesk/projects/1/views/2)
 
-Create a [bug report](https://github.com/OpenRegister/.github/issues/new/choose)
+Create a [bug report](https://github.com/docudesk/.github/issues/new/choose)
 
-Create a [feature request](https://github.com/OpenRegister/.github/issues/new/choose)
+Create a [feature request](https://github.com/docudesk/.github/issues/new/choose)
     ]]></description>
-    <version>0.1.1</version>
+    <version>0.0.2</version>
     <licence>agpl</licence>
     <author mail="info@conduction.nl" homepage="https://www.conduction.nl/">Conduction</author>
     <namespace>DocuDesk</namespace>
     <category>organization</category>
     <category>tools</category>
-    <website>https://github.com/ConductionNL/OpenRegister</website>
-    <bugs>https://github.com/ConductionNL/OpenRegister/issues</bugs>
+    <website>https://github.com/ConductionNL/DocuDesk</website>
+    <bugs>https://github.com/ConductionNL/DocuDesk/issues</bugs>
     <repository>https://github.com/ConductionNL/docudesk</repository>
     <documentation>
-        <user>https://conduction.gitbook.io/openregister-nextcloud/</user>
-        <admin>https://conduction.gitbook.io/openregister-nextcloud/</admin>
-        <developer>https://conduction.gitbook.io/openregister-nextcloud/</developer>
+        <user>https://conduction.gitbook.io/docudesk-nextcloud/</user>
+        <admin>https://conduction.gitbook.io/docudesk-nextcloud/</admin>
+        <developer>https://conduction.gitbook.io/docudesk-nextcloud/</developer>
     </documentation>
     <dependencies>
         <php min-version="8.0" min-int-size="64"/>
@@ -56,4 +56,8 @@ Create a [feature request](https://github.com/OpenRegister/.github/issues/new/ch
             <icon>app.svg</icon>
         </navigation>
     </navigations>
+	<settings>
+		<admin>OCA\DocuDesk\Settings\DocuDeskAdmin</admin>
+		<admin-section>OCA\DocuDesk\Sections\DocuDeskAdmin</admin-section>
+	</settings>
 </info>
