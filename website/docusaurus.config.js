@@ -92,18 +92,7 @@ const config = {
         theme: require('prism-react-renderer/themes/github'),
         darkTheme: require('prism-react-renderer/themes/dracula'),
       },
-    }),
-
-  sidebars: {
-    docs: [
-      {
-        type: 'category',
-        label: 'Features',
-        items: require('./sidebars/features.js'),
-        collapsed: false,
-      },
-    ],
-  },
+    })
 };
 
 module.exports = config;
