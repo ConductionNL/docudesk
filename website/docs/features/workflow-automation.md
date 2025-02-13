@@ -22,7 +22,7 @@ import TabItem from '@theme/TabItem';
 ## Overview
 Create sophisticated document processing workflows that automatically handle document monitoring, compliance checking, anonymization, and notifications based on various triggers.
 
-![Workflow Automation Flow](./diagrams/workflow-automation-flow.svg)
+![Workflow Automation](./diagrams/workflow-automation.svg)
 
 ## Features
 
