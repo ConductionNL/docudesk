@@ -2,7 +2,6 @@
 
 ' Styling
 skinparam backgroundColor transparent
-skinparam handwritten false
 skinparam DefaultFontName Arial
 skinparam ArrowColor #666666
 skinparam ActivityBorderColor #666666

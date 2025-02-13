@@ -8,18 +8,16 @@ skinparam BoxPadding 40
 ' Define participants
 participant "Document" as doc
 participant "Text Extractor" as conv
-participant "Anonymization API" as api
 participant "PII Detector (Agent 1)" as detector
 participant "Anonymizer" as anon
-participant "PII Detector (Optional Agent 1)" as verify
+participant "PII Detector (Optional Agent 2)" as verify
 database "Secure Log" as log
 
 ' Document Processing
 doc -> conv : Submit document
-conv -> api : Extract text
+conv -> detector : Extract text
 
 ' PII Detection
-api -> detector : Analyze text
 note right of detector
   - Detect GDPR-sensitive info
   - Assign confidence weights
