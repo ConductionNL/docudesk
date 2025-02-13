@@ -25,7 +25,7 @@ While DocuDesk allows you to integrate your preferred anonymization tool, we rec
 ## How It Works
 
 ### Process Flow
-![GDPR Anonymization Flow](./diagrams/gdpr-anonymization-flow.png)
+![GDPR Anonymization Flow](./diagrams/gdpr-anonymization-flow.svg)
 
 1. Document Processing
    - The document is converted to a text representation

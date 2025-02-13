@@ -6,14 +6,14 @@ import { useSearchStore } from './modules/search.js'
 import { useRegisterStore } from './modules/register.js'
 import { useSourceStore } from './modules/source.js'
 import { useSchemaStore } from './modules/schema.js'
-import { useObjectStore } from './modules/object.js'
+import { useFileStore } from './modules/file.js'
 
 const navigationStore = useNavigationStore(pinia)
 const searchStore = useSearchStore(pinia)
 const registerStore = useRegisterStore(pinia)
 const sourceStore = useSourceStore(pinia)
 const schemaStore = useSchemaStore(pinia)
-const objectStore = useObjectStore(pinia)
+const fileStore = useFileStore(pinia)
 export {
 	// generic
 	navigationStore,
@@ -21,5 +21,5 @@ export {
 	registerStore,
 	sourceStore,
 	schemaStore,
-	objectStore,
+	fileStore,
 }
