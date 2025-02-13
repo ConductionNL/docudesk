@@ -45,9 +45,9 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       navbar: {
-        title: 'Open Register',
+        title: 'DocuDesk',
         logo: {
-          alt: 'Open Register Logo',
+          alt: 'DocuDesk Logo',
           src: 'img/logo.svg',
         },
         items: [
@@ -86,7 +86,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Open Register. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Gemeente Hoekse Waard. Built with Docusaurus.`,
       },
       prism: {
         theme: require('prism-react-renderer/themes/github'),
