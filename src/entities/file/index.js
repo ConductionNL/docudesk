@@ -1,3 +1,3 @@
-export * from './file.js'
-export * from './file.types.js'
-export * from './file.mock.js'
+export * from './file.ts'
+export * from './file.types.ts'
+export * from './file.mock.ts'
