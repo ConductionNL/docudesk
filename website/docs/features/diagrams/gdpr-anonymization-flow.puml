@@ -1,7 +1,6 @@
 @startuml GDPR Anonymization Flow
 
 skinparam backgroundColor transparent
-skinparam handwritten false
 skinparam defaultFontName Arial
 skinparam ArrowColor #2C3E50
 skinparam BoxPadding 40
