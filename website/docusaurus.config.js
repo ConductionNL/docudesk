@@ -45,7 +45,7 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       navbar: {
-        title: 'DocuDesk',
+        title: 'DocuDesk.app',
         logo: {
           alt: 'DocuDesk Logo',
           src: 'img/logo.svg',
