@@ -8,16 +8,16 @@ skinparam BoxPadding 40
 
 ' Define participants
 participant "Document" as doc
-participant "Text Converter" as conv
+participant "Text Extractor" as conv
 participant "Anonymization API" as api
-participant "PII Detector" as detector
+participant "PII Detector (Agent 1)" as detector
 participant "Anonymizer" as anon
-participant "Verification Agent\n(Optional)" as verify
+participant "PII Detector (Optional Agent 1)" as verify
 database "Secure Log" as log
 
 ' Document Processing
 doc -> conv : Submit document
-conv -> api : Convert to text
+conv -> api : Extract text
 
 ' PII Detection
 api -> detector : Analyze text
