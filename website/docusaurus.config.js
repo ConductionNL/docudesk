@@ -3,8 +3,8 @@
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'DocuDesk',
-  tagline: 'Flexible object management for Nextcloud',
+  title: 'DocuDesk.app',
+  tagline: 'Flexible document management for your organization',
   url: 'https://conductionnl.github.io',
   baseUrl: '/docudesk/',
   
