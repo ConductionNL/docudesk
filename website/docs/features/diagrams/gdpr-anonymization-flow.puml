@@ -1,0 +1,51 @@
+@startuml GDPR Anonymization Flow
+
+skinparam backgroundColor transparent
+skinparam handwritten false
+skinparam defaultFontName Arial
+skinparam ArrowColor #2C3E50
+skinparam BoxPadding 40
+
+' Define participants
+participant "Document" as doc
+participant "Text Converter" as conv
+participant "Anonymization API" as api
+participant "PII Detector" as detector
+participant "Anonymizer" as anon
+participant "Verification Agent\n(Optional)" as verify
+database "Secure Log" as log
+
+' Document Processing
+doc -> conv : Submit document
+conv -> api : Convert to text
+
+' PII Detection
+api -> detector : Analyze text
+note right of detector
+  - Detect GDPR-sensitive info
+  - Assign confidence weights
+  - Categorize PII types
+end note
+
+' Anonymization
+alt Manual Mode
+    detector -> anon : Suggest anonymizations
+    anon -> "User" as user : Review changes
+    user -> anon : Approve changes
+else Automated Mode
+    detector -> anon : Auto-anonymize above threshold
+end
+
+anon -> anon : Replace with tokens
+anon -> log : Store anonymization map
+
+' Optional Verification
+opt Secondary Verification
+    anon -> verify : Check for missed PII
+    verify -> anon : Verification results
+end
+
+' Final Output
+anon -> doc : Generate anonymized document
+
+@enduml 
