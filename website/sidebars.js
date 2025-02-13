@@ -32,4 +32,4 @@
    */
 };
 
-export default sidebars;
+module.exports = sidebars;
