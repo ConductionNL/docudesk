@@ -5,8 +5,8 @@
 const config = {
   title: 'DocuDesk.app',
   tagline: 'Flexible document management for your organization',
-  url: 'https://conductionnl.github.io',
-  baseUrl: '/docudesk/',
+  url: 'https://docudesk.app',
+  baseUrl: '/',
   
   // GitHub pages deployment config
   organizationName: 'conductionnl',
