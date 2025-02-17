@@ -5,7 +5,7 @@
 const config = {
   title: 'DocuDesk.app',
   tagline: 'Flexible document management for your organization',
-  url: 'https://docudesk.app',
+  url: 'https://docudesk.app/',
   baseUrl: '/',
   
   // GitHub pages deployment config
