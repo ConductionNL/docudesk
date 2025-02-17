@@ -23,20 +23,18 @@ class ObjectsController extends Controller
     /**
      * Constructor for the ObjectsController
      *
-     * @param string $appName The name of the app
-     * @param IRequest $request The request object
-     * @param IAppConfig $config The app configuration object
+     * @param string     $appName The name of the app
+     * @param IRequest   $request The request object
+     * @param IAppConfig $config  The app configuration object
      */
     public function __construct(
         $appName,
         IRequest $request,
-        private readonly IAppConfig $config,
-        private readonly IAppManager $appManager,
-        private readonly ContainerInterface $container,
-        private readonly ObjectService $objectService,
-
-    )
-    {
+    private readonly IAppConfig $config,
+    private readonly IAppManager $appManager,
+    private readonly ContainerInterface $container,
+    private readonly ObjectService $objectService,
+    ) {
         parent::__construct($appName, $request);
     }
 
@@ -81,7 +79,7 @@ class ObjectsController extends Controller
 
         // @todo: figure out how to use extend here
         $results = $objectService->getObjects(objectType: 'objectEntity', filters: $filters);
-//        $results = $this->objectEntityMapper->findAll(filters: $filters);
+        //        $results = $this->objectEntityMapper->findAll(filters: $filters);
 
         // We dont want to return the entity, but the object (and kant reley on the normal serilzier)
         foreach ($results as $key => $result) {
@@ -100,7 +98,7 @@ class ObjectsController extends Controller
      * @NoCSRFRequired
      *
      * @param string $id The ID of the object to retrieve
-	 *
+     *
      * @return JSONResponse A JSON response containing the object details
      */
     public function show(string $id): JSONResponse
@@ -112,17 +110,17 @@ class ObjectsController extends Controller
         }
     }
 
-	/**
-	 * Creates a new object
-	 *
-	 * This method creates a new object based on POST data.
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @return JSONResponse A JSON response containing the created object
-	 * @throws Exception
-	 */
+    /**
+     * Creates a new object
+     *
+     * This method creates a new object based on POST data.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @return JSONResponse A JSON response containing the created object
+     * @throws Exception
+     */
     public function create(ObjectService $objectService): JSONResponse
     {
         $data = $this->request->getParams();
@@ -152,20 +150,20 @@ class ObjectsController extends Controller
             $data['schema'] = $schema;
         }
 
-		// Save the object
-		try {
-			$objectEntity = $objectService->saveObject(register: $data['register'], schema: $data['schema'], object: $object);
+        // Save the object
+        try {
+            $objectEntity = $objectService->saveObject(register: $data['register'], schema: $data['schema'], object: $object);
 
-			// Unlock the object after saving
-			try {
-				$this->objectEntityMapper->unlockObject($objectEntity->getId());
-			} catch (\Exception $e) {
-				// Ignore unlock errors since the save was successful
-			}
-		} catch (ValidationException $exception) {
-			$formatter = new ErrorFormatter();
-			return new JSONResponse(['message' => $exception->getMessage(), 'validationErrors' => $formatter->format($exception->getErrors())], 400);
-		}
+            // Unlock the object after saving
+            try {
+                $this->objectEntityMapper->unlockObject($objectEntity->getId());
+            } catch (\Exception $e) {
+                // Ignore unlock errors since the save was successful
+            }
+        } catch (ValidationException $exception) {
+            $formatter = new ErrorFormatter();
+            return new JSONResponse(['message' => $exception->getMessage(), 'validationErrors' => $formatter->format($exception->getErrors())], 400);
+        }
 
         return new JSONResponse($objectEntity->getObjectArray());
     }
@@ -178,8 +176,8 @@ class ObjectsController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param int  $id The ID of the object to update
-	 *
+     * @param int $id The ID of the object to update
+     *
      * @return JSONResponse A JSON response containing the updated object details
      */
     public function update(int $id, ObjectService $objectService): JSONResponse
@@ -223,19 +221,19 @@ class ObjectsController extends Controller
         return new JSONResponse($objectEntity->getObjectArray());
     }
 
-	/**
-	 * Deletes an object
-	 *
-	 * This method deletes an object based on its ID.
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $id The ID of the object to delete
-	 *
-	 * @return JSONResponse An empty JSON response
-	 * @throws Exception
-	 */
+    /**
+     * Deletes an object
+     *
+     * This method deletes an object based on its ID.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param int $id The ID of the object to delete
+     *
+     * @return JSONResponse An empty JSON response
+     * @throws Exception
+     */
     public function destroy(int $id): JSONResponse
     {
         // Create a log entry
@@ -247,22 +245,22 @@ class ObjectsController extends Controller
         return new JSONResponse([]);
     }
 
-	/**
-	 * Retrieves a list of logs for an object
-	 *
-	 * This method returns a JSON response containing the logs for a specific object.
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $id The ID of the object to get AuditTrails for
-	 *
-	 * @return JSONResponse An empty JSON response
-	 */
-	public function auditTrails(int $id): JSONResponse
-	{
-		return new JSONResponse($this->auditTrailMapper->findAll(filters: ['object' => $id]));
-	}
+    /**
+     * Retrieves a list of logs for an object
+     *
+     * This method returns a JSON response containing the logs for a specific object.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param int $id The ID of the object to get AuditTrails for
+     *
+     * @return JSONResponse An empty JSON response
+     */
+    public function auditTrails(int $id): JSONResponse
+    {
+        return new JSONResponse($this->auditTrailMapper->findAll(filters: ['object' => $id]));
+    }
 
     /**
      * Retrieves call logs for a object
@@ -273,7 +271,7 @@ class ObjectsController extends Controller
      * @NoCSRFRequired
      *
      * @param int $id The ID of the object to retrieve logs for
-	 *
+     *
      * @return JSONResponse A JSON response containing the call logs
      */
     public function contracts(int $id): JSONResponse
@@ -282,7 +280,7 @@ class ObjectsController extends Controller
         $oldObject = $this->objectEntityMapper->find($id);
         $this->auditTrailMapper->createAuditTrail(old: $oldObject);
 
-		return new JSONResponse(['error' => 'Not yet implemented'], 501);
+        return new JSONResponse(['error' => 'Not yet implemented'], 501);
     }
 
     /**
@@ -294,7 +292,7 @@ class ObjectsController extends Controller
      * @NoCSRFRequired
      *
      * @param int $id The ID of the object to retrieve logs for
-	 *
+     *
      * @return JSONResponse A JSON response containing the call logs
      */
     public function relations(int $id): JSONResponse
@@ -324,7 +322,7 @@ class ObjectsController extends Controller
      * @NoCSRFRequired
      *
      * @param int $id The ID of the object to retrieve logs for
-	 *
+     *
      * @return JSONResponse A JSON response containing the call logs
      */
     public function logs(int $id): JSONResponse
@@ -361,183 +359,185 @@ class ObjectsController extends Controller
         }
 
         // Return response with results array and total count
-        return new JSONResponse([
+        return new JSONResponse(
+            [
             'results' => $results,
             'total' => count($results)
-        ]);
+            ]
+        );
     }
 
-    	/**
-	 * Attempts to retrieve the OpenRegister service from the container.
-	 *
-	 * @return mixed|null The OpenRegister service if available, null otherwise.
-	 * @throws ContainerExceptionInterface|NotFoundExceptionInterface
-	 */
-	public function getOpenConnectorMappingService(): ?\OCA\OpenConnector\Service\MappingService
-	{
-		if (in_array(needle: 'openconnector', haystack: $this->appManager->getInstalledApps()) === true) {
-			try {
-				// Attempt to get the OpenRegister service from the container
-				return $this->container->get('OCA\OpenConnector\Service\MappingService');
-			} catch (Exception $e) {
-				// If the service is not available, return null
-				return null;
-			}
-		}
+        /**
+         * Attempts to retrieve the OpenRegister service from the container.
+         *
+         * @return mixed|null The OpenRegister service if available, null otherwise.
+         * @throws ContainerExceptionInterface|NotFoundExceptionInterface
+         */
+    public function getOpenConnectorMappingService(): ?\OCA\OpenConnector\Service\MappingService
+    {
+        if (in_array(needle: 'openconnector', haystack: $this->appManager->getInstalledApps()) === true) {
+            try {
+                // Attempt to get the OpenRegister service from the container
+                return $this->container->get('OCA\OpenConnector\Service\MappingService');
+            } catch (Exception $e) {
+                // If the service is not available, return null
+                return null;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	/**
-	 * Lock an object
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $id The ID of the object to lock
-	 * @return JSONResponse A JSON response containing the locked object
-	 */
-	public function lock(int $id): JSONResponse
-	{
-		try {
-			$data = $this->request->getParams();
-			$process = $data['process'] ?? null;
-			$duration = isset($data['duration']) ? (int)$data['duration'] : null;
+    /**
+     * Lock an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param  int $id The ID of the object to lock
+     * @return JSONResponse A JSON response containing the locked object
+     */
+    public function lock(int $id): JSONResponse
+    {
+        try {
+            $data = $this->request->getParams();
+            $process = $data['process'] ?? null;
+            $duration = isset($data['duration']) ? (int)$data['duration'] : null;
 
-			$object = $this->objectEntityMapper->lockObject(
-				$id,
-				$process,
-				$duration
-			);
+            $object = $this->objectEntityMapper->lockObject(
+                $id,
+                $process,
+                $duration
+            );
 
-			return new JSONResponse($object->getObjectArray());
+            return new JSONResponse($object->getObjectArray());
 
-		} catch (DoesNotExistException $e) {
-			return new JSONResponse(['error' => 'Object not found'], 404);
-		} catch (NotAuthorizedException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 403);
-		} catch (LockedException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 423); // 423 Locked
-		} catch (\Exception $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 500);
-		}
-	}
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Object not found'], 404);
+        } catch (NotAuthorizedException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 403);
+        } catch (LockedException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 423); // 423 Locked
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
 
-	/**
-	 * Unlock an object
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $id The ID of the object to unlock
-	 * @return JSONResponse A JSON response containing the unlocked object
-	 */
-	public function unlock(int $id): JSONResponse
-	{
-		try {
-			$object = $this->objectEntityMapper->unlockObject($id);
-			return new JSONResponse($object->getObjectArray());
+    /**
+     * Unlock an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param  int $id The ID of the object to unlock
+     * @return JSONResponse A JSON response containing the unlocked object
+     */
+    public function unlock(int $id): JSONResponse
+    {
+        try {
+            $object = $this->objectEntityMapper->unlockObject($id);
+            return new JSONResponse($object->getObjectArray());
 
-		} catch (DoesNotExistException $e) {
-			return new JSONResponse(['error' => 'Object not found'], 404);
-		} catch (NotAuthorizedException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 403);
-		} catch (LockedException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 423);
-		} catch (\Exception $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 500);
-		}
-	}
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Object not found'], 404);
+        } catch (NotAuthorizedException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 403);
+        } catch (LockedException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 423);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
 
-	/**
-	 * Revert an object to a previous state
-	 *
-	 * This endpoint allows reverting an object to a previous state based on different criteria:
-	 * 1. DateTime - Revert to the state at a specific point in time
-	 * 2. Audit Trail ID - Revert to the state after a specific audit trail entry
-	 * 3. Semantic Version - Revert to a specific version of the object
-	 *
-	 * Request body should contain one of:
-	 * - datetime: ISO 8601 datetime string (e.g., "2024-03-01T12:00:00Z")
-	 * - auditTrailId: UUID of an audit trail entry
-	 * - version: Semantic version string (e.g., "1.0.0")
-	 *
-	 * Optional parameters:
-	 * - overwriteVersion: boolean (default: false) - If true, keeps the version number,
-	 *                     if false, increments the patch version
-	 *
-	 * Example requests:
-	 * ```json
-	 * {
-	 *     "datetime": "2024-03-01T12:00:00Z"
-	 * }
-	 * ```
-	 * ```json
-	 * {
-	 *     "auditTrailId": "550e8400-e29b-41d4-a716-446655440000"
-	 * }
-	 * ```
-	 * ```json
-	 * {
-	 *     "version": "1.0.0",
-	 *     "overwriteVersion": true
-	 * }
-	 * ```
-	 *
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $id The ID of the object to revert
-	 * @return JSONResponse A JSON response containing the reverted object
-	 * @throws NotFoundException If object not found
-	 * @throws NotAuthorizedException If user not authorized
-	 * @throws BadRequestException If no valid reversion point specified
-	 * @throws LockedException If object is locked
-	 */
-	public function revert(int $id): JSONResponse
-	{
-		try {
-			$data = $this->request->getParams();
+    /**
+     * Revert an object to a previous state
+     *
+     * This endpoint allows reverting an object to a previous state based on different criteria:
+     * 1. DateTime - Revert to the state at a specific point in time
+     * 2. Audit Trail ID - Revert to the state after a specific audit trail entry
+     * 3. Semantic Version - Revert to a specific version of the object
+     *
+     * Request body should contain one of:
+     * - datetime: ISO 8601 datetime string (e.g., "2024-03-01T12:00:00Z")
+     * - auditTrailId: UUID of an audit trail entry
+     * - version: Semantic version string (e.g., "1.0.0")
+     *
+     * Optional parameters:
+     * - overwriteVersion: boolean (default: false) - If true, keeps the version number,
+     *                     if false, increments the patch version
+     *
+     * Example requests:
+     * ```json
+     * {
+     *     "datetime": "2024-03-01T12:00:00Z"
+     * }
+     * ```
+     * ```json
+     * {
+     *     "auditTrailId": "550e8400-e29b-41d4-a716-446655440000"
+     * }
+     * ```
+     * ```json
+     * {
+     *     "version": "1.0.0",
+     *     "overwriteVersion": true
+     * }
+     * ```
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param  int $id The ID of the object to revert
+     * @return JSONResponse A JSON response containing the reverted object
+     * @throws NotFoundException If object not found
+     * @throws NotAuthorizedException If user not authorized
+     * @throws BadRequestException If no valid reversion point specified
+     * @throws LockedException If object is locked
+     */
+    public function revert(int $id): JSONResponse
+    {
+        try {
+            $data = $this->request->getParams();
 
-			// Parse the revert point
-			$until = null;
-			if (isset($data['datetime'])) {
-				$until = new \DateTime($data['datetime']);
-			} elseif (isset($data['auditTrailId'])) {
-				$until = $data['auditTrailId'];
-			} elseif (isset($data['version'])) {
-				$until = $data['version'];
-			}
+            // Parse the revert point
+            $until = null;
+            if (isset($data['datetime'])) {
+                $until = new \DateTime($data['datetime']);
+            } elseif (isset($data['auditTrailId'])) {
+                $until = $data['auditTrailId'];
+            } elseif (isset($data['version'])) {
+                $until = $data['version'];
+            }
 
-			if ($until === null) {
-				return new JSONResponse(
-					['error' => 'Must specify either datetime, auditTrailId, or version'],
-					400
-				);
-			}
+            if ($until === null) {
+                return new JSONResponse(
+                    ['error' => 'Must specify either datetime, auditTrailId, or version'],
+                    400
+                );
+            }
 
-			$overwriteVersion = $data['overwriteVersion'] ?? false;
+            $overwriteVersion = $data['overwriteVersion'] ?? false;
 
-			// Get the reverted object using AuditTrailMapper instead
-			$revertedObject = $this->auditTrailMapper->revertObject(
-				$id,
-				$until,
-				$overwriteVersion
-			);
+            // Get the reverted object using AuditTrailMapper instead
+            $revertedObject = $this->auditTrailMapper->revertObject(
+                $id,
+                $until,
+                $overwriteVersion
+            );
 
-			// Save the reverted object
-			$savedObject = $this->objectEntityMapper->update($revertedObject);
+            // Save the reverted object
+            $savedObject = $this->objectEntityMapper->update($revertedObject);
 
-			return new JSONResponse($savedObject->getObjectArray());
+            return new JSONResponse($savedObject->getObjectArray());
 
-		} catch (DoesNotExistException $e) {
-			return new JSONResponse(['error' => 'Object not found'], 404);
-		} catch (NotAuthorizedException $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 403);
-		} catch (\Exception $e) {
-			return new JSONResponse(['error' => $e->getMessage()], 500);
-		}
-	}
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Object not found'], 404);
+        } catch (NotAuthorizedException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 403);
+        } catch (\Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], 500);
+        }
+    }
 
     /**
      * Retrieves files associated with an object
@@ -545,7 +545,7 @@ class ObjectsController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param string $id The ID of the object to get files for
+     * @param  string $id The ID of the object to get files for
      * @return JSONResponse A JSON response containing the object's files
      */
     public function files(string $id, ObjectService $objectService): JSONResponse

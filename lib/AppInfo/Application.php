@@ -14,23 +14,23 @@ use OCP\AppFramework\Bootstrap\IBootstrap;
  */
 class Application extends App implements IBootstrap
 {
-	public const APP_ID = 'docudesk';
+    public const APP_ID = 'docudesk';
 
-	/**
-	 * Constructor
-	 *
-	 * @param array $urlParams
-	 */
-	public function __construct(array $urlParams = [])
-	{
-		parent::__construct(appName: self::APP_ID, urlParams: $urlParams);
-	}
+    /**
+     * Constructor
+     *
+     * @param array $urlParams
+     */
+    public function __construct(array $urlParams = [])
+    {
+        parent::__construct(appName: self::APP_ID, urlParams: $urlParams);
+    }
 
-	public function register(IRegistrationContext $context): void
-	{
-	}
+    public function register(IRegistrationContext $context): void
+    {
+    }
 
-	public function boot(IBootContext $context): void
-	{
-	}
+    public function boot(IBootContext $context): void
+    {
+    }
 }
