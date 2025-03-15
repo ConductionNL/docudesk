@@ -7,7 +7,7 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
-use OCA\LarpingApp\Service\ObjectService;
+use OCA\DocuDesk\Service\ObjectService;
 
 /**
  * Class SettingsController

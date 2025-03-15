@@ -16,6 +16,10 @@ webpackConfig.entry = {
 		import: path.join(__dirname, 'src', 'main.js'),
 		filename: appId + '-main.js',
 	},
+	adminSettings: {
+		import: path.join(__dirname, 'src', 'settings.js'),
+		filename: 'docudesk-settings.js',
+	},
 }
 
 module.exports = webpackConfig

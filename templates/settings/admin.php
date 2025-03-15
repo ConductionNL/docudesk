@@ -2,9 +2,9 @@
 use OCP\Util;
 
 $appId = OCA\DocuDesk\AppInfo\Application::APP_ID;
-Util::addScript($appId, $appId . '-settings');
-Util::addStyle($appId, 'main');
+Util::addScript('docudesk', 'docudesk-settings');
+Util::addStyle('docudesk', 'main');
 
 ?>
 
-<div id="settings"></div>
+<div id="admin-settings">hmm</div>
