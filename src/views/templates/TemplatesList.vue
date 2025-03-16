@@ -35,7 +35,7 @@ import { templateStore, navigationStore, searchStore } from '../../store/store.j
 			<div v-if="templateStore.templateList && templateStore.templateList.length > 0 && !templateStore.isLoadingTemplateList">
 				<NcListItem v-for="(template, i) in templateStore.templateList"
 					:key="`${template}${i}`"
-					:name="template?.name"
+					:name="template?.name || 'Unnamed Template'"
 					:force-display-actions="true"
 					:active="templateStore.templateItem?.id === template?.id"
 					:details="template.approved === 'approved' ? 'Approved': 'Not approved'"

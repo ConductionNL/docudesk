@@ -25,7 +25,7 @@ import { navigationStore, searchStore } from '../../store/store.js'
 			Welke publicaties vereisen uw aandacht?
 			<NcListItem v-for="(publication, i) in publicationStore.conceptPublications.results"
 				:key="`${publication}${i}`"
-				:name="publication.name ?? publication.title"
+				:name="(publication.name ?? publication.title) || 'Unnamed Publication'"
 				:bold="false"
 				:force-display-actions="true"
 				:active="publicationStore.publicationItem.id === publication.id"
@@ -76,7 +76,7 @@ import { navigationStore, searchStore } from '../../store/store.js'
 			Welke bijlagen vereisen uw aandacht?
 			<NcListItem v-for="(attachment, i) in publicationStore.conceptAttachments.results"
 				:key="`${attachment}${i}`"
-				:name="attachment.name ?? attachment.title"
+				:name="(attachment.name ?? attachment.title) || 'Unnamed Attachment'"
 				:bold="false"
 				:force-display-actions="true"
 				:active="publicationStore.attachmentItem.id === attachment.id"

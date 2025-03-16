@@ -22,7 +22,7 @@ import { templateStore, navigationStore } from '../../store/store.js'
 						</NcActionButton>
 						<NcActionButton @click="navigationStore.setModal('addSkillToTemplate')">
 							<template #icon>
-								<FileDocumentPlusOutline :size="20" />
+								<FileOutline :size="20" />
 							</template>
 							Edit Skills
 						</NcActionButton>
@@ -104,7 +104,7 @@ import DotsHorizontal from 'vue-material-design-icons/DotsHorizontal.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import AccountPlus from 'vue-material-design-icons/AccountPlus.vue'
 import CalendarPlus from 'vue-material-design-icons/CalendarPlus.vue'
-import FileDocumentPlusOutline from 'vue-material-design-icons/FileDocumentPlusOutline.vue'
+import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 import EyeArrowRight from 'vue-material-design-icons/EyeArrowRight.vue'
 import SwordCross from 'vue-material-design-icons/SwordCross.vue'
@@ -132,7 +132,7 @@ export default {
 		Pencil,
 		AccountPlus,
 		CalendarPlus,
-		FileDocumentPlusOutline,
+		FileOutline,
 		TrashCanOutline,
 		EyeArrowRight,
 		SwordCross,

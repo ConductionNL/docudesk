@@ -35,7 +35,7 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 			<div v-if="anonymizationStore.anonymizationList && anonymizationStore.anonymizationList.length > 0 && !anonymizationStore.isLoadingAnonymizationList">
 				<NcListItem v-for="(document, i) in anonymizationStore.anonymizationList"
 					:key="`${document}${i}`"
-					:name="document?.name"
+					:name="document?.name || 'Unnamed Document'"
 					:force-display-actions="true"
 					:active="anonymizationStore.anonymizationItem?.id === document?.id"
 					:counter-number="document?.rules?.length || 0"

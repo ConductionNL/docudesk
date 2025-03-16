@@ -22,7 +22,7 @@ import { navigationStore } from '../store/store.js'
 			</NcAppNavigationItem>
 			<NcAppNavigationItem :active="navigationStore.selected === 'templates'" name="Templates" @click="navigationStore.setSelected('templates')">
 				<template #icon>
-					<FileDocumentOutline :size="20" />
+					<FileOutline :size="20" />
 				</template>
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
@@ -42,7 +42,6 @@ import Finance from 'vue-material-design-icons/Finance.vue'
 import Incognito from 'vue-material-design-icons/Incognito.vue'
 import FileSign from 'vue-material-design-icons/FileSign.vue'
 import CameraDocument from 'vue-material-design-icons/CameraDocument.vue'
-import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 
 export default {
@@ -57,7 +56,6 @@ export default {
 		Incognito,
 		FileSign,
 		CameraDocument,
-		FileDocumentOutline,
 		FileOutline
 	},
 	methods: {

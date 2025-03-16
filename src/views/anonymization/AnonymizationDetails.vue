@@ -22,7 +22,7 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 						</NcActionButton>
 						<NcActionButton @click="navigationStore.setModal('addAnonymizationRule')">
 							<template #icon>
-								<FileDocumentPlusOutline :size="20" />
+								<FileOutline :size="20" />
 							</template>
 							Add Anonymization Rules
 						</NcActionButton>
@@ -77,7 +77,7 @@ import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble } fr
 // Icons
 import DotsHorizontal from 'vue-material-design-icons/DotsHorizontal.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
-import FileDocumentPlusOutline from 'vue-material-design-icons/FileDocumentPlusOutline.vue'
+import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import Incognito from 'vue-material-design-icons/Incognito.vue'
@@ -96,7 +96,7 @@ export default {
 		// Icons
 		DotsHorizontal,
 		Pencil,
-		FileDocumentPlusOutline,
+		FileOutline,
 		TrashCanOutline,
 		Download,
 		Incognito,

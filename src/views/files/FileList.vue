@@ -6,16 +6,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 	<NcAppContentList>
 		<ul>
 			<div class="listHeader">
-				<NcTextField
-					:value="reportStore.searchTerm"
-					:show-trailing-button="reportStore.searchTerm !== ''"
-					label="Search"
-					class="searchField"
-					trailing-button-icon="close"
-					@input="reportStore.setSearchTerm($event.target.value)"
-					@trailing-button-click="reportStore.clearSearch()">
-					<Magnify :size="20" />
-				</NcTextField>
 				<NcActions>
 					<NcActionButton @click="reportStore.refreshReportList()">
 						<template #icon>
@@ -34,21 +24,36 @@ import { reportStore, navigationStore } from '../../store/store.js'
 
 			<div v-if="reportStore.reportList && reportStore.reportList.length > 0 && !reportStore.isLoadingReportList">
 				<NcListItem v-for="(report, i) in reportStore.reportList"
-					:key="`${report}${i}`"
-					:name="report?.name"
+					:key="`${report.id}${i}`"
+					:name="report.file_name || 'Unnamed file'"
 					:force-display-actions="true"
-					:active="reportStore.reportItem?.id === report?.id"
-					:counter-number="report?.rules?.length || 0"
-					@click="handleReportSelect(report)">
+					:active="reportStore.reportItem?.id === report?.id">
 					<template #icon>
-						<File :class="reportStore.reportItem?.id === report?.id && 'selectedIcon'"
-							disable-menu
-							:size="44" />
+						<div class="file-icon-container">
+							<FileOutline :size="44" />
+							<NcBadge v-if="report.status" 
+								:type="getStatusBadgeType(report.status)" 
+								class="status-badge">
+								{{ report.status }}
+							</NcBadge>
+						</div>
 					</template>
 					<template #subname>
-						{{ report?.summary || 'No summary available' }}
+						<div class="report-subname">
+							<span class="file-path">{{ formatFilePath(report.file_path) }}</span>
+							<span v-if="report.risk_level" 
+								:class="['risk-level', getRiskLevelClass(report.risk_level)]">
+								Risk: {{ report.risk_level }}
+							</span>
+						</div>
 					</template>
 					<template #actions>
+						<NcActionButton @click="handleReportSelect(report)">
+							<template #icon>
+								<Eye />
+							</template>
+							View
+						</NcActionButton>
 						<NcActionButton @click="reportStore.setReportItem(report); navigationStore.setModal('editReport')">
 							<template #icon>
 								<Pencil />
@@ -72,8 +77,11 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			appearance="dark"
 			name="Loading reports" />
 
-		<div v-if="reportStore.reportList.length === 0 && !reportStore.isLoadingReportList">
-			No reports have been added yet.
+		<div v-if="reportStore.reportList.length === 0 && !reportStore.isLoadingReportList" class="empty-state">
+			<p>No reports have been added yet.</p>
+			<NcButton type="primary" @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
+				Add Report
+			</NcButton>
 		</div>
 	</NcAppContentList>
 </template>
@@ -89,15 +97,17 @@ import { reportStore, navigationStore } from '../../store/store.js'
  * @version 1.0.0
  */
 // Components
-import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon } from '@nextcloud/vue'
+import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon, NcButton, NcBadge } from '@nextcloud/vue'
+import FileIcon from '../../components/FileIcon.vue'
 
 // Icons
 import Magnify from 'vue-material-design-icons/Magnify.vue'
-import File from 'vue-material-design-icons/File.vue'
 import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import TrashCanOutline from 'vue-material-design-icons/TrashCanOutline.vue'
+import Eye from 'vue-material-design-icons/Eye.vue'
+import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 
 export default {
 	name: 'FileList',
@@ -109,13 +119,17 @@ export default {
 		NcAppContentList,
 		NcTextField,
 		NcLoadingIcon,
+		NcButton,
+		NcBadge,
+		FileIcon,
 		// Icons
-		File,
 		Magnify,
 		Refresh,
 		Plus,
 		Pencil,
 		TrashCanOutline,
+		Eye,
+		FileOutline,
 	},
 	mounted() {
 		reportStore.refreshReportList()
@@ -129,6 +143,65 @@ export default {
 			// Set the selected report in the store
 			reportStore.setReportItem(report)
 		},
+		
+		/**
+		 * Format file path for display
+		 * @param {string} path - The file path
+		 * @returns {string} Formatted file path
+		 */
+		formatFilePath(path) {
+			if (!path) return '';
+			
+			// If path is too long, truncate it
+			if (path.length > 40) {
+				const parts = path.split('/');
+				const fileName = parts.pop();
+				const directory = parts.join('/');
+				return directory.substring(0, 20) + '.../' + fileName;
+			}
+			
+			return path;
+		},
+		
+		/**
+		 * Get badge type based on report status
+		 * @param {string} status - Report status
+		 * @returns {string} Badge type
+		 */
+		getStatusBadgeType(status) {
+			switch (status) {
+				case 'completed':
+					return 'success'
+				case 'processing':
+					return 'primary'
+				case 'pending':
+					return 'warning'
+				case 'failed':
+					return 'error'
+				default:
+					return 'secondary'
+			}
+		},
+		
+		/**
+		 * Get CSS class for risk level
+		 * @param {string} riskLevel - Risk level
+		 * @returns {string} CSS class
+		 */
+		getRiskLevelClass(riskLevel) {
+			switch (riskLevel.toLowerCase()) {
+				case 'low':
+					return 'risk-low'
+				case 'medium':
+					return 'risk-medium'
+				case 'high':
+					return 'risk-high'
+				case 'critical':
+					return 'risk-critical'
+				default:
+					return 'risk-unknown'
+			}
+		},
 	},
 }
 </script>
@@ -140,6 +213,7 @@ export default {
     z-index: 1000;
     background-color: var(--color-main-background);
     border-bottom: 1px solid var(--color-border);
+    padding-bottom: 8px;
 }
 
 .searchField {
@@ -148,11 +222,78 @@ export default {
     margin-block-end: 6px;
 }
 
-.selectedIcon>svg {
-    fill: white;
-}
-
 .loadingIcon {
     margin-block-start: var(--OC-margin-20);
+}
+
+.file-icon-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-badge {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: 0.7em;
+    padding: 2px 6px;
+}
+
+.report-subname {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-path {
+    color: var(--color-text-maxcontrast);
+    font-size: 0.9em;
+}
+
+.risk-level {
+    font-size: 0.85em;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.risk-low {
+    color: #2ecc71;
+    background-color: rgba(46, 204, 113, 0.1);
+}
+
+.risk-medium {
+    color: #f39c12;
+    background-color: rgba(243, 156, 18, 0.1);
+}
+
+.risk-high {
+    color: #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.risk-critical {
+    color: #c0392b;
+    background-color: rgba(192, 57, 43, 0.1);
+}
+
+.risk-unknown {
+    color: var(--color-text-maxcontrast);
+    background-color: rgba(127, 140, 141, 0.1);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: var(--color-text-maxcontrast);
+    gap: 16px;
 }
 </style>
