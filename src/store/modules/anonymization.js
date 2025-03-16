@@ -58,7 +58,7 @@ export const useAnonymizationStore = defineStore('anonymization', {
          */
         /* istanbul ignore next */ // ignore this for Jest until moved into a service
         async refreshAnonymizationList(search = null, filters = {}) {
-            let endpoint = '/index.php/apps/docudesk/api/objects/anonymization'
+            let endpoint = '/index.php/apps/docudesk/api/objects/anonymizations'
             
             // Add search parameter if provided
             const params = new URLSearchParams()

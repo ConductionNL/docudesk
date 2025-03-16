@@ -58,7 +58,7 @@ export const useReportStore = defineStore('report', {
          */
         /* istanbul ignore next */ // ignore this for Jest until moved into a service
         async refreshReportList(search = null, filters = {}) {
-            let endpoint = '/index.php/apps/docudesk/api/objects/report'
+            let endpoint = '/index.php/apps/docudesk/api/objects/reports'
             
             // Add search parameter if provided
             const params = new URLSearchParams()

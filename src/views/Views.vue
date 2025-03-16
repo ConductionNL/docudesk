@@ -8,7 +8,7 @@ import { navigationStore } from '../store/store.js'
 		<template #default>
 			<Dashboard v-if="navigationStore.selected === 'dashboard'" />
 			<FileIndex v-if="navigationStore.selected === 'files'" />
-			<AnonymizationList v-if="navigationStore.selected === 'anonymization'" />
+			<AnonymizationIndex v-if="navigationStore.selected === 'anonymization'" />
 			<TemplatesIndex v-if="navigationStore.selected === 'templates'" />
 		</template>
 	</NcAppContent>
@@ -34,7 +34,6 @@ export default {
 		Dashboard,
 		FileIndex,
 		AnonymizationIndex,
-		WcagIndex,
 		TemplatesIndex
 	},
 }
