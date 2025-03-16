@@ -101,12 +101,68 @@
 				appearance="dark"
 				name="Settings aan het laden" />
 		</NcSettingsSection>
+
+		<!-- New section for API connections -->
+		<NcSettingsSection
+			name="API Connections"
+			description="Configure connections to external services">
+			
+			<!-- Presidio Configuration -->
+			<div class="api-connection">
+				<h3>Presidio API</h3>
+				<NcTextField
+					v-model="apiConfig.presidio.url"
+					label="API URL"
+					placeholder="Enter Presidio API URL" />
+				<NcTextField
+					v-model="apiConfig.presidio.key"
+					label="API Key"
+					type="password"
+					placeholder="Enter Presidio API Key" />
+			</div>
+
+			<!-- ChatGPT Configuration -->
+			<div class="api-connection">
+				<h3>ChatGPT API</h3>
+				<NcTextField
+					v-model="apiConfig.chatgpt.url" 
+					label="API URL"
+					placeholder="Enter ChatGPT API URL" />
+				<NcTextField
+					v-model="apiConfig.chatgpt.key"
+					label="API Key"
+					type="password" 
+					placeholder="Enter ChatGPT API Key" />
+			</div>
+
+			<!-- NLDocs Configuration -->
+			<div class="api-connection">
+				<h3>NLDocs API</h3>
+				<NcTextField
+					v-model="apiConfig.nldocs.url"
+					label="API URL"
+					placeholder="Enter NLDocs API URL" />
+				<NcTextField
+					v-model="apiConfig.nldocs.key"
+					label="API Key"
+					type="password"
+					placeholder="Enter NLDocs API Key" />
+			</div>
+
+			<NcButton type="primary" :disabled="saving" @click="saveApiConfig">
+				<template #icon>
+					<NcLoadingIcon v-if="saving" :size="20" />
+					<Plus v-else :size="20" />
+				</template>
+				Save API Configuration
+			</NcButton>
+		</NcSettingsSection>
 	</div>
 </template>
 
 <script>
 // Imported components
-import { NcSettingsSection, NcNoteCard, NcSelect, NcButton, NcLoadingIcon } from '@nextcloud/vue'
+import { NcSettingsSection, NcNoteCard, NcSelect, NcButton, NcLoadingIcon, NcTextField } from '@nextcloud/vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Restart from 'vue-material-design-icons/Restart.vue'
 
@@ -118,6 +174,7 @@ export default {
 		NcSelect,
 		NcButton,
 		NcLoadingIcon,
+		NcTextField,
 		Plus,
 		Restart,
 	},
@@ -132,7 +189,7 @@ export default {
 			availableRegistersOptions: { options: [] },
 			// Global object holding schema options per register.
 			globalSchemasOptions: {},
-			objectTypes: [],
+			objectTypes: ['documentReport', 'documentLog', 'organization', 'publication', 'theme'],
 			labelOptions: {
 				options: [
 					{ label: 'Internal', value: 'internal' },
@@ -141,6 +198,21 @@ export default {
 			},
 			// Per‑object settings (e.g. publication, organization, etc.)
 			sections: {},
+			// API configuration
+			apiConfig: {
+				presidio: {
+					url: '',
+					key: ''
+				},
+				chatgpt: {
+					url: '',
+					key: ''
+				},
+				nldocs: {
+					url: '',
+					key: ''
+				}
+			}
 		}
 	},
 	computed: {
@@ -153,6 +225,7 @@ export default {
 	},
 	mounted() {
 		this.fetchAll()
+		this.fetchApiConfig()
 	},
 	methods: {
 		// maps the title to any predefined titles, otherwise just capitalize the first letter and return
@@ -162,6 +235,8 @@ export default {
 				organization: 'Organisatie',
 				publication: 'Publicatie',
 				theme: 'Thema',
+				documentReport: 'Document Report',
+				documentLog: 'Document Log'
 			}
 			return mapping[type] || type.charAt(0).toUpperCase() + type.slice(1)
 		},
@@ -188,6 +263,37 @@ export default {
 				},
 			}
 		},
+		// Fetch API configuration
+		fetchApiConfig() {
+			fetch('/index.php/apps/docudesk/api/settings/api-config', { method: 'GET' })
+				.then(response => response.json())
+				.then(data => {
+					this.apiConfig = data
+				})
+				.catch(err => {
+					console.error('Failed to fetch API config:', err)
+				})
+		},
+		// Save API configuration
+		saveApiConfig() {
+			this.saving = true
+			fetch('/index.php/apps/docudesk/api/settings/api-config', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(this.apiConfig)
+			})
+				.then(response => response.json())
+				.then(() => {
+					// Show success message
+					console.info('API configuration saved successfully')
+				})
+				.catch(err => {
+					console.error('Failed to save API config:', err)
+				})
+				.finally(() => {
+					this.saving = false
+				})
+		},
 		// Fetch all settings and initialize the registers, schemas and sections.
 		fetchAll() {
 			this.loading = true
@@ -198,7 +304,6 @@ export default {
 					this.openRegisterInstalled = data.openRegisters
 					this.settingsData = data
 					this.availableRegisters = data.availableRegisters
-					this.objectTypes = data.objectTypes
 
 					// Build available registers options.
 					this.availableRegistersOptions = {
@@ -389,5 +494,17 @@ export default {
 }
 .selectionContainer > * {
     margin-block-end: 10px;
+}
+
+.api-connection {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+
+.api-connection h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
 }
 </style>
