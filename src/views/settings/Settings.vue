@@ -110,43 +110,72 @@
 			<!-- Presidio Configuration -->
 			<div class="api-connection">
 				<h3>Presidio API</h3>
-				<NcTextField
-					v-model="apiConfig.presidio.url"
-					label="API URL"
-					placeholder="Enter Presidio API URL" />
-				<NcTextField
-					v-model="apiConfig.presidio.key"
-					label="API Key"
-					type="password"
-					placeholder="Enter Presidio API Key" />
+				<div class="input-field">
+					<label for="presidio-analyzer-url">Analyzer API URL</label>
+					<input 
+						id="presidio-analyzer-url"
+						v-model="apiConfig.presidio.analyzerUrl" 
+						type="text"
+						placeholder="Enter Presidio Analyzer API URL (e.g., http://presidio-api:8080/analyze)" />
+				</div>
+				<div class="input-field">
+					<label for="presidio-anonymizer-url">Anonymizer API URL</label>
+					<input 
+						id="presidio-anonymizer-url"
+						v-model="apiConfig.presidio.anonymizerUrl" 
+						type="text"
+						placeholder="Enter Presidio Anonymizer API URL (e.g., http://presidio-api:8080/anonymize)" />
+				</div>
+				<div class="input-field">
+					<label for="presidio-key">API Key</label>
+					<input 
+						id="presidio-key"
+						v-model="apiConfig.presidio.key" 
+						type="password"
+						placeholder="Enter Presidio API Key" />
+				</div>
 			</div>
 
 			<!-- ChatGPT Configuration -->
 			<div class="api-connection">
 				<h3>ChatGPT API</h3>
-				<NcTextField
-					v-model="apiConfig.chatgpt.url" 
-					label="API URL"
-					placeholder="Enter ChatGPT API URL" />
-				<NcTextField
-					v-model="apiConfig.chatgpt.key"
-					label="API Key"
-					type="password" 
-					placeholder="Enter ChatGPT API Key" />
+				<div class="input-field">
+					<label for="chatgpt-url">API URL</label>
+					<input 
+						id="chatgpt-url"
+						v-model="apiConfig.chatgpt.url" 
+						type="text"
+						placeholder="Enter ChatGPT API URL" />
+				</div>
+				<div class="input-field">
+					<label for="chatgpt-key">API Key</label>
+					<input 
+						id="chatgpt-key"
+						v-model="apiConfig.chatgpt.key" 
+						type="password"
+						placeholder="Enter ChatGPT API Key" />
+				</div>
 			</div>
 
 			<!-- NLDocs Configuration -->
 			<div class="api-connection">
 				<h3>NLDocs API</h3>
-				<NcTextField
-					v-model="apiConfig.nldocs.url"
-					label="API URL"
-					placeholder="Enter NLDocs API URL" />
-				<NcTextField
-					v-model="apiConfig.nldocs.key"
-					label="API Key"
-					type="password"
-					placeholder="Enter NLDocs API Key" />
+				<div class="input-field">
+					<label for="nldocs-url">API URL</label>
+					<input 
+						id="nldocs-url"
+						v-model="apiConfig.nldocs.url" 
+						type="text"
+						placeholder="Enter NLDocs API URL" />
+				</div>
+				<div class="input-field">
+					<label for="nldocs-key">API Key</label>
+					<input 
+						id="nldocs-key"
+						v-model="apiConfig.nldocs.key" 
+						type="password"
+						placeholder="Enter NLDocs API Key" />
+				</div>
 			</div>
 
 			<NcButton type="primary" :disabled="saving" @click="saveApiConfig">
@@ -156,6 +185,42 @@
 				</template>
 				Save API Configuration
 			</NcButton>
+		</NcSettingsSection>
+
+		<!-- Report Configuration Section -->
+		<NcSettingsSection :title="t('docudesk', 'Report Configuration')" :description="t('docudesk', 'Configure document report generation settings')">
+			<div class="report-config-section">
+				<div class="report-config-item">
+					<label for="enable-reporting">{{ t('docudesk', 'Enable Reporting') }}</label>
+					<input type="checkbox" id="enable-reporting" v-model="reportConfig.enable_reporting" />
+					<span class="report-config-description">{{ t('docudesk', 'Enable automatic report generation for documents') }}</span>
+				</div>
+				
+				<div class="report-config-item">
+					<label for="synchronous-processing">{{ t('docudesk', 'Synchronous Processing') }}</label>
+					<input type="checkbox" id="synchronous-processing" v-model="reportConfig.synchronous_processing" />
+					<span class="report-config-description">{{ t('docudesk', 'Process reports immediately instead of using background jobs') }}</span>
+				</div>
+				
+				<div class="report-config-item">
+					<label for="confidence-threshold">{{ t('docudesk', 'Confidence Threshold') }}</label>
+					<input type="range" id="confidence-threshold" v-model.number="reportConfig.confidence_threshold" min="0" max="1" step="0.05" />
+					<span class="threshold-value">{{ (reportConfig.confidence_threshold * 100).toFixed(0) }}%</span>
+					<span class="report-config-description">{{ t('docudesk', 'Minimum confidence level for entity detection') }}</span>
+				</div>
+				
+				<div class="report-config-item">
+					<label for="store-original-text">{{ t('docudesk', 'Store Original Text') }}</label>
+					<input type="checkbox" id="store-original-text" v-model="reportConfig.store_original_text" />
+					<span class="report-config-description">{{ t('docudesk', 'Store the original document text in reports') }}</span>
+				</div>
+				
+				<div class="report-config-item">
+					<button @click="saveReportConfig" :disabled="isSavingReportConfig">
+						{{ t('docudesk', 'Save Report Configuration') }}
+					</button>
+				</div>
+			</div>
 		</NcSettingsSection>
 	</div>
 </template>
@@ -199,6 +264,7 @@ export default {
 			availableRegistersOptions: { options: [] },
 			// Global object holding schema options per register.
 			globalSchemasOptions: {},
+			// Define the object types we want to configure
 			objectTypes: ['template', 'anonymization', 'report'],
 			labelOptions: {
 				options: [
@@ -211,7 +277,8 @@ export default {
 			// API configuration
 			apiConfig: {
 				presidio: {
-					url: '',
+					analyzerUrl: '',
+					anonymizerUrl: '',
 					key: ''
 				},
 				chatgpt: {
@@ -222,7 +289,16 @@ export default {
 					url: '',
 					key: ''
 				}
-			}
+			},
+			reportConfig: {
+				enable_reporting: true,
+				synchronous_processing: false,
+				confidence_threshold: 0.7,
+				store_original_text: true,
+				report_object_type: 'report',
+				log_object_type: 'documentLog',
+			},
+			isSavingReportConfig: false,
 		}
 	},
 	computed: {
@@ -245,6 +321,7 @@ export default {
 	mounted() {
 		this.fetchAll()
 		this.fetchApiConfig()
+		this.fetchReportConfig()
 	},
 	methods: {
 		/**
@@ -309,7 +386,8 @@ export default {
 			fetch('/index.php/apps/docudesk/api/settings/api-config', { method: 'GET' })
 				.then(response => response.json())
 				.then(data => {
-					this.apiConfig = data
+					// Simple assignment without any validation or conversion
+					this.apiConfig = data;
 				})
 				.catch(err => {
 					console.error('Failed to fetch API config:', err)
@@ -322,6 +400,7 @@ export default {
 		 */
 		saveApiConfig() {
 			this.saving = true
+			
 			fetch('/index.php/apps/docudesk/api/settings/api-config', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -354,6 +433,25 @@ export default {
 					this.settingsData = data
 					this.availableRegisters = data.availableRegisters
 
+					// Ensure our required object types are included
+					if (!data.objectTypes || !data.objectTypes.includes('template')) {
+						console.info('Adding template to object types')
+						if (!data.objectTypes) {
+							data.objectTypes = []
+						}
+						if (!data.objectTypes.includes('template')) {
+							data.objectTypes.push('template')
+						}
+					}
+					if (!data.objectTypes.includes('anonymization')) {
+						console.info('Adding anonymization to object types')
+						data.objectTypes.push('anonymization')
+					}
+					if (!data.objectTypes.includes('report')) {
+						console.info('Adding report to object types')
+						data.objectTypes.push('report')
+					}
+
 					// Build available registers options.
 					this.availableRegistersOptions = {
 						options: data.availableRegisters.map((register) => ({
@@ -382,6 +480,7 @@ export default {
 
 					// Initialize each section based on object types.
 					const newSections = {}
+					// Use our predefined object types instead of data.objectTypes
 					this.objectTypes.forEach((type) => {
 						newSections[type] = {
 							// Find the selected source by checking if the source of an Object Type (data[`${type}_source`]) is in the labelOptions.options array.
@@ -551,6 +650,27 @@ export default {
 		openLink(url, target = '') {
 			window.open(url, target)
 		},
+		async fetchReportConfig() {
+			try {
+				const response = await axios.get(generateUrl('/apps/docudesk/api/v1/settings/report'))
+				this.reportConfig = response.data
+			} catch (error) {
+				console.error('Error fetching report configuration:', error)
+				showError(t('docudesk', 'Failed to load report configuration'))
+			}
+		},
+		async saveReportConfig() {
+			try {
+				this.isSavingReportConfig = true
+				await axios.post(generateUrl('/apps/docudesk/api/v1/settings/report'), this.reportConfig)
+				showSuccess(t('docudesk', 'Report configuration saved successfully'))
+			} catch (error) {
+				console.error('Error saving report configuration:', error)
+				showError(t('docudesk', 'Failed to save report configuration'))
+			} finally {
+				this.isSavingReportConfig = false
+			}
+		},
 	},
 }
 </script>
@@ -575,5 +695,51 @@ export default {
 .api-connection h3 {
     margin-top: 0;
     margin-bottom: 15px;
+}
+
+.input-field {
+    margin-bottom: 15px;
+}
+
+.input-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.input-field input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-main-background);
+    color: var(--color-main-text);
+}
+
+.report-config-section {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 16px;
+}
+
+.report-config-item {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.report-config-item label {
+	font-weight: bold;
+}
+
+.report-config-description {
+	color: var(--color-text-lighter);
+	font-size: 0.9em;
+}
+
+.threshold-value {
+	margin-left: 8px;
+	font-weight: bold;
 }
 </style>

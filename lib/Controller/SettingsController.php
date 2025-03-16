@@ -337,7 +337,8 @@ class SettingsController extends Controller
 		try {
 			$apiConfig = [
 				'presidio' => [
-					'url' => $this->config->getSystemValue('docudesk_presidio_analyzer_url', ''),
+					'analyzerUrl' => $this->config->getSystemValue('docudesk_presidio_analyzer_url', ''),
+					'anonymizerUrl' => $this->config->getSystemValue('docudesk_presidio_anonymizer_url', ''),
 					'key' => $this->config->getSystemValue('docudesk_presidio_api_key', ''),
 				],
 				'chatgpt' => [
@@ -369,23 +370,27 @@ class SettingsController extends Controller
 	public function saveApiConfig(): JSONResponse
 	{
 		try {
-			$apiConfig = json_decode($this->request->getBody(), true);
+			// Get all parameters from the request
+			$apiConfig = $this->request->getParams();
 			
 			if (!is_array($apiConfig)) {
 				return new JSONResponse(['error' => 'Invalid API configuration'], 400);
 			}
 			
-			// Update Presidio API configuration
+			// Store Presidio API configuration directly without validation
 			if (isset($apiConfig['presidio'])) {
-				if (isset($apiConfig['presidio']['url'])) {
-					$this->config->setSystemValue('docudesk_presidio_analyzer_url', $apiConfig['presidio']['url']);
+				if (isset($apiConfig['presidio']['analyzerUrl'])) {
+					$this->config->setSystemValue('docudesk_presidio_analyzer_url', $apiConfig['presidio']['analyzerUrl']);
+				}
+				if (isset($apiConfig['presidio']['anonymizerUrl'])) {
+					$this->config->setSystemValue('docudesk_presidio_anonymizer_url', $apiConfig['presidio']['anonymizerUrl']);
 				}
 				if (isset($apiConfig['presidio']['key'])) {
 					$this->config->setSystemValue('docudesk_presidio_api_key', $apiConfig['presidio']['key']);
 				}
 			}
 			
-			// Update ChatGPT API configuration
+			// Store ChatGPT API configuration directly without validation
 			if (isset($apiConfig['chatgpt'])) {
 				if (isset($apiConfig['chatgpt']['url'])) {
 					$this->config->setSystemValue('docudesk_chatgpt_url', $apiConfig['chatgpt']['url']);
@@ -395,7 +400,7 @@ class SettingsController extends Controller
 				}
 			}
 			
-			// Update NLDocs API configuration
+			// Store NLDocs API configuration directly without validation
 			if (isset($apiConfig['nldocs'])) {
 				if (isset($apiConfig['nldocs']['url'])) {
 					$this->config->setSystemValue('docudesk_nldocs_url', $apiConfig['nldocs']['url']);
@@ -403,6 +408,88 @@ class SettingsController extends Controller
 				if (isset($apiConfig['nldocs']['key'])) {
 					$this->config->setSystemValue('docudesk_nldocs_api_key', $apiConfig['nldocs']['key']);
 				}
+			}
+			
+			return new JSONResponse(['success' => true]);
+		} catch (\Exception $e) {
+			return new JSONResponse(['error' => $e->getMessage()], 500);
+		}
+	}
+
+	/**
+	 * Get report configuration.
+	 *
+	 * @return JSONResponse JSON response containing the report configuration
+	 *
+	 * @NoCSRFRequired
+	 *
+	 * @psalm-return JSONResponse
+	 * @phpstan-return JSONResponse
+	 */
+	public function getReportConfig(): JSONResponse
+	{
+		try {
+			$reportConfig = [
+				'enable_reporting' => $this->config->getSystemValue('docudesk_enable_reporting', true),
+				'synchronous_processing' => $this->config->getSystemValue('docudesk_synchronous_processing', false),
+				'confidence_threshold' => $this->config->getSystemValue('docudesk_confidence_threshold', 0.7),
+				'store_original_text' => $this->config->getSystemValue('docudesk_store_original_text', true),
+				'report_object_type' => $this->config->getSystemValue('docudesk_report_object_type', 'report'),
+				'log_object_type' => $this->config->getSystemValue('docudesk_log_object_type', 'documentLog'),
+			];
+			
+			return new JSONResponse($reportConfig);
+		} catch (\Exception $e) {
+			return new JSONResponse(['error' => $e->getMessage()], 500);
+		}
+	}
+
+	/**
+	 * Save report configuration.
+	 *
+	 * @return JSONResponse JSON response containing the updated report configuration
+	 *
+	 * @NoCSRFRequired
+	 *
+	 * @psalm-return JSONResponse
+	 * @phpstan-return JSONResponse
+	 */
+	public function saveReportConfig(): JSONResponse
+	{
+		try {
+			// Get all parameters from the request
+			$reportConfig = $this->request->getParams();
+			
+			if (!is_array($reportConfig)) {
+				return new JSONResponse(['error' => 'Invalid report configuration'], 400);
+			}
+			
+			// Store report configuration
+			if (isset($reportConfig['enable_reporting'])) {
+				$this->config->setSystemValue('docudesk_enable_reporting', (bool)$reportConfig['enable_reporting']);
+			}
+			
+			if (isset($reportConfig['synchronous_processing'])) {
+				$this->config->setSystemValue('docudesk_synchronous_processing', (bool)$reportConfig['synchronous_processing']);
+			}
+			
+			if (isset($reportConfig['confidence_threshold'])) {
+				$threshold = (float)$reportConfig['confidence_threshold'];
+				// Ensure threshold is between 0 and 1
+				$threshold = max(0.0, min(1.0, $threshold));
+				$this->config->setSystemValue('docudesk_confidence_threshold', $threshold);
+			}
+			
+			if (isset($reportConfig['store_original_text'])) {
+				$this->config->setSystemValue('docudesk_store_original_text', (bool)$reportConfig['store_original_text']);
+			}
+			
+			if (isset($reportConfig['report_object_type'])) {
+				$this->config->setSystemValue('docudesk_report_object_type', $reportConfig['report_object_type']);
+			}
+			
+			if (isset($reportConfig['log_object_type'])) {
+				$this->config->setSystemValue('docudesk_log_object_type', $reportConfig['log_object_type']);
 			}
 			
 			return new JSONResponse(['success' => true]);
