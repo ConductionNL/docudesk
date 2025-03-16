@@ -161,25 +161,25 @@ The `DocumentReport` object is the core component for document analysis. It cont
 | Property | Type | Description |
 |----------|------|-------------|
 | id | string | Unique identifier for the report |
-| node_id | string | Nextcloud node ID of the document |
-| file_name | string | Name of the document |
-| file_path | string | Full path to the document in Nextcloud |
-| file_type | string | MIME type of the document (e.g., application/pdf) |
-| file_extension | string | File extension (e.g., pdf, docx) |
-| file_size | integer | Size of the file in bytes |
-| file_hash | string | Hash of the file content to determine if a new report is needed |
+| nodeId | string | Nextcloud node ID of the document |
+| fileName | string | Name of the document |
+| filePath | string | Full path to the document in Nextcloud |
+| fileType | string | MIME type of the document (e.g., application/pdf) |
+| fileExtension | string | File extension (e.g., pdf, docx) |
+| fileSize | integer | Size of the file in bytes |
+| fileHash | string | Hash of the file content to determine if a new report is needed |
 | status | string | Status of the report generation (pending, processing, completed, failed) |
-| error_message | string | Error message if report processing failed |
-| risk_score | float | Numerical score indicating overall risk level (0-100) |
-| risk_level | string | Risk level classification (low, medium, high) based on risk score, or unknown if report is not completed |
-| anonymization_results | object | Results of anonymization analysis |
+| errorMessage | string | Error message if report processing failed |
+| riskScore | float | Numerical score indicating overall risk level (0-100) |
+| riskLevel | string | Risk level classification (low, medium, high) based on risk score, or unknown if report is not completed |
+| anonymizationResults | object | Results of anonymization analysis |
 | entities | object | List of entities found made during anonymization |
-| wcag_compliance_results | object | Results of WCAG compliance analysis |
-| language_level_results | object | Results of language level analysis |
-| retention_period | integer | Retention period in days (0 for indefinite) |
-| retention_expiry | date-time | Date when the retention period expires |
-| legal_basis | string | Legal basis for processing the data under GDPR |
-| data_controller | string | Name of the data controller |
+| wcagComplianceResults | object | Results of WCAG compliance analysis |
+| languageLevelResults | object | Results of language level analysis |
+| retentionPeriod | integer | Retention period in days (0 for indefinite) |
+| retentionExpiry | date-time | Date when the retention period expires |
+| legalBasis | string | Legal basis for processing the data under GDPR |
+| dataController | string | Name of the data controller |
 
 ### Report Status Values
 
@@ -188,7 +188,71 @@ Reports can have the following status values:
 - **pending**: The report has been created but not yet processed
 - **processing**: The report is currently being processed
 - **completed**: The report has been successfully processed
-- **failed**: The report processing failed (check error_message for details)
+- **failed**: The report processing failed (check errorMessage for details)
+
+## Handling Non-Text Documents
+
+DocuDesk's anonymization capabilities rely on text extraction from documents. However, certain file types cannot be processed for text content, which affects how DocuDesk handles these documents.
+
+### Unsupported Document Types
+
+The following document types typically cannot be processed for text extraction:
+
+- **Images**: JPEG, PNG, GIF, BMP, WebP, etc.
+- **Videos**: MP4, AVI, MOV, WebM, etc.
+- **Audio**: MP3, WAV, FLAC, etc.
+- **Binary files**: EXE, DLL, etc.
+- **Encrypted documents**: Documents with password protection or encryption
+- **Scanned documents without OCR**: Image-based PDFs without text layers
+
+### How DocuDesk Handles These Files
+
+When DocuDesk encounters a file that cannot be processed for text extraction:
+
+1. A report is still created for the document
+2. The report status is set to 'completed'
+3. The anonymizationResults object will include:
+   - `containsPersonalData: false` (since no text could be analyzed)
+   - `anonymizationStatus: 'not_required'`
+   - `entitiesFound: []` (empty array)
+   - `totalEntitiesFound: 0`
+4. The report will include an informational note indicating that text extraction was not possible
+5. The riskLevel will typically be set to 'unknown' since risk assessment requires text analysis
+
+### Example Report for Non-Text Document
+
+```json
+{
+  "id": "abc123",
+  "nodeId": "456",
+  "fileName": "image.jpg",
+  "filePath": "/path/to/image.jpg",
+  "fileType": "image/jpeg",
+  "fileExtension": "jpg",
+  "fileSize": 1024000,
+  "fileHash": "a1b2c3d4e5f6",
+  "status": "completed",
+  "riskLevel": "unknown",
+  "anonymizationResults": {
+    "containsPersonalData": false,
+    "entitiesFound": [],
+    "totalEntitiesFound": 0,
+    "dataCategories": [],
+    "anonymizationStatus": "not_required"
+  },
+  "errorMessage": "No text could be extracted from this document type"
+}
+```
+
+### Best Practices for Non-Text Documents
+
+When working with non-text documents that might contain sensitive information:
+
+1. **Manual Review**: Visually inspect images and videos for personal data
+2. **Metadata Cleaning**: Remove EXIF data from images which may contain location or device information
+3. **OCR Processing**: Consider using OCR tools on scanned documents before uploading
+4. **Alternative Formats**: When possible, provide text-based alternatives for important image-based content
+5. **Custom Tagging**: Use DocuDesk's manual tagging features to mark non-text documents that contain sensitive information
 
 ## Report Creation Process
 

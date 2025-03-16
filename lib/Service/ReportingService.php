@@ -208,7 +208,17 @@ class ReportingService
                 $report['status'] = 'completed';
                 $report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
                 $report['entities'] = [];
-                return $report;
+                
+                // Set appropriate values for non-text documents
+                $report['anonymizationResults'] = [
+                    'containsPersonalData' => false,
+                    'dataCategories' => [],
+                    'anonymizationStatus' => 'not_required'
+                ];
+                
+                $report['riskLevel'] = 'low';
+                
+                return $this->objectService->saveObject($reportObjectType, $report);
             }
                         
             // Send text to Presidio for analysis
