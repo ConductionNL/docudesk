@@ -48,26 +48,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							</span>
 						</div>
 					</template>
-					<template #actions>
-						<NcActionButton @click="handleReportSelect(report)">
-							<template #icon>
-								<Eye />
-							</template>
-							View
-						</NcActionButton>
-						<NcActionButton @click="reportStore.setReportItem(report); navigationStore.setModal('editReport')">
-							<template #icon>
-								<Pencil />
-							</template>
-							Edit
-						</NcActionButton>
-						<NcActionButton @click="reportStore.setReportItem(report); navigationStore.setDialog('deleteReport')">
-							<template #icon>
-								<TrashCanOutline />
-							</template>
-							Delete
-						</NcActionButton>
-					</template>
 				</NcListItem>
 			</div>
 		</ul>
