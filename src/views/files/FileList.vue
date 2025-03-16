@@ -13,12 +13,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 						</template>
 						Refresh
 					</NcActionButton>
-					<NcActionButton @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
-						<template #icon>
-							<Plus :size="20" />
-						</template>
-						Add Report
-					</NcActionButton>
 				</NcActions>
 			</div>
 
@@ -41,7 +35,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					</template>
 					<template #subname>
 						<div class="report-subname">
-							<span class="file-path">{{ formatFilePath(report.filePath) }}</span>
 							<span v-if="report.riskLevel" 
 								:class="['risk-level', getRiskLevelClass(report.riskLevel)]">
 								Risk: {{ report.riskLevel }}
