@@ -38,6 +38,7 @@ Document processing in DocuDesk is tightly integrated with several other systems
 - **[Parsing Logs](./parsing-logs.md)**: Logs document processing operations
 - **[Document Reports](./document-reports.md)**: Stores analysis results for documents
 - **[Anonymization Logs](./anonymization-logs.md)**: Tracks anonymization operations and replacements
+- **[Presidio Integration](./presidio-integration.md)**: Provides entity recognition and anonymization capabilities
 
 This integration ensures that you have a complete audit trail of all document operations and can demonstrate GDPR compliance.
 
@@ -62,13 +63,13 @@ Metadata extraction allows you to extract metadata from documents, such as:
 
 ### Anonymization
 
-Anonymization allows you to remove or mask personal data in documents. DocuDesk supports:
+Anonymization allows you to remove or mask personal data in documents. DocuDesk uses Microsoft Presidio for powerful entity recognition and anonymization:
 
-- Named entity recognition to identify personal data
-- Redaction of personal data
-- Pseudonymization of personal data
-- Verification of anonymization results
-- De-anonymization with secure keys
+- Named entity recognition to identify personal data (PERSON, LOCATION, etc.)
+- Redaction of personal data with customizable replacement text
+- Confidence scoring for detected entities
+- Secure key generation for potential de-anonymization
+- Comprehensive tracking of all anonymization operations
 
 The results of anonymization operations are stored in the [Anonymization Log](./anonymization-logs.md) object, which includes:
 
@@ -77,7 +78,36 @@ The results of anonymization operations are stored in the [Anonymization Log](./
 - A secure key for potential de-anonymization
 - A list of all text replacements made
 
-For more information on anonymization, see the [Anonymization Logs](./anonymization-logs.md) documentation.
+For more information on anonymization, see:
+- [Anonymization Logs](./anonymization-logs.md) for details on the anonymization log object
+- [Presidio Integration](./presidio-integration.md) for details on how DocuDesk processes Presidio's output
+
+#### Example Presidio Response
+
+```json
+{
+    "text": "Mijn naam is Jan de Hooglander, mijn BSN is 123456789 en ik woon in Amsterdam.",
+    "entities_found": [
+        {
+            "entity_type": "PERSON",
+            "text": "Jan de Hoog",
+            "score": 0.9999997019767761
+        },
+        {
+            "entity_type": "LOCATION",
+            "text": "Amsterdam",
+            "score": 0.9999990463256836
+        },
+        {
+            "entity_type": "PERSON",
+            "text": "BSN",
+            "score": 0.85
+        }
+    ]
+}
+```
+
+DocuDesk transforms this response into a comprehensive AnonymizationLog object that tracks all aspects of the anonymization process.
 
 ### Format Conversion
 
@@ -139,111 +169,205 @@ For detailed API documentation, see the [OpenAPI Specification](./openapi.md).
 5. **Performance Optimization**: Configure processing operations for optimal performance based on your needs
 6. **Report Analysis**: Regularly review document reports to identify compliance issues
 7. **Secure Key Management**: Store anonymization keys securely for potential de-anonymization
+8. **Confidence Thresholds**: Adjust confidence thresholds for entity detection based on your needs
 
 ## Examples
 
 ### Anonymizing a Document
 
 ```php
-// Create a parsing log entry for anonymization
-$parsingLog = new ParsingLog();
-$parsingLog->setFileId('file123');
-$parsingLog->setFileName('sensitive-document.pdf');
-$parsingLog->setParsingType('anonymization');
-$parsingLog->setStatus('pending');
-$parsingLog->save();
+/**
+ * Anonymizes a document and creates the necessary logs and reports
+ *
+ * @param string $fileId The ID of the file to anonymize
+ * @param string $fileName The name of the file
+ * @param float $confidenceThreshold The confidence threshold for entity detection (default: 0.7)
+ * @return array The anonymization results
+ * @throws \Exception If anonymization fails
+ */
+public function anonymizeDocument(string $fileId, string $fileName, float $confidenceThreshold = 0.7): array
+{
+    // Create a parsing log entry for anonymization
+    $parsingLog = new ParsingLog();
+    $parsingLog->setFileId($fileId);
+    $parsingLog->setFileName($fileName);
+    $parsingLog->setParsingType('anonymization');
+    $parsingLog->setStatus('pending');
+    $parsingLog->save();
 
-// Process the document (this would typically be handled by a background job)
-$processor = new DocumentProcessor();
-$result = $processor->anonymize('file123');
+    try {
+        // Process the document (this would typically be handled by a background job)
+        $processor = new DocumentProcessor();
+        $result = $processor->anonymize($fileId, $confidenceThreshold);
 
-// Update the parsing log
-$parsingLog->setStatus('completed');
-$parsingLog->setCompletedAt(new DateTime());
-$parsingLog->setOutputFileId($result->getOutputFileId());
-$parsingLog->save();
+        // Update the parsing log
+        $parsingLog->setStatus('completed');
+        $parsingLog->setCompletedAt(new \DateTime());
+        $parsingLog->setOutputFileId($result->getOutputFileId());
+        $parsingLog->save();
 
-// Update the privacy tracking record
-$privacyFile = PrivacyFile::findByFileId('file123');
-$privacyFile->setAnonymizationStatus('completed');
-$privacyFile->setAnonymizationDate(new DateTime());
-$privacyFile->save();
+        // Update the privacy tracking record
+        $privacyFile = PrivacyFile::findByFileId($fileId);
+        $privacyFile->setAnonymizationStatus('completed');
+        $privacyFile->setAnonymizationDate(new \DateTime());
+        $privacyFile->save();
 
-// Create an anonymization log
-$anonymizationLog = new AnonymizationLog();
-$anonymizationLog->setNodeId('file123');
-$anonymizationLog->setFileName('sensitive-document.pdf');
-$anonymizationLog->setStatus('completed');
-$anonymizationLog->setOriginalText($result->getOriginalText());
-$anonymizationLog->setAnonymizedText($result->getAnonymizedText());
-$anonymizationLog->setEntitiesFound($result->getEntitiesFound());
-$anonymizationLog->setEntityReplacements($result->getEntityReplacements());
-$anonymizationLog->setAnonymizationKey($result->generateSecureKey());
-$anonymizationLog->setOutputNodeId($result->getOutputNodeId());
-$anonymizationLog->save();
+        // Create an anonymization log
+        $anonymizationLog = new AnonymizationLog();
+        $anonymizationLog->setNodeId($fileId);
+        $anonymizationLog->setFileName($fileName);
+        $anonymizationLog->setStatus('completed');
+        $anonymizationLog->setOriginalText($result->getOriginalText());
+        $anonymizationLog->setAnonymizedText($result->getAnonymizedText());
+        $anonymizationLog->setEntitiesFound($result->getEntitiesFound());
+        $anonymizationLog->setEntityReplacements($result->getEntityReplacements());
+        $anonymizationLog->setAnonymizationKey($result->generateSecureKey());
+        $anonymizationLog->setOutputNodeId($result->getOutputNodeId());
+        $anonymizationLog->setTotalEntitiesFound(count($result->getEntitiesFound()));
+        $anonymizationLog->setTotalEntitiesReplaced(count($result->getEntityReplacements()));
+        $anonymizationLog->save();
 
-// Create a document report
-$reportData = [
-    'node_id' => 'file123',
-    'file_name' => 'sensitive-document.pdf',
-    'file_hash' => hash_file('sha256', $result->getOutputFilePath()),
-    'analysis_types' => ['anonymization']
-];
+        // Create a document report
+        $reportData = [
+            'node_id' => $fileId,
+            'file_name' => $fileName,
+            'file_hash' => hash_file('sha256', $result->getOutputFilePath()),
+            'analysis_types' => ['anonymization']
+        ];
 
-$reportService = new DocumentReportService();
-$report = $reportService->createReport($reportData);
-$report->setAnonymizationResults($result->getAnonymizationResults());
-$report->setStatus('completed');
-$report->save();
+        $reportService = new DocumentReportService();
+        $report = $reportService->createReport($reportData);
+        $report->setAnonymizationResults($result->getAnonymizationResults());
+        $report->setStatus('completed');
+        $report->save();
+
+        return [
+            'success' => true,
+            'anonymization_log_id' => $anonymizationLog->getId(),
+            'report_id' => $report->getId(),
+            'entities_found' => $anonymizationLog->getTotalEntitiesFound(),
+            'entities_replaced' => $anonymizationLog->getTotalEntitiesReplaced()
+        ];
+    } catch (\Exception $e) {
+        // Update the parsing log with error information
+        $parsingLog->setStatus('failed');
+        $parsingLog->setErrorMessage($e->getMessage());
+        $parsingLog->save();
+        
+        throw $e;
+    }
+}
 ```
 
 ### Converting a Document
 
 ```php
-// Create a parsing log entry for format conversion
-$parsingLog = new ParsingLog();
-$parsingLog->setFileId('file456');
-$parsingLog->setFileName('document.docx');
-$parsingLog->setParsingType('format_conversion');
-$parsingLog->setOutputFormat('pdf');
-$parsingLog->setStatus('pending');
-$parsingLog->save();
+/**
+ * Converts a document from one format to another
+ *
+ * @param string $fileId The ID of the file to convert
+ * @param string $fileName The name of the file
+ * @param string $outputFormat The desired output format
+ * @return array The conversion results
+ * @throws \Exception If conversion fails
+ */
+public function convertDocument(string $fileId, string $fileName, string $outputFormat): array
+{
+    // Create a parsing log entry for format conversion
+    $parsingLog = new ParsingLog();
+    $parsingLog->setFileId($fileId);
+    $parsingLog->setFileName($fileName);
+    $parsingLog->setParsingType('format_conversion');
+    $parsingLog->setOutputFormat($outputFormat);
+    $parsingLog->setStatus('pending');
+    $parsingLog->save();
 
-// Process the document
-$processor = new DocumentProcessor();
-$result = $processor->convert('file456', 'pdf');
+    try {
+        // Process the document
+        $processor = new DocumentProcessor();
+        $result = $processor->convert($fileId, $outputFormat);
 
-// Update the parsing log
-$parsingLog->setStatus('completed');
-$parsingLog->setCompletedAt(new DateTime());
-$parsingLog->setOutputFileId($result->getOutputFileId());
-$parsingLog->save();
+        // Update the parsing log
+        $parsingLog->setStatus('completed');
+        $parsingLog->setCompletedAt(new \DateTime());
+        $parsingLog->setOutputFileId($result->getOutputFileId());
+        $parsingLog->save();
+
+        return [
+            'success' => true,
+            'output_file_id' => $result->getOutputFileId(),
+            'output_format' => $outputFormat
+        ];
+    } catch (\Exception $e) {
+        // Update the parsing log with error information
+        $parsingLog->setStatus('failed');
+        $parsingLog->setErrorMessage($e->getMessage());
+        $parsingLog->save();
+        
+        throw $e;
+    }
+}
 ```
 
 ### Analyzing Document Accessibility
 
 ```php
-// Create a document report for WCAG compliance analysis
-$reportData = [
-    'node_id' => 'file789',
-    'file_name' => 'document.pdf',
-    'file_hash' => hash_file('sha256', '/path/to/document.pdf'),
-    'analysis_types' => ['wcag_compliance']
-];
+/**
+ * Analyzes a document for WCAG compliance
+ *
+ * @param string $fileId The ID of the file to analyze
+ * @param string $fileName The name of the file
+ * @return array The analysis results
+ * @throws \Exception If analysis fails
+ */
+public function analyzeAccessibility(string $fileId, string $fileName): array
+{
+    // Create a document report for WCAG compliance analysis
+    $reportData = [
+        'node_id' => $fileId,
+        'file_name' => $fileName,
+        'file_hash' => hash_file('sha256', '/path/to/document.pdf'),
+        'analysis_types' => ['wcag_compliance']
+    ];
 
-$reportService = new DocumentReportService();
-$report = $reportService->createReport($reportData);
+    $reportService = new DocumentReportService();
+    $report = $reportService->createReport($reportData);
 
-// Process the document
-$processor = new DocumentProcessor();
-$result = $processor->analyzeAccessibility('file789');
+    try {
+        // Process the document
+        $processor = new DocumentProcessor();
+        $result = $processor->analyzeAccessibility($fileId);
 
-// Update the report
-$report->setWcagComplianceResults($result->getWcagResults());
-$report->setStatus('completed');
-$report->save();
+        // Update the report
+        $report->setWcagComplianceResults($result->getWcagResults());
+        $report->setStatus('completed');
+        $report->save();
+
+        return [
+            'success' => true,
+            'report_id' => $report->getId(),
+            'compliance_level' => $result->getWcagResults()['compliance_level'],
+            'total_issues' => $result->getWcagResults()['total_issues']
+        ];
+    } catch (\Exception $e) {
+        // Update the report with error information
+        $report->setStatus('failed');
+        $report->setErrorMessage($e->getMessage());
+        $report->save();
+        
+        throw $e;
+    }
+}
 ```
 
 ## Conclusion
 
-Document processing is a core feature of DocuDesk that enables powerful document transformation and analysis capabilities. By integrating with privacy tracking, parsing logs, document reports, and anonymization logs, DocuDesk ensures that all document operations are properly tracked and comply with privacy and accessibility regulations. 
+Document processing is a core feature of DocuDesk that enables powerful document transformation and analysis capabilities. By integrating with privacy tracking, parsing logs, document reports, and anonymization logs, DocuDesk ensures that all document operations are properly tracked and comply with privacy and accessibility regulations.
+
+For more detailed information on specific aspects of document processing, refer to the following documentation:
+
+- [Privacy Tracking](./privacy-tracking.md)
+- [Parsing Logs](./parsing-logs.md)
+- [Document Reports](./document-reports.md)
+- [Anonymization Logs](./anonymization-logs.md)
+- [Presidio Integration](./presidio-integration.md) 

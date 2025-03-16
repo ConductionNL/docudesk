@@ -1,568 +1,653 @@
 <?php
 
-namespace OCA\DocuDesk\Controller;
+namespace OCA\OpenCatalogi\Controller;
 
-use OCA\DocuDesk\Service\ObjectService;
+use OCA\OpenCatalogi\Service\ObjectService;
 use OCP\AppFramework\Controller;
-use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\DB\Exception;
-use OCP\IAppConfig;
 use OCP\IRequest;
-use OCP\App\IAppManager;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
-use Opis\JsonSchema\Errors\ErrorFormatter;
-use Symfony\Component\Uid\Uuid;
-use Psr\Container\ContainerInterface;
+use Exception;
 
+/**
+ * Controller class for handling object-related operations
+ */
 class ObjectsController extends Controller
 {
-
-
-    /**
-     * Constructor for the ObjectsController
-     *
-     * @param string     $appName The name of the app
-     * @param IRequest   $request The request object
-     * @param IAppConfig $config  The app configuration object
-     */
     public function __construct(
-        $appName,
-        IRequest $request,
-    private readonly IAppConfig $config,
-    private readonly IAppManager $appManager,
-    private readonly ContainerInterface $container,
-    private readonly ObjectService $objectService,
-    ) {
+		$appName,
+		IRequest $request,
+        private readonly ObjectService $objectService,
+	)
+    {
         parent::__construct($appName, $request);
     }
 
-    /**
-     * Returns the template of the main app's page
+	/**
+	 * Return (and search) all objects
+	 *
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
      *
-     * This method renders the main page of the application, adding any necessary data to the template.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @return TemplateResponse The rendered template response
-     */
-    public function page(): TemplateResponse
-    {
-        return new TemplateResponse(
-            'docudesk',
-            'index',
-            []
-        );
-    }
+     * @param string $objectType The type of object to return
+	 *
+	 * @return JSONResponse
+	 */
+	public function index(string $objectType): JSONResponse
+	{
+        // Retrieve all request parameters
+        $requestParams = $this->request->getParams();
 
-    /**
-     * Retrieves a list of all objects
-     *
-     * This method returns a JSON response containing an array of all objects in the system.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @return JSONResponse A JSON response containing the list of objects
-     */
-    public function index(ObjectService $objectService, SearchService $searchService): JSONResponse
-    {
-        $filters = $this->request->getParams();
-        $fieldsToSearch = ['uuid', 'register', 'schema'];
-        $extend = ['schema', 'register'];
+        unset($requestParams['_route']);
+        unset($requestParams['objectType']); // Nextcloud automatically adds this from the route so we need to remove it
 
-        $searchParams = $searchService->createMySQLSearchParams(filters: $filters);
-        $searchConditions = $searchService->createMySQLSearchConditions(filters: $filters, fieldsToSearch:  $fieldsToSearch);
-        $filters = $searchService->unsetSpecialQueryParams(filters: $filters);
+        // Fetch catalog objects based on filters and order
+        $data = $this->objectService->getResultArrayForRequest($objectType, $requestParams);
 
-        // @todo: figure out how to use extend here
-        $results = $objectService->getObjects(objectType: 'objectEntity', filters: $filters);
-        //        $results = $this->objectEntityMapper->findAll(filters: $filters);
+        // Return JSON response
+        return new JSONResponse($data);
+	}
 
-        // We dont want to return the entity, but the object (and kant reley on the normal serilzier)
-        foreach ($results as $key => $result) {
-            $results[$key] = $result->getObjectArray();
-        }
-
-        return new JSONResponse(['results' => $results]);
-    }
-
-    /**
-     * Retrieves a single object by its ID
-     *
-     * This method returns a JSON response containing the details of a specific object.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param string $id The ID of the object to retrieve
-     *
-     * @return JSONResponse A JSON response containing the object details
-     */
-    public function show(string $id): JSONResponse
-    {
+	/**
+	 * Read a single object
+	 *
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return JSONResponse
+	 */
+	public function show(string $objectType, string $id): JSONResponse
+	{
         try {
-            return new JSONResponse($this->objectEntityMapper->find((int) $id)->getObjectArray());
-        } catch (DoesNotExistException $exception) {
-            return new JSONResponse(data: ['error' => 'Not Found'], statusCode: 404);
-        }
-    }
-
-    /**
-     * Creates a new object
-     *
-     * This method creates a new object based on POST data.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @return JSONResponse A JSON response containing the created object
-     * @throws Exception
-     */
-    public function create(ObjectService $objectService): JSONResponse
-    {
-        $data = $this->request->getParams();
-        $object = $data['object'];
-        $mapping = $data['mapping'] ?? null;
-        $register = $data['register'];
-        $schema = $data['schema'];
-
-        foreach ($data as $key => $value) {
-            if (str_starts_with($key, '_')) {
-                unset($data[$key]);
+            // Get extend parameter if present
+            $extend = $requestParams['extend'] ?? $requestParams['_extend'] ?? [];
+            if (is_string($extend)) {
+                $extend = array_map('trim', explode(',', $extend));
             }
-        }
 
-        if (isset($data['id'])) {
+            // Fetch the object by its ID
+            $object = $this->objectService->getObject($objectType, $id, $extend);
+
+            // Return the object as a JSON response
+            return new JSONResponse($object);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+	}
+
+	/**
+	 * Create an object
+	 *
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return JSONResponse
+	 */
+	public function create(string $objectType): JSONResponse
+	{
+        try {
+            // Get all parameters from the request
+            $data = $this->request->getParams();
+
+            // Get extend parameter if present
+            $extend = $data['extend'] ?? $data['_extend'] ?? [];
+            if (is_string($extend)) {
+                $extend = array_map('trim', explode(',', $extend));
+            }
+
+
+            // Remove the 'id' field if it exists, as we're creating a new object
             unset($data['id']);
+
+            // Save the new object
+            $object = $this->objectService->saveObject(objectType: $objectType, object: $data, extend: $extend);
+
+            // Return the created object as a JSON response
+            return new JSONResponse($object);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
+	}
 
-        // If mapping ID is provided, transform the object using the mapping
-        $mappingService = $this->getOpenConnectorMappingService();
-
-        if ($mapping !== null && $mappingService !== null) {
-            $mapping = $mappingService->getMapping($mapping);
-
-            $object = $mappingService->executeMapping($mapping, $object);
-            $data['register'] = $register;
-            $data['schema'] = $schema;
-        }
-
-        // Save the object
+	/**
+	 * Update an object
+	 *
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return JSONResponse
+	 */
+	public function update(string $objectType, string $id): JSONResponse
+	{
         try {
-            $objectEntity = $objectService->saveObject(register: $data['register'], schema: $data['schema'], object: $object);
+            // Get all parameters from the request
+            $data = $this->request->getParams();
 
-            // Unlock the object after saving
-            try {
-                $this->objectEntityMapper->unlockObject($objectEntity->getId());
-            } catch (\Exception $e) {
-                // Ignore unlock errors since the save was successful
+            // Get extend parameter if present
+            $extend = $data['extend'] ?? $data['_extend'] ?? [];
+            if (is_string($extend)) {
+                $extend = array_map('trim', explode(',', $extend));
             }
-        } catch (ValidationException $exception) {
-            $formatter = new ErrorFormatter();
-            return new JSONResponse(['message' => $exception->getMessage(), 'validationErrors' => $formatter->format($exception->getErrors())], 400);
+
+            // Ensure ID in data matches URL parameter
+            $data['id'] = $id;
+
+            // Save the updated object
+            $object = $this->objectService->saveObject(objectType: $objectType, object: $data, extend: $extend);
+
+            // Return the updated object as a JSON response
+            return new JSONResponse($object);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
+	}
 
-        return new JSONResponse($objectEntity->getObjectArray());
-    }
-
-    /**
-     * Updates an existing object
-     *
-     * This method updates an existing object based on its ID.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param int $id The ID of the object to update
-     *
-     * @return JSONResponse A JSON response containing the updated object details
-     */
-    public function update(int $id, ObjectService $objectService): JSONResponse
-    {
-        $data = $this->request->getParams();
-        $object = $data['object'];
-        $mapping = $data['mapping'] ?? null;
-
-        foreach ($data as $key => $value) {
-            if (str_starts_with($key, '_')) {
-                unset($data[$key]);
-            }
-        }
-        if (isset($data['id'])) {
-            unset($data['id']);
-        }
-
-        // If mapping ID is provided, transform the object using the mapping
-        $mappingService = $this->getOpenConnectorMappingService();
-
-        if ($mapping !== null && $mappingService !== null) {
-            $mapping = $mappingService->getMapping($mapping);
-            $data = $mappingService->executeMapping($mapping, $object);
-        }
-
-        // save it
+	/**
+	 * Delete an object
+	 *
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return JSONResponse
+	 */
+	public function destroy(string $objectType, string $id): JSONResponse
+	{
         try {
-            $objectEntity = $objectService->saveObject(register: $data['register'], schema: $data['schema'], object: $data['object']);
+            // Delete the object
+            $result = $this->objectService->deleteObject($objectType, $id);
 
-            // Unlock the object after saving
-            try {
-                $this->objectEntityMapper->unlockObject($objectEntity->getId());
-            } catch (\Exception $e) {
-                // Ignore unlock errors since the save was successful
-            }
-        } catch (ValidationException $exception) {
-            $formatter = new ErrorFormatter();
-            return new JSONResponse(['message' => $exception->getMessage(), 'validationErrors' => $formatter->format($exception->getErrors())], 400);
+            // Return the result as a JSON response
+            return new JSONResponse(['success' => $result], $result === true ? 200 : 404);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
+	}
 
-        return new JSONResponse($objectEntity->getObjectArray());
-    }
-
-    /**
-     * Deletes an object
-     *
-     * This method deletes an object based on its ID.
+	/**
+     * Get audit trail for a specific object
      *
      * @NoAdminRequired
      * @NoCSRFRequired
-     *
-     * @param int $id The ID of the object to delete
-     *
-     * @return JSONResponse An empty JSON response
-     * @throws Exception
+	 *
+	 * @return JSONResponse
      */
-    public function destroy(int $id): JSONResponse
+    public function getAuditTrail(string $objectType, string $id): JSONResponse
     {
-        // Create a log entry
-        $oldObject = $this->objectEntityMapper->find($id);
-        $this->auditTrailMapper->createAuditTrail(old: $oldObject);
+        // Retrieve all request parameters
+        $requestParams = $this->request->getParams();
 
-        $this->objectEntityMapper->delete($this->objectEntityMapper->find($id));
-
-        return new JSONResponse([]);
-    }
-
-    /**
-     * Retrieves a list of logs for an object
-     *
-     * This method returns a JSON response containing the logs for a specific object.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param int $id The ID of the object to get AuditTrails for
-     *
-     * @return JSONResponse An empty JSON response
-     */
-    public function auditTrails(int $id): JSONResponse
-    {
-        return new JSONResponse($this->auditTrailMapper->findAll(filters: ['object' => $id]));
-    }
-
-    /**
-     * Retrieves call logs for a object
-     *
-     * This method returns all the call logs associated with a object based on its ID.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param int $id The ID of the object to retrieve logs for
-     *
-     * @return JSONResponse A JSON response containing the call logs
-     */
-    public function contracts(int $id): JSONResponse
-    {
-        // Create a log entry
-        $oldObject = $this->objectEntityMapper->find($id);
-        $this->auditTrailMapper->createAuditTrail(old: $oldObject);
-
-        return new JSONResponse(['error' => 'Not yet implemented'], 501);
-    }
-
-    /**
-     * Retrieves all objects that use a object
-     *
-     * This method returns all the call logs associated with a object based on its ID.
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param int $id The ID of the object to retrieve logs for
-     *
-     * @return JSONResponse A JSON response containing the call logs
-     */
-    public function relations(int $id): JSONResponse
-    {
+        unset($requestParams['_route']);
+        unset($requestParams['objectType']); // Nextcloud automatically adds this from the route so we need to remove it
+        unset($requestParams['id']); // Nextcloud automatically adds this from the route so we need to remove it
+       
         try {
-            // Lets grap the object to stablish an uri
-            $object = $this->objectEntityMapper->find($id);
-            $relations = $this->objectEntityMapper->findByRelationUri($object->getUri());
 
-            // We dont want to return the entity, but the object (and kant reley on the normal serilzier)
-            foreach ($relations as $key => $relation) {
-                $relations[$key] = $relation->getObjectArray();
-            }
+            $auditTrail = $this->objectService->getAuditTrail($objectType, $id, $requestParams);
+            return new JSONResponse($auditTrail);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
 
+    /**
+     * Get all relations for a specific object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @return JSONResponse
+     */
+    public function getRelations(string $objectType, string $id): JSONResponse
+    {
+        // Retrieve all request parameters
+        $requestParams = $this->request->getParams();
+
+        unset($requestParams['_route']);
+        unset($requestParams['objectType']); // Nextcloud automatically adds this from the route so we need to remove it
+        unset($requestParams['id']); // Nextcloud automatically adds this from the route so we need to remove it
+       
+        try {
+            // Fetch the object by its ID
+            $relations = $this->objectService->getRelations($objectType, $id, $requestParams);
+
+            // Return the object as a JSON response
             return new JSONResponse($relations);
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Relations not found'], 404);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
     }
 
     /**
-     * Retrieves call logs for an object
-     *
-     * This method returns a JSON response containing the logs for a specific object.
+     * Get all uses for a specific object
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param int $id The ID of the object to retrieve logs for
-     *
-     * @return JSONResponse A JSON response containing the call logs
+     * @return JSONResponse
      */
-    public function logs(int $id): JSONResponse
+    public function getUses(string $objectType, string $id): JSONResponse
+    {
+        // Retrieve all request parameters
+        $requestParams = $this->request->getParams();
+
+        unset($requestParams['_route']);
+        unset($requestParams['objectType']); // Nextcloud automatically adds this from the route so we need to remove it
+        unset($requestParams['id']); // Nextcloud automatically adds this from the route so we need to remove it
+        
+        $uses = $this->objectService->getUses($objectType, $id, $requestParams);
+        return new JSONResponse($uses);
+    }
+
+
+    /**
+     * Get all files associated with a specific object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     * @return JSONResponse
+     */
+    public function indexFiles(string $objectType, string $id): JSONResponse
+    {
+        // Retrieve all request parameters
+        $requestParams = $this->request->getParams();
+
+        unset($requestParams['_route']);
+        unset($requestParams['objectType']); // Nextcloud automatically adds this from the route so we need to remove it
+        unset($requestParams['id']); // Nextcloud automatically adds this from the route so we need to remove it
+        
+        try {
+            $files = $this->objectService->getFiles($objectType, $id, $requestParams);
+            return new JSONResponse($files);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+    /**
+     * Get a specific file associated with an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     * @param string $filePath Path to the file to update
+     *
+     * @return JSONResponse
+     */
+    public function showFile(string $objectType, string $id, string $filePath): JSONResponse
     {
         try {
-            $jobLogs = $this->objectAuditLogMapper->findAll(null, null, ['object_id' => $id]);
-            return new JSONResponse($jobLogs);
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Logs not found'], 404);
+            $file = $this->objectService->getFile($objectType, $id, $filePath);
+            return new JSONResponse($file);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
     }
 
     /**
-     * Retrieves all available mappings
-     *
-     * This method returns a JSON response containing all available mappings in the system.
+     * Publish a file associated with an object
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @return JSONResponse A JSON response containing the list of mappings
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     * @param string $filePath Path to the file to publish
+     *
+     * @return JSONResponse
      */
-    public function mappings(): JSONResponse
+    public function publishFile(string $objectType, string $id, string $filePath): JSONResponse
     {
-        // Get mapping service, which will return null based on implementation
-        $mappingService = $this->getOpenConnectorMappingService();
-
-        // Initialize results array
-        $results = [];
-
-        // If mapping service exists, get all mappings using find() method
-        if ($mappingService !== null) {
-            $results = $mappingService->getMappings();
+        try {
+            $result = $this->objectService->publishFile($objectType, $id, $filePath);
+            return new JSONResponse($result);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
-
-        // Return response with results array and total count
-        return new JSONResponse(
-            [
-            'results' => $results,
-            'total' => count($results)
-            ]
-        );
-    }
-
-        /**
-         * Attempts to retrieve the OpenRegister service from the container.
-         *
-         * @return mixed|null The OpenRegister service if available, null otherwise.
-         * @throws ContainerExceptionInterface|NotFoundExceptionInterface
-         */
-    public function getOpenConnectorMappingService(): ?\OCA\OpenConnector\Service\MappingService
-    {
-        if (in_array(needle: 'openconnector', haystack: $this->appManager->getInstalledApps()) === true) {
-            try {
-                // Attempt to get the OpenRegister service from the container
-                return $this->container->get('OCA\OpenConnector\Service\MappingService');
-            } catch (Exception $e) {
-                // If the service is not available, return null
-                return null;
-            }
-        }
-
-        return null;
     }
 
     /**
-     * Lock an object
+     * Depublish a file associated with an object
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param  int $id The ID of the object to lock
-     * @return JSONResponse A JSON response containing the locked object
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     * @param string $filePath Path to the file to depublish
+     *
+     * @return JSONResponse
      */
-    public function lock(int $id): JSONResponse
+    public function depublishFile(string $objectType, string $id, string $filePath): JSONResponse
+    {
+        try {
+            $result = $this->objectService->depublishFile($objectType, $id, $filePath);
+            return new JSONResponse($result);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+    /**
+     * Add a new file to an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     *
+     * @return JSONResponse
+     */
+    public function createFile(string $objectType, string $id): JSONResponse
     {
         try {
             $data = $this->request->getParams();
-            $process = $data['process'] ?? null;
-            $duration = isset($data['duration']) ? (int)$data['duration'] : null;
-
-            $object = $this->objectEntityMapper->lockObject(
-                $id,
-                $process,
-                $duration
+            $result = $this->objectService->createFile($objectType, $id, $data['filePath'], $data['content'], $data['tags']);
+            return new JSONResponse($result);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
             );
-
-            return new JSONResponse($object->getObjectArray());
-
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Object not found'], 404);
-        } catch (NotAuthorizedException $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 403);
-        } catch (LockedException $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 423); // 423 Locked
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Unlock an object
+     * Add a new file to an object via multipart form upload
      *
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param  int $id The ID of the object to unlock
-     * @return JSONResponse A JSON response containing the unlocked object
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+     *
+     * @return JSONResponse
      */
-    public function unlock(int $id): JSONResponse
+    public function createFileMultipart(string $objectType, string $id): JSONResponse
+    {
+		$data = $this->request->getParams();
+        try {
+            // Get the uploaded file$data = $this->request->getParams();
+            $uploadedFiles = [];
+
+            // Check if multiple files have been uploaded.
+            $files = $_FILES['files'] ?? null;
+
+            if (empty($files) === false) {
+                // Loop through each file using the count of 'name'
+                for ($i = 0; $i < count($files['name']); $i++) {
+                    $uploadedFiles[] = [
+                        'name' => $files['name'][$i],
+                        'type' => $files['type'][$i],
+                        'tmp_name' => $files['tmp_name'][$i],
+                        'error' => $files['error'][$i],
+                        'size' => $files['size'][$i],
+                        'share' => $data['share'] === 'true',
+						'tags' => explode(',',$data['tags'][$i])
+                    ];
+                }
+            }
+
+            // Get the uploaded file from the request if a single file hase been uploaded.
+            $uploadedFile = $this->request->getUploadedFile(key: 'file');
+            if (empty($uploadedFile) === false) {
+                $uploadedFiles[] = $uploadedFile;
+            }
+
+            if (empty($uploadedFiles) === true) {
+                throw new Exception('No file(s) uploaded');
+            }
+
+            // Create file using the uploaded file's content and name
+            $results = [];
+            foreach ($uploadedFiles as $file) {
+                // Create file
+                $results[] = $this->objectService->createFile(
+                    $objectType,
+                    $id,
+                    $file['name'],
+                    file_get_contents($file['tmp_name']),
+                    $file['share'],
+					$file['tags']
+                );
+            }
+
+            return new JSONResponse($results);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+    /**
+     * Update file metadata for an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+	 * @param string $filePath Path to the file to update
+	 * @param array $tags Optional tags to update
+     *
+     * @return JSONResponse
+     */
+    public function updateFile(string $objectType, string $id, string $filePath): JSONResponse
     {
         try {
-            $object = $this->objectEntityMapper->unlockObject($id);
-            return new JSONResponse($object->getObjectArray());
+            $data = $this->request->getParams();
+            // Ensure tags is set to empty array if not provided
+            $tags = $data['tags'] ?? [];
+            $result = $this->objectService->updateFile($objectType, $id, $filePath, $data['content'], $tags);
+            return new JSONResponse($result);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+  
 
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Object not found'], 404);
-        } catch (NotAuthorizedException $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 403);
-        } catch (LockedException $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 423);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+    /**
+     * Update file metadata for an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+	 * @param string $filePath Path to the file to update
+	 * @param array $tags Optional tags to update
+     *
+     * @return JSONResponse
+     */
+    public function getAllTags(): JSONResponse
+    {
+       return new JSONResponse( $this->objectService->getAllTags());
+    }
+
+    /**
+     * Delete a file from an object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object
+     * @param string $id The ID of the object
+	 * @param string $filePath Path to the file to delete
+     * @return JSONResponse
+     */
+    public function deleteFile(string $objectType, string $id, string $filePath): JSONResponse
+    {
+        try {
+            $result = $this->objectService->deleteFile($objectType, $id, $filePath);
+            return new JSONResponse($result);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+
+    /**
+     * Lock an object to prevent concurrent modifications
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object to lock
+     * @param string $id The ID of the object to lock
+     * @return JSONResponse
+     */
+    public function lock(string $objectType, string $id): JSONResponse
+    {
+        try {
+            // Get request parameters
+            $params = $this->request->getParams();
+
+            // Extract optional parameters
+            $process = $params['process'] ?? null;
+            $duration = isset($params['duration']) ? (int)$params['duration'] : null;
+
+            // Attempt to lock the object
+            $lockedObject = $this->objectService->lockObject($objectType, $id, $process, $duration);
+
+            return new JSONResponse($lockedObject);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+    /**
+     * Unlock a previously locked object
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object to unlock
+     * @param string $id The ID of the object to unlock
+     * @return JSONResponse
+     */
+    public function unlock(string $objectType, string $id): JSONResponse
+    {
+        try {
+            $unlockedObject = $this->objectService->unlockObject($objectType, $id);
+            return new JSONResponse($unlockedObject);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
+        }
+    }
+
+    /**
+     * Check if an object is currently locked
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     *
+     * @param string $objectType The type of object to check
+     * @param string $id The ID of the object to check
+     * @return JSONResponse
+     */
+    public function isLocked(string $objectType, string $id): JSONResponse
+    {
+        try {
+            $isLocked = $this->objectService->isLocked($objectType, $id);
+            return new JSONResponse(['locked' => $isLocked]);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
     }
 
     /**
      * Revert an object to a previous state
      *
-     * This endpoint allows reverting an object to a previous state based on different criteria:
-     * 1. DateTime - Revert to the state at a specific point in time
-     * 2. Audit Trail ID - Revert to the state after a specific audit trail entry
-     * 3. Semantic Version - Revert to a specific version of the object
-     *
-     * Request body should contain one of:
-     * - datetime: ISO 8601 datetime string (e.g., "2024-03-01T12:00:00Z")
-     * - auditTrailId: UUID of an audit trail entry
-     * - version: Semantic version string (e.g., "1.0.0")
-     *
-     * Optional parameters:
-     * - overwriteVersion: boolean (default: false) - If true, keeps the version number,
-     *                     if false, increments the patch version
-     *
-     * Example requests:
-     * ```json
-     * {
-     *     "datetime": "2024-03-01T12:00:00Z"
-     * }
-     * ```
-     * ```json
-     * {
-     *     "auditTrailId": "550e8400-e29b-41d4-a716-446655440000"
-     * }
-     * ```
-     * ```json
-     * {
-     *     "version": "1.0.0",
-     *     "overwriteVersion": true
-     * }
-     * ```
-     *
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @param  int $id The ID of the object to revert
-     * @return JSONResponse A JSON response containing the reverted object
-     * @throws NotFoundException If object not found
-     * @throws NotAuthorizedException If user not authorized
-     * @throws BadRequestException If no valid reversion point specified
-     * @throws LockedException If object is locked
+     * @param string $objectType The type of object to revert
+     * @param string $id The ID of the object to revert
+     * @return JSONResponse
      */
-    public function revert(int $id): JSONResponse
+    public function revert(string $objectType, string $id): JSONResponse
     {
         try {
-            $data = $this->request->getParams();
+            // Get request parameters
+            $params = $this->request->getParams();
 
-            // Parse the revert point
+            // Extract revert parameters
             $until = null;
-            if (isset($data['datetime'])) {
-                $until = new \DateTime($data['datetime']);
-            } elseif (isset($data['auditTrailId'])) {
-                $until = $data['auditTrailId'];
-            } elseif (isset($data['version'])) {
-                $until = $data['version'];
+            if (isset($params['until'])) {
+                // Handle both DateTime and audit trail ID cases
+                $until = $params['until'];
+                if (strtotime($until) !== false) {
+                    $until = new DateTime($until);
+                }
             }
 
-            if ($until === null) {
-                return new JSONResponse(
-                    ['error' => 'Must specify either datetime, auditTrailId, or version'],
-                    400
-                );
-            }
+            $overwriteVersion = $params['overwriteVersion'] ?? false;
 
-            $overwriteVersion = $data['overwriteVersion'] ?? false;
-
-            // Get the reverted object using AuditTrailMapper instead
-            $revertedObject = $this->auditTrailMapper->revertObject(
+            // Attempt to revert the object
+            $revertedObject = $this->objectService->revertObject(
+                $objectType,
                 $id,
                 $until,
                 $overwriteVersion
             );
 
-            // Save the reverted object
-            $savedObject = $this->objectEntityMapper->update($revertedObject);
-
-            return new JSONResponse($savedObject->getObjectArray());
-
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Object not found'], 404);
-        } catch (NotAuthorizedException $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 403);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Retrieves files associated with an object
-     *
-     * @NoAdminRequired
-     * @NoCSRFRequired
-     *
-     * @param  string $id The ID of the object to get files for
-     * @return JSONResponse A JSON response containing the object's files
-     */
-    public function files(string $id, ObjectService $objectService): JSONResponse
-    {
-        try {
-            // Get the object with files included
-            $object = $this->objectEntityMapper->find((int) $id);
-            $files = $objectService->getFiles($object);
-            $object = $objectService->hydrateFiles($object, $files);
-            
-            // Return just the files array from the object
-            return new JSONResponse($object->getFiles());
-            
-        } catch (DoesNotExistException $e) {
-            return new JSONResponse(['error' => 'Object not found'], 404);
-        } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], 500);
+            return new JSONResponse($revertedObject);
+        } catch (Exception $e) {
+            return new JSONResponse(
+                ['error' => $e->getMessage()],
+                400
+            );
         }
     }
 }

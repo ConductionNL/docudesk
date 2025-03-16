@@ -36,7 +36,12 @@
 		"opis/json-schema": "^2.3",
 		"symfony/uid": "^6.4",
 		"symfony/yaml": "^6.4",
-		"twig/twig": "^3.18"
+		"twig/twig": "^3.18",
+		"phpoffice/phpword": "^1.1",
+		"phpoffice/phpspreadsheet": "^1.29",
+		"phpoffice/phppresentation": "^1.0",
+		"smalot/pdfparser": "^2.7",
+		"psr/log": "^3.0"
 	},
 	"require-dev": {
 		"nextcloud/ocp": "dev-stable29",
