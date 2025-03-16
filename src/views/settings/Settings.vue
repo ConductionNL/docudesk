@@ -166,6 +166,11 @@ import { NcSettingsSection, NcNoteCard, NcSelect, NcButton, NcLoadingIcon, NcTex
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Restart from 'vue-material-design-icons/Restart.vue'
 
+/**
+ * AdminSettings component for DocuDesk
+ * 
+ * @component
+ */
 export default {
 	name: 'AdminSettings',
 	components: {
@@ -178,6 +183,11 @@ export default {
 		Plus,
 		Restart,
 	},
+	/**
+	 * Component data
+	 * 
+	 * @returns {Object} Component data
+	 */
 	data() {
 		return {
 			loading: false,
@@ -216,19 +226,33 @@ export default {
 		}
 	},
 	computed: {
-		// True if any section uses "openregister" as source.
+		/**
+		 * Check if any section uses "openregister" as source
+		 * 
+		 * @returns {boolean} True if any section uses "openregister" as source
+		 */
 		hasOpenRegisterSelected() {
 			return this.objectTypes.some(
 				(type) => this.sections[type]?.selectedSource?.value === 'openregister',
 			)
 		},
 	},
+	/**
+	 * Component mounted lifecycle hook
+	 * 
+	 * @returns {void}
+	 */
 	mounted() {
 		this.fetchAll()
 		this.fetchApiConfig()
 	},
 	methods: {
-		// maps the title to any predefined titles, otherwise just capitalize the first letter and return
+		/**
+		 * Maps the title to any predefined titles, otherwise just capitalize the first letter and return
+		 * 
+		 * @param {string} type - The type to map
+		 * @returns {string} The mapped title
+		 */
 		titleMapping(type) {
 			const mapping = {
 				template: 'Document Template',
@@ -243,7 +267,12 @@ export default {
 			}
 			return mapping[type] || type.charAt(0).toUpperCase() + type.slice(1)
 		},
-		// When the source is changed, reassign the entire section object to trigger re-render.
+		/**
+		 * When the source is changed, reassign the entire section object to trigger re-render
+		 * 
+		 * @param {string} type - The type to update
+		 * @returns {void}
+		 */
 		onSourceChange(type) {
 			if (this.sections[type].selectedSource?.value === 'internal') {
 				this.sections = {
@@ -256,7 +285,12 @@ export default {
 				}
 			}
 		},
-		// When the register is changed, clear the schema by reassigning.
+		/**
+		 * When the register is changed, clear the schema by reassigning
+		 * 
+		 * @param {string} type - The type to update
+		 * @returns {void}
+		 */
 		onRegisterChange(type) {
 			this.sections = {
 				...this.sections,
@@ -266,7 +300,11 @@ export default {
 				},
 			}
 		},
-		// Fetch API configuration
+		/**
+		 * Fetch API configuration
+		 * 
+		 * @returns {void}
+		 */
 		fetchApiConfig() {
 			fetch('/index.php/apps/docudesk/api/settings/api-config', { method: 'GET' })
 				.then(response => response.json())
@@ -277,7 +315,11 @@ export default {
 					console.error('Failed to fetch API config:', err)
 				})
 		},
-		// Save API configuration
+		/**
+		 * Save API configuration
+		 * 
+		 * @returns {void}
+		 */
 		saveApiConfig() {
 			this.saving = true
 			fetch('/index.php/apps/docudesk/api/settings/api-config', {
@@ -297,7 +339,11 @@ export default {
 					this.saving = false
 				})
 		},
-		// Fetch all settings and initialize the registers, schemas and sections.
+		/**
+		 * Fetch all settings and initialize the registers, schemas and sections
+		 * 
+		 * @returns {void}
+		 */
 		fetchAll() {
 			this.loading = true
 			fetch('/index.php/apps/docudesk/api/settings', { method: 'GET' })
@@ -369,7 +415,12 @@ export default {
 					this.loading = false
 				})
 		},
-		// Save the configuration for a single object type.
+		/**
+		 * Save the configuration for a single object type
+		 * 
+		 * @param {string} type - The type to save
+		 * @returns {void}
+		 */
 		saveConfig(type) {
 			this.sections[type].loading = true
 			this.saving = true
@@ -409,7 +460,11 @@ export default {
 					this.sections[type].loading = false
 				})
 		},
-		// Save all configurations at once.
+		/**
+		 * Save all configurations at once
+		 * 
+		 * @returns {void}
+		 */
 		saveAll() {
 			this.saving = true
 
@@ -450,7 +505,11 @@ export default {
 					this.saving = false
 				})
 		},
-		// Reset all configurations.
+		/**
+		 * Reset all configurations
+		 * 
+		 * @returns {void}
+		 */
 		resetConfig() {
 			this.saving = true
 
@@ -482,6 +541,13 @@ export default {
 					this.saving = false
 				})
 		},
+		/**
+		 * Open a link in a new window or tab
+		 * 
+		 * @param {string} url - The URL to open
+		 * @param {string} target - The target for the link
+		 * @returns {void}
+		 */
 		openLink(url, target = '') {
 			window.open(url, target)
 		},

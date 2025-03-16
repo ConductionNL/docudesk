@@ -18,7 +18,7 @@ webpackConfig.entry = {
 	},
 	adminSettings: {
 		import: path.join(__dirname, 'src', 'settings.js'),
-		filename: 'docudesk-settings.js',
+		filename: appId + '-settings.js',
 	},
 }
 
