@@ -14,6 +14,12 @@ describe('Report Entity', () => {
         expect(report.status).toBe('pending')
         expect(report.retentionPeriod).toBe(0)
         expect(report.dataController).toBe('')
+        expect(report.filePath).toBe('')
+        expect(report.fileType).toBe('')
+        expect(report.fileExtension).toBe('')
+        expect(report.fileSize).toBe(0)
+        expect(report.riskLevel).toBe('unknown')
+        expect(report.entities).toEqual([])
     })
 
     it('creates a report instance with provided values', () => {
@@ -21,8 +27,20 @@ describe('Report Entity', () => {
             id: '123',
             nodeId: '456',
             fileName: 'test.pdf',
+            filePath: '/path/to/test.pdf',
+            fileType: 'application/pdf',
+            fileExtension: 'pdf',
+            fileSize: 1024,
             fileHash: 'abc123',
             status: 'completed',
+            riskLevel: 'medium',
+            entities: [
+                {
+                    entity_type: 'PERSON',
+                    text: 'John Doe',
+                    score: 0.95
+                }
+            ],
             anonymizationResults: {
                 containsPersonalData: true,
                 entitiesFound: [
@@ -72,15 +90,27 @@ describe('Report Entity', () => {
             retentionPeriod: 365,
             retentionExpiry: '2025-01-01T00:00:00Z',
             legalBasis: 'consent',
-            dataController: 'Example Corp'
+            dataController: 'Example Corp',
+            startTime: '2024-01-01T00:00:00Z',
+            endTime: '2024-01-01T00:01:00Z',
+            duration: 60000,
+            errorMessage: '',
+            userId: 'user123',
+            created: '2024-01-01T00:00:00Z',
+            updated: '2024-01-01T00:01:00Z'
         }
         
         const report = new Report(data)
         expect(report.id).toBe('123')
         expect(report.nodeId).toBe('456')
         expect(report.fileName).toBe('test.pdf')
+        expect(report.filePath).toBe('/path/to/test.pdf')
+        expect(report.fileType).toBe('application/pdf')
+        expect(report.fileExtension).toBe('pdf')
+        expect(report.fileSize).toBe(1024)
         expect(report.fileHash).toBe('abc123')
         expect(report.status).toBe('completed')
+        expect(report.riskLevel).toBe('medium')
         expect(report.anonymizationResults).toBeDefined()
         expect(report.anonymizationResults.containsPersonalData).toBe(true)
         expect(report.anonymizationResults.entitiesFound).toHaveLength(1)
@@ -92,6 +122,15 @@ describe('Report Entity', () => {
         expect(report.retentionExpiry).toBe('2025-01-01T00:00:00Z')
         expect(report.legalBasis).toBe('consent')
         expect(report.dataController).toBe('Example Corp')
+        expect(report.startTime).toBe('2024-01-01T00:00:00Z')
+        expect(report.endTime).toBe('2024-01-01T00:01:00Z')
+        expect(report.duration).toBe(60000)
+        expect(report.errorMessage).toBe('')
+        expect(report.userId).toBe('user123')
+        expect(report.entities).toHaveLength(1)
+        expect(report.entities[0].entity_type).toBe('PERSON')
+        expect(report.created).toBe('2024-01-01T00:00:00Z')
+        expect(report.updated).toBe('2024-01-01T00:01:00Z')
     })
 
     it('validates a valid report object', () => {
@@ -99,6 +138,7 @@ describe('Report Entity', () => {
             id: '123',
             nodeId: '456',
             status: 'completed',
+            riskLevel: 'medium',
             anonymizationResults: {
                 containsPersonalData: true,
                 entitiesFound: [],
@@ -118,6 +158,7 @@ describe('Report Entity', () => {
             id: '123',
             nodeId: '456',
             status: 'invalid_status', // Invalid status
+            riskLevel: 'invalid_level', // Invalid risk level
             legalBasis: 'invalid_basis' // Invalid legal basis
         }
         
@@ -226,5 +267,51 @@ describe('Report Entity', () => {
         expect(report1.isRetentionExpired()).toBe(true)
         expect(report2.isRetentionExpired()).toBe(false)
         expect(report3.isRetentionExpired()).toBe(false)
+    })
+
+    it('gets risk level', () => {
+        const report1 = new Report({
+            riskLevel: 'high'
+        })
+        
+        const report2 = new Report({})
+        
+        expect(report1.getRiskLevel()).toBe('high')
+        expect(report2.getRiskLevel()).toBe('unknown')
+    })
+
+    it('calculates total entities count', () => {
+        const report1 = new Report({
+            entities: [
+                { entity_type: 'PERSON', text: 'John Doe', score: 0.95 },
+                { entity_type: 'EMAIL_ADDRESS', text: 'john@example.com', score: 0.98 }
+            ]
+        })
+        
+        const report2 = new Report({})
+        
+        expect(report1.getTotalEntitiesCount()).toBe(2)
+        expect(report2.getTotalEntitiesCount()).toBe(0)
+    })
+
+    it('gets file metadata', () => {
+        const report = new Report({
+            fileName: 'test.pdf',
+            filePath: '/path/to/test.pdf',
+            fileType: 'application/pdf',
+            fileExtension: 'pdf',
+            fileSize: 1024,
+            fileHash: 'abc123'
+        })
+        
+        const metadata = report.getFileMetadata()
+        expect(metadata).toEqual({
+            fileName: 'test.pdf',
+            filePath: '/path/to/test.pdf',
+            fileType: 'application/pdf',
+            fileExtension: 'pdf',
+            fileSize: 1024,
+            fileHash: 'abc123'
+        })
     })
 }) 

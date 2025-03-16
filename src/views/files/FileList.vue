@@ -25,7 +25,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			<div v-if="reportStore.reportList && reportStore.reportList.length > 0 && !reportStore.isLoadingReportList">
 				<NcListItem v-for="(report, i) in reportStore.reportList"
 					:key="`${report.id}${i}`"
-					:name="report.file_name || 'Unnamed file'"
+					:name="report.fileName || 'Unnamed file'"
 					:force-display-actions="true"
 					:active="reportStore.reportItem?.id === report?.id">
 					<template #icon>
@@ -40,10 +40,10 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					</template>
 					<template #subname>
 						<div class="report-subname">
-							<span class="file-path">{{ formatFilePath(report.file_path) }}</span>
-							<span v-if="report.risk_level" 
-								:class="['risk-level', getRiskLevelClass(report.risk_level)]">
-								Risk: {{ report.risk_level }}
+							<span class="file-path">{{ formatFilePath(report.filePath) }}</span>
+							<span v-if="report.riskLevel" 
+								:class="['risk-level', getRiskLevelClass(report.riskLevel)]">
+								Risk: {{ report.riskLevel }}
 							</span>
 						</div>
 					</template>

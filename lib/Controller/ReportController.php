@@ -110,7 +110,7 @@ class ReportController extends Controller
             
             $filters = [];
             if ($nodeId !== null) {
-                $filters['node_id'] = $nodeId;
+                $filters['nodeId'] = $nodeId;
             }
             if ($status !== null) {
                 $filters['status'] = $status;
@@ -123,7 +123,7 @@ class ReportController extends Controller
             }
             
             // Filter reports by user ID
-            $filters['user_id'] = $user->getUID();
+            $filters['userId'] = $user->getUID();
             
             $reports = $this->objectService->getObjects($reportObjectType, $limit, $offset, $filters, $orderBy, $order);
             
@@ -164,7 +164,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
             
-            if ($report['user_id'] !== $user->getUID()) {
+            if ($report['userId'] !== $user->getUID()) {
                 return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
             }
             
@@ -222,18 +222,13 @@ class ReportController extends Controller
             
             $node = $nodes[0];
             
-            // Use file properties if not provided
-            $fileName = $fileName ?? $node->getName();
-            $filePath = $filePath ?? $node->getPath();
-            
             // Create the report using the ReportingService
-            $report = $this->reportingService->createReport(
-                filePath: $filePath,
-                nodeId: $nodeId,
-                fileName: $fileName,
-                userId: $userId,
-                processNow: $processNow ?? false
-            );
+            $report = $this->reportingService->createReport($node);
+            
+            // If processNow is true, process the report immediately
+            if ($processNow && $report !== null) {
+                $report = $this->reportingService->processReport($report);
+            }
             
             if ($report === null) {
                 return new JSONResponse(['error' => 'Failed to create report'], 500);
@@ -265,43 +260,39 @@ class ReportController extends Controller
     public function update(string $id, array $updates): JSONResponse
     {
         try {
+            // Get the current report
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
             $report = $this->objectService->getObject($reportObjectType, $id);
             
             if ($report === null) {
-                return new JSONResponse(['error' => 'Report not found'], Http::STATUS_NOT_FOUND);
+                return new JSONResponse(['error' => 'Report not found'], 404);
             }
             
-            // Check if the report belongs to the current user
+            // Validate that the user has permission to update this report
             $user = $this->userSession->getUser();
             if ($user === null) {
-                return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
             
-            if ($report['user_id'] !== $user->getUID()) {
-                return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
+            // Prevent updating certain fields
+            foreach ($updates as $key => $value) {
+                if (in_array($key, ['id', 'nodeId', 'fileHash', 'userId', 'created'])) {
+                    unset($updates[$key]);
+                }
             }
             
             // Apply updates
-            foreach ($updates as $key => $value) {
-                // Prevent updating certain fields
-                if (in_array($key, ['id', 'node_id', 'file_hash', 'user_id', 'created_at'])) {
-                    continue;
-                }
-                
-                $report[$key] = $value;
-            }
+            $updatedReport = array_merge($report, $updates);
             
-            // Update the updated_at timestamp
-            $report['updated_at'] = time();
+            // Save the updated report
+            $result = $this->objectService->saveObject($reportObjectType, $updatedReport);
             
-            $updatedReport = $this->objectService->saveObject($reportObjectType, $report);
-            
-            return new JSONResponse($updatedReport);
+            return new JSONResponse($result);
         } catch (\Exception $e) {
-            $this->logger->error('Error updating report: ' . $e->getMessage(), ['exception' => $e]);
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+            $this->logger->error('Error updating report: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -335,7 +326,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
             
-            if ($report['user_id'] !== $user->getUID()) {
+            if ($report['userId'] !== $user->getUID()) {
                 return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
             }
             
@@ -377,11 +368,11 @@ class ReportController extends Controller
             }
             
             $filters = [
-                'node_id' => $nodeId,
-                'user_id' => $user->getUID(),
+                'nodeId' => $nodeId,
+                'userId' => $user->getUID(),
             ];
             
-            $reports = $this->objectService->getObjects($reportObjectType, 1, 0, $filters, 'created_at', 'desc');
+            $reports = $this->objectService->getObjects($reportObjectType, 1, 0, $filters, 'created', 'desc');
             
             if (empty($reports)) {
                 return new JSONResponse(['error' => 'No reports found for this node'], Http::STATUS_NOT_FOUND);
@@ -397,10 +388,11 @@ class ReportController extends Controller
     /**
      * Process a report
      *
-     * @param string $id The ID of the report to process
+     * @param string $id The report ID
      *
      * @return JSONResponse JSON response containing the processed report
      *
+     * @NoAdminRequired
      * @NoCSRFRequired
      *
      * @psalm-return JSONResponse
@@ -417,51 +409,35 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report not found'], 404);
             }
             
-            // Get the node ID
-            $nodeId = $report['node_id'] ?? null;
-            if ($nodeId === null) {
-                return new JSONResponse(['error' => 'Report has no node ID'], 400);
+            // Get the file node
+            $filePath = $report['filePath'] ?? null;
+            $fileName = $report['fileName'] ?? null;
+            
+            if ($filePath === null) {
+                return new JSONResponse(['error' => 'Report has no file path'], 400);
             }
             
-            // Get the file path
-            $filePath = $report['file_path'] ?? null;
-            $fileName = $report['file_name'] ?? null;
-            
-            if ($filePath === null || $fileName === null) {
-                // Try to get the file node
-                $user = $this->userSession->getUser();
-                if ($user === null) {
-                    return new JSONResponse(['error' => 'User not authenticated'], 401);
-                }
-                
-                $userFolder = $this->rootFolder->getUserFolder($user->getUID());
-                $nodes = $userFolder->getById($nodeId);
-                
-                if (empty($nodes)) {
-                    return new JSONResponse(['error' => 'File not found'], 404);
-                }
-                
-                $node = $nodes[0];
-                $filePath = $node->getPath();
-                $fileName = $node->getName();
-                
-                // Update the report with the file path and name
-                $report['file_path'] = $filePath;
-                $report['file_name'] = $fileName;
-                $this->objectService->saveObject($reportObjectType, $report);
+            // Get the current user
+            $user = $this->userSession->getUser();
+            if ($user === null) {
+                return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
+            
+            $userId = $user->getUID();
             
             // Process the report
-            $processedReport = $this->reportingService->processExistingReport($report, $filePath, $fileName);
+            $processedReport = $this->reportingService->processReport($report);
             
-            if ($processedReport === null) {
-                return new JSONResponse(['error' => 'Failed to process report'], 500);
+            // Update file path and name if they were missing
+            if (!isset($processedReport['filePath']) || !isset($processedReport['fileName'])) {
+                $processedReport['filePath'] = $filePath;
+                $processedReport['fileName'] = $fileName;
+                $processedReport = $this->objectService->saveObject($reportObjectType, $processedReport);
             }
             
             return new JSONResponse($processedReport);
         } catch (\Exception $e) {
             $this->logger->error('Error processing report: ' . $e->getMessage(), [
-                'report_id' => $id,
                 'exception' => $e
             ]);
             return new JSONResponse(['error' => $e->getMessage()], 500);

@@ -8,7 +8,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			<div>
 				<div class="head">
 					<h1 class="h1">
-						{{ reportStore.reportItem.file_name }}
+						{{ reportStore.reportItem.fileName }}
 					</h1>
 					<NcActions :primary="true" menu-name="Actions">
 						<template #icon>
@@ -43,16 +43,16 @@ import { reportStore, navigationStore } from '../../store/store.js'
 						{{ reportStore.reportItem.status }}
 					</NcBadge>
 					<NcBadge 
-						v-if="reportStore.reportItem.risk_level" 
-						:type="getRiskLevelBadgeType(reportStore.reportItem.risk_level)" 
+						v-if="reportStore.reportItem.riskLevel" 
+						:type="getRiskLevelBadgeType(reportStore.reportItem.riskLevel)" 
 						class="risk-badge">
-						Risk: {{ reportStore.reportItem.risk_level }}
+						Risk: {{ reportStore.reportItem.riskLevel }}
 					</NcBadge>
 				</div>
 
 				<!-- Error Message -->
-				<NcNoteCard v-if="reportStore.reportItem.error_message" type="error">
-					{{ reportStore.reportItem.error_message }}
+				<NcNoteCard v-if="reportStore.reportItem.errorMessage" type="error">
+					{{ reportStore.reportItem.errorMessage }}
 				</NcNoteCard>
 
 				<!-- File Information Section -->
@@ -61,27 +61,27 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					<div class="detail-grid">
 						<div class="detail-item">
 							<span class="detail-label">File Path:</span>
-							<span class="detail-value">{{ reportStore.reportItem.file_path }}</span>
+							<span class="detail-value">{{ reportStore.reportItem.filePath }}</span>
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">File Type:</span>
-							<span class="detail-value">{{ reportStore.reportItem.file_type }}</span>
+							<span class="detail-value">{{ reportStore.reportItem.fileType }}</span>
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">File Extension:</span>
-							<span class="detail-value">{{ reportStore.reportItem.file_extension }}</span>
+							<span class="detail-value">{{ reportStore.reportItem.fileExtension }}</span>
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">File Size:</span>
-							<span class="detail-value">{{ formatFileSize(reportStore.reportItem.file_size) }}</span>
+							<span class="detail-value">{{ formatFileSize(reportStore.reportItem.fileSize) }}</span>
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">File Hash:</span>
-							<span class="detail-value">{{ reportStore.reportItem.file_hash }}</span>
+							<span class="detail-value">{{ reportStore.reportItem.fileHash }}</span>
 						</div>
 						<div class="detail-item">
 							<span class="detail-label">Node ID:</span>
-							<span class="detail-value">{{ reportStore.reportItem.node_id }}</span>
+							<span class="detail-value">{{ reportStore.reportItem.nodeId }}</span>
 						</div>
 					</div>
 				</div>
@@ -94,7 +94,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							<div v-if="reportStore.reportItem.entities && reportStore.reportItem.entities.length > 0">
 								<div class="entity-list">
 									<div v-for="(entity, index) in reportStore.reportItem.entities" :key="index" class="entity-item">
-										<div class="entity-type">{{ entity.entity_type }}</div>
+										<div class="entity-type">{{ entity.entityType }}</div>
 										<div class="entity-text">{{ entity.text }}</div>
 										<div class="entity-score">Score: {{ (entity.score * 100).toFixed(1) }}%</div>
 									</div>
@@ -107,9 +107,9 @@ import { reportStore, navigationStore } from '../../store/store.js'
 
 						<!-- Anonymization Results Tab -->
 						<BTab title="Anonymization">
-							<div v-if="reportStore.reportItem.anonymization_results && Object.keys(reportStore.reportItem.anonymization_results).length > 0">
+							<div v-if="reportStore.reportItem.anonymizationResults && Object.keys(reportStore.reportItem.anonymizationResults).length > 0">
 								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.anonymization_results" :key="key" class="detail-item">
+									<div v-for="(value, key) in reportStore.reportItem.anonymizationResults" :key="key" class="detail-item">
 										<span class="detail-label">{{ formatKey(key) }}:</span>
 										<span class="detail-value">{{ formatValue(value) }}</span>
 									</div>
@@ -122,9 +122,9 @@ import { reportStore, navigationStore } from '../../store/store.js'
 
 						<!-- WCAG Compliance Tab -->
 						<BTab title="WCAG Compliance">
-							<div v-if="reportStore.reportItem.wcag_compliance_results && Object.keys(reportStore.reportItem.wcag_compliance_results).length > 0">
+							<div v-if="reportStore.reportItem.wcagComplianceResults && Object.keys(reportStore.reportItem.wcagComplianceResults).length > 0">
 								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.wcag_compliance_results" :key="key" class="detail-item">
+									<div v-for="(value, key) in reportStore.reportItem.wcagComplianceResults" :key="key" class="detail-item">
 										<span class="detail-label">{{ formatKey(key) }}:</span>
 										<span class="detail-value">{{ formatValue(value) }}</span>
 									</div>
@@ -137,9 +137,9 @@ import { reportStore, navigationStore } from '../../store/store.js'
 
 						<!-- Language Level Tab -->
 						<BTab title="Language Level">
-							<div v-if="reportStore.reportItem.language_level_results && Object.keys(reportStore.reportItem.language_level_results).length > 0">
+							<div v-if="reportStore.reportItem.languageLevelResults && Object.keys(reportStore.reportItem.languageLevelResults).length > 0">
 								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.language_level_results" :key="key" class="detail-item">
+									<div v-for="(value, key) in reportStore.reportItem.languageLevelResults" :key="key" class="detail-item">
 										<span class="detail-label">{{ formatKey(key) }}:</span>
 										<span class="detail-value">{{ formatValue(value) }}</span>
 									</div>
@@ -155,19 +155,19 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							<div class="detail-grid">
 								<div class="detail-item">
 									<span class="detail-label">Retention Period:</span>
-									<span class="detail-value">{{ reportStore.reportItem.retention_period || 'Indefinite' }} {{ reportStore.reportItem.retention_period ? 'days' : '' }}</span>
+									<span class="detail-value">{{ reportStore.reportItem.retentionPeriod || 'Indefinite' }} {{ reportStore.reportItem.retentionPeriod ? 'days' : '' }}</span>
 								</div>
 								<div class="detail-item">
 									<span class="detail-label">Retention Expiry:</span>
-									<span class="detail-value">{{ reportStore.reportItem.retention_expiry || 'Not set' }}</span>
+									<span class="detail-value">{{ reportStore.reportItem.retentionExpiry || 'Not set' }}</span>
 								</div>
 								<div class="detail-item">
 									<span class="detail-label">Legal Basis:</span>
-									<span class="detail-value">{{ reportStore.reportItem.legal_basis || 'Not specified' }}</span>
+									<span class="detail-value">{{ reportStore.reportItem.legalBasis || 'Not specified' }}</span>
 								</div>
 								<div class="detail-item">
 									<span class="detail-label">Data Controller:</span>
-									<span class="detail-value">{{ reportStore.reportItem.data_controller || 'Not specified' }}</span>
+									<span class="detail-value">{{ reportStore.reportItem.dataController || 'Not specified' }}</span>
 								</div>
 							</div>
 						</BTab>
@@ -236,7 +236,7 @@ export default {
 				.then(blob => {
 					const link = document.createElement('a')
 					link.href = window.URL.createObjectURL(blob)
-					link.download = `${reportStore.reportItem.file_name}`
+					link.download = `${reportStore.reportItem.fileName}`
 					link.click()
 					window.URL.revokeObjectURL(link.href)
 				})

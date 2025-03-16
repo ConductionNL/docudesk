@@ -168,10 +168,10 @@ class ReportingService
                 $report = $this->getReport($node);
             } else if (is_array($input)) {
                 $report = $input;
-                $nodeId = $report['node_id'] ?? null;
+                $nodeId = $report['nodeId'] ?? null;
                 
                 if ($nodeId === null) {
-                    throw new \InvalidArgumentException('Report array must contain node_id');
+                    throw new \InvalidArgumentException('Report array must contain nodeId');
                 }
                 
                 try {
@@ -199,14 +199,14 @@ class ReportingService
             if (empty($text)) {
                 $this->logger->warning('Failed to extract text from document: ' . $filePath);
                 $report['status'] = 'failed';
-                $report['error_message'] = 'Failed to extract text from document';
+                $report['errorMessage'] = 'Failed to extract text from document';
                 return $report;
             }
                         
             // Send text to Presidio for analysis
-            $report['entites'] = $this->analyzeWithPresidio($text, $threshold);
+            $report['entities'] = $this->analyzeWithPresidio($text, $threshold);
             
-            if (empty($report['entites'])) {
+            if (empty($report['entities'])) {
                 $this->logger->debug('No entities detected in document: ' . $filePath);
             }
             
@@ -220,7 +220,7 @@ class ReportingService
             $this->logger->error('Error processing report: ' . $e->getMessage(), ['exception' => $e]);
             if (isset($report)) {
                 $report['status'] = 'failed';
-                $report['error_message'] = $e->getMessage();
+                $report['errorMessage'] = $e->getMessage();
                 return $this->objectService->saveObject($reportObjectType, $report);
             }
             throw $e;
@@ -397,7 +397,7 @@ class ReportingService
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             
             $filters = [
-                'node_id' => $node->getId()
+                'nodeId' => $node->getId()
             ];
 
             $reports = $this->objectService->getObjects($reportObjectType, null, 0, $filters);
@@ -410,7 +410,7 @@ class ReportingService
             return !empty($reports) ? $reports[0] : null;
         } catch (Exception $e) {
             $this->logger->error('Failed to retrieve report: ' . $e->getMessage(), [
-                'node_id' => $node->getId(),
+                'nodeId' => $node->getId(),
                 'exception' => $e
             ]);
             return null;
@@ -476,33 +476,33 @@ class ReportingService
         }
 
         // If the file hash has not changed, skip the report update
-        if ($fileHash === $report['file_hash']) {
+        if ($fileHash === $report['fileHash']) {
             $this->logger->debug('File hash has not changed, skipping report update');
             return $report;
         }
 
          
         // Update the report object with new values
-        $report['file_path'] = $node->getPath();
-        $report['file_name'] = $node->getName();
-        $report['file_type'] = $node->getMimetype();
-        $report['file_extension'] = pathinfo($node->getName(), PATHINFO_EXTENSION);
-        $report['file_size'] = $node->getSize();
+        $report['filePath'] = $node->getPath();
+        $report['fileName'] = $node->getName();
+        $report['fileType'] = $node->getMimetype();
+        $report['fileExtension'] = pathinfo($node->getName(), PATHINFO_EXTENSION);
+        $report['fileSize'] = $node->getSize();
         $report['status'] = 'pending'; // Reset status to pending to trigger a new report
-        $report['file_hash'] = $fileHash;
+        $report['fileHash'] = $fileHash;
         
         // Reset analysis results since we're going to reprocess
-        $report['error_message'] = null;
+        $report['errorMessage'] = null;
         
         // Only reset these if they exist (they might be null in older reports)
-        if (isset($report['anonymization_results'])) {
-            $report['anonymization_results'] = null;
+        if (isset($report['anonymizationResults'])) {
+            $report['anonymizationResults'] = null;
         }
-        if (isset($report['wcag_compliance_results'])) {
-            $report['wcag_compliance_results'] = null;
+        if (isset($report['wcagComplianceResults'])) {
+            $report['wcagComplianceResults'] = null;
         }
-        if (isset($report['language_level_results'])) {
-            $report['language_level_results'] = null;
+        if (isset($report['languageLevelResults'])) {
+            $report['languageLevelResults'] = null;
         }
 
         // Save the updated report
@@ -538,7 +538,7 @@ class ReportingService
                 if ($content !== false) {
                     $hash = md5($content);
                     $this->logger->debug('Calculated content hash for file', [
-                        'file_path' => $filePath,
+                        'filePath' => $filePath,
                         'hash' => $hash,
                         'method' => 'content'
                     ]);
@@ -555,7 +555,7 @@ class ReportingService
                     $stats['mtime']
                 );
                 $this->logger->debug('Calculated metadata hash for file', [
-                    'file_path' => $filePath,
+                    'filePath' => $filePath,
                     'hash' => $hash,
                     'method' => 'metadata'
                 ]);
@@ -565,21 +565,21 @@ class ReportingService
             // Fallback to just the path
             $hash = md5($filePath);
             $this->logger->debug('Calculated fallback hash for file', [
-                'file_path' => $filePath,
+                'filePath' => $filePath,
                 'hash' => $hash,
                 'method' => 'path'
             ]);
             return $hash;
         } catch (Exception $e) {
             $this->logger->warning('Failed to calculate file hash: ' . $e->getMessage(), [
-                'file_path' => $filePath,
+                'filePath' => $filePath,
                 'exception' => $e
             ]);
             
             // Fallback to just the path
             $hash = md5($filePath);
             $this->logger->debug('Calculated fallback hash after error', [
-                'file_path' => $filePath,
+                'filePath' => $filePath,
                 'hash' => $hash,
                 'method' => 'path'
             ]);
@@ -629,17 +629,17 @@ class ReportingService
             $processedCount = 0;
             foreach ($pendingReports as $report) {
                 try {
-                    $nodeId = $report['node_id'] ?? null;
-                    $filePath = $report['file_path'] ?? null;
-                    $fileName = $report['file_name'] ?? null;
+                    $nodeId = $report['nodeId'] ?? null;
+                    $filePath = $report['filePath'] ?? null;
+                    $fileName = $report['fileName'] ?? null;
                     
                     if ($nodeId === null) {
-                        $this->logger->warning('Report has no node_id, marking as failed', [
-                            'report_id' => $report['id'] ?? 'unknown'
+                        $this->logger->warning('Report has no nodeId, marking as failed', [
+                            'reportId' => $report['id'] ?? 'unknown'
                         ]);
                         
                         $report['status'] = 'failed';
-                        $report['error_message'] = 'Missing node_id';
+                        $report['errorMessage'] = 'Missing nodeId';
                         $this->objectService->saveObject($reportObjectType, $report);
                         continue;
                     }
@@ -649,7 +649,7 @@ class ReportingService
                     $processedCount++;
                 } catch (Exception $e) {
                     $this->logger->error('Error processing report: ' . $e->getMessage(), [
-                        'report_id' => $report['id'] ?? 'unknown',
+                        'reportId' => $report['id'] ?? 'unknown',
                         'exception' => $e
                     ]);
                 }
@@ -718,39 +718,39 @@ class ReportingService
         
         // Check if a report already exists for this node and return updated report if found
         if ($existingReport = $this->getReport($node)) {
-            $this->logger->debug('Report already exists for node: ' . $node->getId() . ' with hash: ' . $existingReport['file_hash']);
+            $this->logger->debug('Report already exists for node: ' . $node->getId() . ' with hash: ' . $existingReport['fileHash']);
             return $this->updateReport($node);
         }
         
         // Lets setup the report object with all fields from the documentation
         $report = [
-            'node_id' => $node->getId(),
-            'file_path' => $node->getPath(),
-            'file_name' => $node->getName(),
-            'file_type' => $node->getMimetype(),
-            'file_extension' => pathinfo($node->getName(), PATHINFO_EXTENSION),
-            'file_size' => $node->getSize(),
+            'nodeId' => $node->getId(),
+            'filePath' => $node->getPath(),
+            'fileName' => $node->getName(),
+            'fileType' => $node->getMimetype(),
+            'fileExtension' => pathinfo($node->getName(), PATHINFO_EXTENSION),
+            'fileSize' => $node->getSize(),
             'status' => 'pending',
-            'error_message' => null,
-            'risk_score' => null, // Will be calculated during processing
-            'risk_level' => 'unknown', // Default value, will be updated during processing
-            'anonymization_results' => [], // Will be populated during processing
+            'errorMessage' => null,
+            'riskScore' => null, // Will be calculated during processing
+            'riskLevel' => 'unknown', // Default value, will be updated during processing
+            'anonymizationResults' => [], // Will be populated during processing
             'entities' => [], // Will be populated during processing
-            'wcag_compliance_results' => [], // Will be populated if WCAG analysis is enabled
-            'language_level_results' => [], // Will be populated if language level analysis is enabled
-            'retention_period' => 0, // Default to indefinite retention
-            'retention_expiry' => null,
-            'legal_basis' => null,
-            'data_controller' => null,
+            'wcagComplianceResults' => [], // Will be populated if WCAG analysis is enabled
+            'languageLevelResults' => [], // Will be populated if language level analysis is enabled
+            'retentionPeriod' => 0, // Default to indefinite retention
+            'retentionExpiry' => null,
+            'legalBasis' => null,
+            'dataController' => null,
         ];
 
         // Use ETag as file hash if available
         if (method_exists($node, 'getEtag')) {
-            $report['file_hash'] = $node->getEtag();
-            $this->logger->debug('Using ETag as file hash: ' . $report['file_hash']);
+            $report['fileHash'] = $node->getEtag();
+            $this->logger->debug('Using ETag as file hash: ' . $report['fileHash']);
         } else {
             // Fall back to calculating hash
-            $report['file_hash'] = $this->calculateFileHash($node->getPath());
+            $report['fileHash'] = $this->calculateFileHash($node->getPath());
         }
         
         // Save the report
