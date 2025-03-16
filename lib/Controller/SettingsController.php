@@ -431,6 +431,7 @@ class SettingsController extends Controller
 		try {
 			$reportConfig = [
 				'enable_reporting' => $this->config->getSystemValue('docudesk_enable_reporting', true),
+				'enable_anonymization' => $this->config->getSystemValue('docudesk_enable_anonymization', true),
 				'synchronous_processing' => $this->config->getSystemValue('docudesk_synchronous_processing', false),
 				'confidence_threshold' => $this->config->getSystemValue('docudesk_confidence_threshold', 0.7),
 				'store_original_text' => $this->config->getSystemValue('docudesk_store_original_text', true),
@@ -467,6 +468,10 @@ class SettingsController extends Controller
 			// Store report configuration
 			if (isset($reportConfig['enable_reporting'])) {
 				$this->config->setSystemValue('docudesk_enable_reporting', (bool)$reportConfig['enable_reporting']);
+			}
+			
+			if (isset($reportConfig['enable_anonymization'])) {
+				$this->config->setSystemValue('docudesk_enable_anonymization', (bool)$reportConfig['enable_anonymization']);
 			}
 			
 			if (isset($reportConfig['synchronous_processing'])) {

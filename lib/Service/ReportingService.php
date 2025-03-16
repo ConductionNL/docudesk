@@ -723,4 +723,17 @@ class ReportingService
 
         return $report;
     }
+
+    /**
+     * Check if anonymization is enabled
+     *
+     * @return bool True if anonymization is enabled, false otherwise
+     *
+     * @psalm-return bool
+     * @phpstan-return bool
+     */
+    public function isAnonymizationEnabled(): bool
+    {
+        return $this->config->getSystemValue('docudesk_enable_anonymization', true);
+    }
 } 

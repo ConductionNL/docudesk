@@ -104,121 +104,164 @@
 
 		<!-- New section for API connections -->
 		<NcSettingsSection
-			name="API Connections"
-			description="Configure connections to external services">
+			:name="t('docudesk', 'API Connections')"
+			:description="t('docudesk', 'Configure connections to external services')">
 			
 			<!-- Presidio Configuration -->
 			<div class="api-connection">
-				<h3>Presidio API</h3>
+				<h3>{{ t('docudesk', 'Presidio API') }}</h3>
 				<div class="input-field">
-					<label for="presidio-analyzer-url">Analyzer API URL</label>
+					<label for="presidio-analyzer-url">{{ t('docudesk', 'Analyzer API URL') }}</label>
 					<input 
 						id="presidio-analyzer-url"
 						v-model="apiConfig.presidio.analyzerUrl" 
 						type="text"
-						placeholder="Enter Presidio Analyzer API URL (e.g., http://presidio-api:8080/analyze)" />
+						:placeholder="t('docudesk', 'Enter Presidio Analyzer API URL (e.g., http://presidio-api:8080/analyze)')" />
 				</div>
 				<div class="input-field">
-					<label for="presidio-anonymizer-url">Anonymizer API URL</label>
+					<label for="presidio-anonymizer-url">{{ t('docudesk', 'Anonymizer API URL') }}</label>
 					<input 
 						id="presidio-anonymizer-url"
 						v-model="apiConfig.presidio.anonymizerUrl" 
 						type="text"
-						placeholder="Enter Presidio Anonymizer API URL (e.g., http://presidio-api:8080/anonymize)" />
+						:placeholder="t('docudesk', 'Enter Presidio Anonymizer API URL (e.g., http://presidio-api:8080/anonymize)')" />
 				</div>
 				<div class="input-field">
-					<label for="presidio-key">API Key</label>
+					<label for="presidio-key">{{ t('docudesk', 'API Key') }}</label>
 					<input 
 						id="presidio-key"
 						v-model="apiConfig.presidio.key" 
 						type="password"
-						placeholder="Enter Presidio API Key" />
+						:placeholder="t('docudesk', 'Enter Presidio API Key')" />
 				</div>
 			</div>
 
 			<!-- ChatGPT Configuration -->
 			<div class="api-connection">
-				<h3>ChatGPT API</h3>
+				<h3>{{ t('docudesk', 'ChatGPT API') }}</h3>
 				<div class="input-field">
-					<label for="chatgpt-url">API URL</label>
+					<label for="chatgpt-url">{{ t('docudesk', 'API URL') }}</label>
 					<input 
 						id="chatgpt-url"
 						v-model="apiConfig.chatgpt.url" 
 						type="text"
-						placeholder="Enter ChatGPT API URL" />
+						:placeholder="t('docudesk', 'Enter ChatGPT API URL')" />
 				</div>
 				<div class="input-field">
-					<label for="chatgpt-key">API Key</label>
+					<label for="chatgpt-key">{{ t('docudesk', 'API Key') }}</label>
 					<input 
 						id="chatgpt-key"
 						v-model="apiConfig.chatgpt.key" 
 						type="password"
-						placeholder="Enter ChatGPT API Key" />
+						:placeholder="t('docudesk', 'Enter ChatGPT API Key')" />
 				</div>
 			</div>
 
 			<!-- NLDocs Configuration -->
 			<div class="api-connection">
-				<h3>NLDocs API</h3>
+				<h3>{{ t('docudesk', 'NLDocs API') }}</h3>
 				<div class="input-field">
-					<label for="nldocs-url">API URL</label>
+					<label for="nldocs-url">{{ t('docudesk', 'API URL') }}</label>
 					<input 
 						id="nldocs-url"
 						v-model="apiConfig.nldocs.url" 
 						type="text"
-						placeholder="Enter NLDocs API URL" />
+						:placeholder="t('docudesk', 'Enter NLDocs API URL')" />
 				</div>
 				<div class="input-field">
-					<label for="nldocs-key">API Key</label>
+					<label for="nldocs-key">{{ t('docudesk', 'API Key') }}</label>
 					<input 
 						id="nldocs-key"
 						v-model="apiConfig.nldocs.key" 
 						type="password"
-						placeholder="Enter NLDocs API Key" />
+						:placeholder="t('docudesk', 'Enter NLDocs API Key')" />
 				</div>
 			</div>
 
-			<NcButton type="primary" :disabled="saving" @click="saveApiConfig">
-				<template #icon>
-					<NcLoadingIcon v-if="saving" :size="20" />
-					<Plus v-else :size="20" />
-				</template>
-				Save API Configuration
-			</NcButton>
+			<div class="button-container">
+				<NcButton type="primary" :disabled="saving" @click="saveApiConfig">
+					<template #icon>
+						<NcLoadingIcon v-if="saving" :size="20" />
+						<Plus v-else :size="20" />
+					</template>
+					{{ t('docudesk', 'Save API Configuration') }}
+				</NcButton>
+			</div>
 		</NcSettingsSection>
 
 		<!-- Report Configuration Section -->
-		<NcSettingsSection :title="t('docudesk', 'Report Configuration')" :description="t('docudesk', 'Configure document report generation settings')">
+		<NcSettingsSection
+			:name="t('docudesk', 'Report Configuration')" 
+			:description="t('docudesk', 'Configure document report generation settings')">
 			<div class="report-config-section">
-				<div class="report-config-item">
-					<label for="enable-reporting">{{ t('docudesk', 'Enable Reporting') }}</label>
-					<input type="checkbox" id="enable-reporting" v-model="reportConfig.enable_reporting" />
-					<span class="report-config-description">{{ t('docudesk', 'Enable automatic report generation for documents') }}</span>
+				<div class="setting-item">
+					<div class="setting-label">{{ t('docudesk', 'Enable Reporting') }}</div>
+					<NcCheckboxRadioSwitch
+						:checked="reportConfig.enable_reporting"
+						@update:checked="reportConfig.enable_reporting = $event"
+						type="switch"
+					/>
+					<div class="setting-description">{{ t('docudesk', 'Enable automatic report generation for documents') }}</div>
 				</div>
 				
-				<div class="report-config-item">
-					<label for="synchronous-processing">{{ t('docudesk', 'Synchronous Processing') }}</label>
-					<input type="checkbox" id="synchronous-processing" v-model="reportConfig.synchronous_processing" />
-					<span class="report-config-description">{{ t('docudesk', 'Process reports immediately instead of using background jobs') }}</span>
+				<div class="setting-item">
+					<div class="setting-label">{{ t('docudesk', 'Enable Anonymization') }}</div>
+					<NcCheckboxRadioSwitch
+						:checked="reportConfig.enable_anonymization"
+						@update:checked="reportConfig.enable_anonymization = $event"
+						type="switch"
+					/>
+					<div class="setting-description">{{ t('docudesk', 'Enable automatic anonymization of sensitive data in documents') }}</div>
 				</div>
 				
-				<div class="report-config-item">
+				<div class="setting-item">
+					<div class="setting-label">{{ t('docudesk', 'Synchronous Processing') }}</div>
+					<NcCheckboxRadioSwitch
+						:checked="reportConfig.synchronous_processing"
+						@update:checked="reportConfig.synchronous_processing = $event"
+						type="switch"
+					/>
+					<div class="setting-description">{{ t('docudesk', 'Process reports immediately instead of using background jobs') }}</div>
+				</div>
+				
+				<div class="confidence-threshold-container">
 					<label for="confidence-threshold">{{ t('docudesk', 'Confidence Threshold') }}</label>
-					<input type="range" id="confidence-threshold" v-model.number="reportConfig.confidence_threshold" min="0" max="1" step="0.05" />
-					<span class="threshold-value">{{ (reportConfig.confidence_threshold * 100).toFixed(0) }}%</span>
+					<div class="slider-container">
+						<input 
+							type="range" 
+							id="confidence-threshold" 
+							v-model.number="reportConfig.confidence_threshold" 
+							min="0" 
+							max="1" 
+							step="0.05" 
+							class="slider"
+						/>
+						<span class="threshold-value">{{ (reportConfig.confidence_threshold * 100).toFixed(0) }}%</span>
+					</div>
 					<span class="report-config-description">{{ t('docudesk', 'Minimum confidence level for entity detection') }}</span>
 				</div>
 				
-				<div class="report-config-item">
-					<label for="store-original-text">{{ t('docudesk', 'Store Original Text') }}</label>
-					<input type="checkbox" id="store-original-text" v-model="reportConfig.store_original_text" />
-					<span class="report-config-description">{{ t('docudesk', 'Store the original document text in reports') }}</span>
+				<div class="setting-item">
+					<div class="setting-label">{{ t('docudesk', 'Store Original Text') }}</div>
+					<NcCheckboxRadioSwitch
+						:checked="reportConfig.store_original_text"
+						@update:checked="reportConfig.store_original_text = $event"
+						type="switch"
+					/>
+					<div class="setting-description">{{ t('docudesk', 'Store the original document text in reports') }}</div>
 				</div>
 				
-				<div class="report-config-item">
-					<button @click="saveReportConfig" :disabled="isSavingReportConfig">
+				<div class="button-container">
+					<NcButton 
+						type="primary" 
+						:disabled="isSavingReportConfig"
+						@click="saveReportConfig"
+					>
+						<template #icon>
+							<NcLoadingIcon v-if="isSavingReportConfig" :size="20" />
+						</template>
 						{{ t('docudesk', 'Save Report Configuration') }}
-					</button>
+					</NcButton>
 				</div>
 			</div>
 		</NcSettingsSection>
@@ -227,9 +270,12 @@
 
 <script>
 // Imported components
-import { NcSettingsSection, NcNoteCard, NcSelect, NcButton, NcLoadingIcon, NcTextField } from '@nextcloud/vue'
+import { NcSettingsSection, NcNoteCard, NcSelect, NcButton, NcLoadingIcon, NcTextField, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Restart from 'vue-material-design-icons/Restart.vue'
+import axios from '@nextcloud/axios'
+import { generateUrl } from '@nextcloud/router'
+import { showSuccess, showError } from '@nextcloud/dialogs'
 
 /**
  * AdminSettings component for DocuDesk
@@ -245,6 +291,7 @@ export default {
 		NcButton,
 		NcLoadingIcon,
 		NcTextField,
+		NcCheckboxRadioSwitch,
 		Plus,
 		Restart,
 	},
@@ -292,6 +339,7 @@ export default {
 			},
 			reportConfig: {
 				enable_reporting: true,
+				enable_anonymization: true,
 				synchronous_processing: false,
 				confidence_threshold: 0.7,
 				store_original_text: true,
@@ -409,10 +457,11 @@ export default {
 				.then(response => response.json())
 				.then(() => {
 					// Show success message
-					console.info('API configuration saved successfully')
+					showSuccess(t('docudesk', 'API configuration saved successfully'))
 				})
 				.catch(err => {
 					console.error('Failed to save API config:', err)
+					showError(t('docudesk', 'Failed to save API configuration'))
 				})
 				.finally(() => {
 					this.saving = false
@@ -690,11 +739,13 @@ export default {
     padding: 15px;
     border: 1px solid var(--color-border);
     border-radius: 8px;
+    background-color: var(--color-main-background-translucent);
 }
 
 .api-connection h3 {
     margin-top: 0;
     margin-bottom: 15px;
+    color: var(--color-main-text);
 }
 
 .input-field {
@@ -705,41 +756,112 @@ export default {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
+    color: var(--color-main-text);
 }
 
 .input-field input {
     width: 100%;
     padding: 8px;
     border: 1px solid var(--color-border);
-    border-radius: 4px;
+    border-radius: var(--border-radius);
     background-color: var(--color-main-background);
     color: var(--color-main-text);
 }
 
 .report-config-section {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
 }
 
-.report-config-item {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border-dark-translucent);
 }
 
-.report-config-item label {
-	font-weight: bold;
+.setting-label {
+    font-weight: bold;
+    color: var(--color-main-text);
+}
+
+.setting-description {
+    color: var(--color-text-lighter);
+    font-size: 0.9em;
 }
 
 .report-config-description {
-	color: var(--color-text-lighter);
-	font-size: 0.9em;
+    color: var(--color-text-lighter);
+    font-size: 0.9em;
+}
+
+.confidence-threshold-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+    padding: 8px 0;
+}
+
+.confidence-threshold-container label {
+    font-weight: bold;
+    color: var(--color-main-text);
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.slider {
+    flex-grow: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--color-border);
+    outline: none;
+    border-radius: var(--border-radius);
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    cursor: pointer;
+    border: none;
 }
 
 .threshold-value {
-	margin-left: 8px;
-	font-weight: bold;
+    min-width: 40px;
+    text-align: right;
+    font-weight: bold;
+    color: var(--color-main-text);
+}
+
+.button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+/* Add spacing between sections */
+.settings-section {
+    margin-bottom: 24px;
 }
 </style>

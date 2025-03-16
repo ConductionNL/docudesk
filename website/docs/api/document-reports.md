@@ -80,6 +80,7 @@ sequenceDiagram
 The report generation process can be configured through the DocuDesk settings page:
 
 - **Enable Reporting**: Turn automatic report generation on or off
+- **Enable Anonymization**: Turn automatic anonymization of sensitive data on or off
 - **Synchronous Processing**: Choose between immediate processing or background job processing
 - **Confidence Threshold**: Set the minimum confidence level for entity detection (0-100%)
 - **Store Original Text**: Choose whether to store the original document text in reports
@@ -441,6 +442,7 @@ POST /apps/docudesk/api/v1/settings/report
 Updates the report configuration settings. You can specify:
 
 - `enable_reporting`: Whether to enable automatic report generation
+- `enable_anonymization`: Whether to enable automatic anonymization of sensitive data
 - `synchronous_processing`: Whether to process reports immediately
 - `confidence_threshold`: Minimum confidence level for entity detection (0-1)
 - `store_original_text`: Whether to store the original document text in reports
@@ -533,6 +535,7 @@ if ($report['status'] === 'completed') {
 // Update report configuration
 $configData = [
     'enable_reporting' => true,
+    'enable_anonymization' => true,
     'synchronous_processing' => false, // Use background jobs
     'confidence_threshold' => 0.7,
     'store_original_text' => true
