@@ -1,5 +1,5 @@
 <script setup>
-import { fileStore, navigationStore } from '../../store/store.js'
+import { reportStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -8,27 +8,27 @@ import { fileStore, navigationStore } from '../../store/store.js'
 			<FileList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!fileStore.fileItem || navigationStore.selected != 'files'"
+			<NcEmptyContent v-if="!reportStore.reportItem || navigationStore.selected != 'files'"
 				class="detailContainer" 
-				name="No Files"
-				description="No files selected">
+				name="No Reports"
+				description="No reports selected">
 				<template #icon>
 					<File />
 				</template>
 				<template #action>
-					<NcButton type="primary" @click="fileStore.setFileItem(null); navigationStore.setModal('editFile')">
-						Add File
+					<NcButton type="primary" @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
+						Add Report
 					</NcButton>
 				</template>
 			</NcEmptyContent>
-			<FileDetails v-if="fileStore.fileItem && navigationStore.selected === 'files'" />
+			<FileDetails v-if="reportStore.reportItem && navigationStore.selected === 'files'" />
 		</template>
 	</NcAppContent>
 </template>
 
 <script>
 /**
- * Main component for the files view that handles displaying the list of files
+ * Main component for the reports view that handles displaying the list of reports
  * and their details
  */
 import { NcAppContent, NcEmptyContent, NcButton } from '@nextcloud/vue'

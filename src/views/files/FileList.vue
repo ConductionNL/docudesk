@@ -1,5 +1,5 @@
 <script setup>
-import { fileStore, navigationStore } from '../../store/store.js'
+import { reportStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -7,55 +7,55 @@ import { fileStore, navigationStore } from '../../store/store.js'
 		<ul>
 			<div class="listHeader">
 				<NcTextField
-					:value="fileStore.searchTerm"
-					:show-trailing-button="fileStore.searchTerm !== ''"
+					:value="reportStore.searchTerm"
+					:show-trailing-button="reportStore.searchTerm !== ''"
 					label="Search"
 					class="searchField"
 					trailing-button-icon="close"
-					@input="fileStore.setSearchTerm($event.target.value)"
-					@trailing-button-click="fileStore.clearSearch()">
+					@input="reportStore.setSearchTerm($event.target.value)"
+					@trailing-button-click="reportStore.clearSearch()">
 					<Magnify :size="20" />
 				</NcTextField>
 				<NcActions>
-					<NcActionButton @click="fileStore.refreshFileList()">
+					<NcActionButton @click="reportStore.refreshReportList()">
 						<template #icon>
 							<Refresh :size="20" />
 						</template>
 						Refresh
 					</NcActionButton>
-					<NcActionButton @click="fileStore.setFileItem(null); navigationStore.setModal('editFile')">
+					<NcActionButton @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
 						<template #icon>
 							<Plus :size="20" />
 						</template>
-						Add File
+						Add Report
 					</NcActionButton>
 				</NcActions>
 			</div>
 
-			<div v-if="fileStore.fileList && fileStore.fileList.length > 0 && !fileStore.isLoadingFileList">
-				<NcListItem v-for="(file, i) in fileStore.fileList"
-					:key="`${file}${i}`"
-					:name="file?.name"
+			<div v-if="reportStore.reportList && reportStore.reportList.length > 0 && !reportStore.isLoadingReportList">
+				<NcListItem v-for="(report, i) in reportStore.reportList"
+					:key="`${report}${i}`"
+					:name="report?.name"
 					:force-display-actions="true"
-					:active="fileStore.fileItem?.id === file?.id"
-					:counter-number="file?.rules?.length || 0"
-					@click="handleFileSelect(file)">
+					:active="reportStore.reportItem?.id === report?.id"
+					:counter-number="report?.rules?.length || 0"
+					@click="handleReportSelect(report)">
 					<template #icon>
-						<File :class="fileStore.fileItem?.id === file?.id && 'selectedIcon'"
+						<File :class="reportStore.reportItem?.id === report?.id && 'selectedIcon'"
 							disable-menu
 							:size="44" />
 					</template>
 					<template #subname>
-						{{ file?.summary || 'No summary available' }}
+						{{ report?.summary || 'No summary available' }}
 					</template>
 					<template #actions>
-						<NcActionButton @click="fileStore.setFileItem(file); navigationStore.setModal('editFile')">
+						<NcActionButton @click="reportStore.setReportItem(report); navigationStore.setModal('editReport')">
 							<template #icon>
 								<Pencil />
 							</template>
 							Edit
 						</NcActionButton>
-						<NcActionButton @click="fileStore.setFileItem(file); navigationStore.setDialog('deleteFile')">
+						<NcActionButton @click="reportStore.setReportItem(report); navigationStore.setDialog('deleteReport')">
 							<template #icon>
 								<TrashCanOutline />
 							</template>
@@ -66,21 +66,27 @@ import { fileStore, navigationStore } from '../../store/store.js'
 			</div>
 		</ul>
 
-		<NcLoadingIcon v-if="fileStore.isLoadingFileList"
+		<NcLoadingIcon v-if="reportStore.isLoadingReportList"
 			class="loadingIcon"
 			:size="64"
 			appearance="dark"
-			name="Loading files" />
+			name="Loading reports" />
 
-		<div v-if="fileStore.fileList.length === 0 && !fileStore.isLoadingFileList">
-			No files have been added yet.
+		<div v-if="reportStore.reportList.length === 0 && !reportStore.isLoadingReportList">
+			No reports have been added yet.
 		</div>
 	</NcAppContentList>
 </template>
 
 <script>
 /**
- * Component for displaying and managing the list of files
+ * Component for displaying and managing the list of reports
+ * 
+ * @package DocuDesk
+ * @author Conduction B.V. <info@conduction.nl>
+ * @copyright Copyright (c) 2024 Conduction B.V.
+ * @license EUPL-1.2
+ * @version 1.0.0
  */
 // Components
 import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon } from '@nextcloud/vue'
@@ -112,16 +118,16 @@ export default {
 		TrashCanOutline,
 	},
 	mounted() {
-		fileStore.refreshFileList()
+		reportStore.refreshReportList()
 	},
 	methods: {
 		/**
-		 * Handle file selection
-		 * @param {object} file - The selected file object
+		 * Handle report selection
+		 * @param {object} report - The selected report object
 		 */
-		async handleFileSelect(file) {
-			// Set the selected file in the store
-			fileStore.setFileItem(file)
+		async handleReportSelect(report) {
+			// Set the selected report in the store
+			reportStore.setReportItem(report)
 		},
 	},
 }

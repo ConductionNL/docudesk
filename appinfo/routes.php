@@ -1,11 +1,23 @@
 <?php
 
+/**
+ * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
+ * @license EUPL-1.2
+ */
+
 return [
 	'routes' => [
 		// Dashboard
 		['name' => 'dashboard#page', 'url' => '/', 'verb' => 'GET'],
+		
+		// Settings routes
 		['name' => 'settings#index', 'url' => 'api/settings', 'verb' => 'GET'],
-		['name' => 'settings#create', 'url' => 'api/settings', 'verb' => 'POST'],		
+		['name' => 'settings#create', 'url' => 'api/settings', 'verb' => 'POST'],
+		['name' => 'settings#testPresidioAnalyzer', 'url' => 'api/settings/test-presidio-analyzer', 'verb' => 'POST'],
+		['name' => 'settings#testPresidioAnonymizer', 'url' => 'api/settings/test-presidio-anonymizer', 'verb' => 'POST'],
+		['name' => 'settings#getApiConfig', 'url' => 'api/settings/api-config', 'verb' => 'GET'],
+		['name' => 'settings#saveApiConfig', 'url' => 'api/settings/api-config', 'verb' => 'POST'],
+		
 		// Object API routes	
 		['name' => 'objects#index', 'url' => 'api/objects/{objectType}', 'verb' => 'GET'],
 		['name' => 'objects#create', 'url' => 'api/objects/{objectType}', 'verb' => 'POST'],

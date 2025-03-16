@@ -32,11 +32,8 @@ The `AnonymizationLog` object is the core component for tracking document anonym
 | anonymization_key | string | Key used to de-anonymize the document (encrypted) |
 | original_text | string | Original text of the document (stored securely) |
 | anonymized_text | string | Anonymized text of the document |
-| entity_replacements | array | List of entity replacements made during anonymization |
-| entities_found | array | List of entities found during anonymization |
+| entity_replacements | object | List of entity replacements made during anonymization |
 | output_node_id | string | Nextcloud node ID of the anonymized document |
-| created_at | date-time | When the log was created |
-| updated_at | date-time | When the log was last updated |
 
 ## Anonymization Process
 

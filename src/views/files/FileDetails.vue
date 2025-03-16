@@ -1,5 +1,5 @@
 <script setup>
-import { fileStore, navigationStore } from '../../store/store.js'
+import { reportStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -8,25 +8,25 @@ import { fileStore, navigationStore } from '../../store/store.js'
 			<div>
 				<div class="head">
 					<h1 class="h1">
-						{{ fileStore.fileItem.name }}
+						{{ reportStore.reportItem.name }}
 					</h1>
 					<NcActions :primary="true" menu-name="Actions">
 						<template #icon>
 							<DotsHorizontal :size="20" />
 						</template>
-						<NcActionButton @click="navigationStore.setModal('editFile')">
+						<NcActionButton @click="navigationStore.setModal('editReport')">
 							<template #icon>
 								<Pencil :size="20" />
 							</template>
-							Edit File
+							Edit Report
 						</NcActionButton>
-						<NcActionButton @click="downloadFile()">
+						<NcActionButton @click="downloadReport()">
 							<template #icon>
 								<Download :size="20" />
 							</template>
-							Download File
+							Download Report
 						</NcActionButton>
-						<NcActionButton @click="navigationStore.setDialog('deleteFile')">
+						<NcActionButton @click="navigationStore.setDialog('deleteReport')">
 							<template #icon>
 								<TrashCanOutline :size="20" />
 							</template>
@@ -34,16 +34,16 @@ import { fileStore, navigationStore } from '../../store/store.js'
 						</NcActionButton>
 					</NcActions>
 				</div>
-				<NcNoteCard v-if="fileStore.fileItem.notice" type="info">
-					{{ fileStore.fileItem.notice }}
+				<NcNoteCard v-if="reportStore.reportItem.notice" type="info">
+					{{ reportStore.reportItem.notice }}
 				</NcNoteCard>
 				<div class="detailGrid">
 					<div>
 						<b>Summary:</b>
-						<span>{{ fileStore.fileItem.summary }}</span>
+						<span>{{ reportStore.reportItem.summary }}</span>
 					</div>
 				</div>
-				<span>{{ fileStore.fileItem.description }}</span>
+				<span>{{ reportStore.reportItem.description }}</span>
 				<div class="tabContainer">
 					<BTabs content-class="mt-3" justified>
 						<BTab active>
@@ -60,9 +60,9 @@ import { fileStore, navigationStore } from '../../store/store.js'
 
 <script>
 /**
- * Component for displaying and managing file details
- * Includes functionality for editing files, managing file rules,
- * and downloading files
+ * Component for displaying and managing report details
+ * Includes functionality for editing reports, managing report rules,
+ * and downloading reports
  */
 import { BTabs, BTab } from 'bootstrap-vue'
 import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble } from '@nextcloud/vue'
@@ -96,9 +96,9 @@ export default {
 		FileOutline,
 	},
 	methods: {
-		downloadFile() {
-			const fileId = fileStore.fileItem.id
-			fetch(`files/${fileId}/download`)
+		downloadReport() {
+			const reportId = reportStore.reportItem.id
+			fetch(`reports/${reportId}/download`)
 				.then(response => {
 					if (!response.ok) {
 						throw new Error('Network response was not ok')
@@ -108,12 +108,12 @@ export default {
 				.then(blob => {
 					const link = document.createElement('a')
 					link.href = window.URL.createObjectURL(blob)
-					link.download = `${fileStore.fileItem.name}`
+					link.download = `${reportStore.reportItem.name}`
 					link.click()
 					window.URL.revokeObjectURL(link.href)
 				})
 				.catch(error => {
-					console.error('Error downloading file:', error)
+					console.error('Error downloading report:', error)
 				})
 		},
 	},

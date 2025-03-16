@@ -189,7 +189,7 @@ export default {
 			availableRegistersOptions: { options: [] },
 			// Global object holding schema options per register.
 			globalSchemasOptions: {},
-			objectTypes: ['documentReport', 'documentLog', 'organization', 'publication', 'theme'],
+			objectTypes: ['template', 'anonymization', 'report'],
 			labelOptions: {
 				options: [
 					{ label: 'Internal', value: 'internal' },
@@ -231,6 +231,9 @@ export default {
 		// maps the title to any predefined titles, otherwise just capitalize the first letter and return
 		titleMapping(type) {
 			const mapping = {
+				template: 'Document Template',
+				anonymization: 'Anonymization Data',
+				report: 'Document Report',
 				publicationtype: 'Publicatie type',
 				organization: 'Organisatie',
 				publication: 'Publicatie',

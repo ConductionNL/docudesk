@@ -1,8 +1,8 @@
 <?php
 
-namespace OCA\OpenCatalogi\Controller;
+namespace OCA\DocuDesk\Controller;
 
-use OCA\OpenCatalogi\Service\ObjectService;
+use OCA\DocuDesk\Service\ObjectService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;

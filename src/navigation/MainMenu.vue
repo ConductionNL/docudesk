@@ -20,16 +20,6 @@ import { navigationStore } from '../store/store.js'
 					<Incognito :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'signing'" name="Signing" @click="navigationStore.setSelected('signing')">
-				<template #icon>
-					<FileSign :size="20" />
-				</template>
-			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'wcag'" name="WCAG" @click="navigationStore.setSelected('wcag')">
-				<template #icon>
-					<CameraDocument :size="20" />
-				</template>
-			</NcAppNavigationItem>
 			<NcAppNavigationItem :active="navigationStore.selected === 'templates'" name="Templates" @click="navigationStore.setSelected('templates')">
 				<template #icon>
 					<FileDocumentOutline :size="20" />

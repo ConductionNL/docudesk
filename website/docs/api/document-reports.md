@@ -11,6 +11,12 @@ DocuDesk provides comprehensive document analysis through its reporting system. 
 
 The Document Reports system in DocuDesk enables you to:
 
+- Identify files containing personal data
+- Categorize the types of personal data present
+- Track anonymization status
+- Manage retention periods
+- Document the legal basis for processing
+- Maintain an audit trail of privacy-related actions
 - Analyze documents for personal data that may require anonymization
 - Check documents for WCAG accessibility compliance
 - Assess the language level and readability of documents
@@ -33,8 +39,11 @@ The `DocumentReport` object is the core component for document analysis. It cont
 | anonymization_results | object | Results of anonymization analysis |
 | wcag_compliance_results | object | Results of WCAG compliance analysis |
 | language_level_results | object | Results of language level analysis |
-| created_at | date-time | When the report was created |
-| updated_at | date-time | When the report was last updated |
+| entity_found | object | List of entities found made during anonymization |
+| retention_period | integer | Retention period in days (0 for indefinite) |
+| retention_expiry | date-time | Date when the retention period expires |
+| legal_basis | string | Legal basis for processing the data under GDPR |
+| data_controller | string | Name of the data controller |
 
 ## Report Generation Process
 
@@ -77,6 +86,42 @@ The language level analysis assesses the readability and complexity of document 
 - Text complexity metrics
 - Estimated education level required to understand the text
 - Suggestions for improving language clarity
+
+### Data Categories
+
+DocuDesk recognizes the following categories of personal data:
+
+- **name**: Names of individuals
+- **address**: Physical addresses
+- **email**: Email addresses
+- **phone**: Phone numbers
+- **id_number**: Identification numbers (passport, SSN, etc.)
+- **financial**: Financial information (bank accounts, credit cards, etc.)
+- **health**: Health-related information
+- **biometric**: Biometric data
+- **location**: Location data
+- **other**: Other types of personal data
+
+### Anonymization Status
+
+The anonymization status can be one of the following:
+
+- **not_required**: The file does not require anonymization
+- **pending**: Anonymization is pending
+- **in_progress**: Anonymization is in progress
+- **completed**: Anonymization is completed
+- **failed**: Anonymization failed
+
+### Legal Basis
+
+Under GDPR, personal data processing must have a legal basis. DocuDesk supports tracking the following legal bases:
+
+- **consent**: The data subject has given consent
+- **contract**: Processing is necessary for a contract
+- **legal_obligation**: Processing is necessary for a legal obligation
+- **vital_interests**: Processing is necessary to protect vital interests
+- **public_interest**: Processing is necessary for a task in the public interest
+- **legitimate_interests**: Processing is necessary for legitimate interests
 
 ## API Endpoints
 

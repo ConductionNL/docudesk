@@ -1,5 +1,29 @@
 <?php
 
+/**
+ * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
+ * @license EUPL-1.2
+ *
+ * DocuDesk is free software: you can redistribute it and/or modify
+ * it under the terms of the European Union Public License (EUPL), 
+ * version 1.2 only (the "Licence"), appearing in the file LICENSE
+ * included in the packaging of this file.
+ *
+ * DocuDesk is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * European Union Public License for more details.
+ *
+ * You should have received a copy of the European Union Public License
+ * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
+ *
+ * @category Service
+ * @package  OCA\DocuDesk\Service
+ * @author   Conduction B.V. <info@conduction.nl>
+ * @license  EUPL-1.2
+ * @link     https://github.com/conductionnl/docudesk
+ */
+
 namespace OCA\DocuDesk\Service;
 
 use Adbar\Dot;
@@ -23,6 +47,9 @@ use OCA\OpenRegister\Service\Exceptions\NotFoundException;
 
 /**
  * Service class for handling object-related operations
+ *
+ * This service provides methods for CRUD operations on objects, as well as
+ * integration with OpenRegisters for external storage.
  */
 class ObjectService
 {
@@ -33,13 +60,19 @@ class ObjectService
 
     /**
      * Constructor for ObjectService.
+     *
+     * @param ContainerInterface $container  The service container
+     * @param IAppManager        $appManager The app manager
+     * @param IAppConfig         $config     The app configuration
+     *
+     * @return void
      */
     public function __construct(
         private ContainerInterface $container,
         private readonly IAppManager $appManager,
         private readonly IAppConfig $config,
     ) {
-        $this->appName = 'larpingapp';
+        $this->appName = 'docudesk';
     }
 
     /**
@@ -314,10 +347,15 @@ class ObjectService
     }
 
     /**
-     * Attempts to retrieve the OpenRegister service from the container.
+     * Get the OpenRegisters service if available
      *
-     * @return mixed|null The OpenRegister service if available, null otherwise.
-     * @throws ContainerExceptionInterface|NotFoundExceptionInterface
+     * This method checks if the OpenRegister app is installed and returns
+     * its ObjectService if available.
+     *
+     * @return \OCA\OpenRegister\Service\ObjectService|null The OpenRegisters service or null if not available
+     *
+     * @psalm-return \OCA\OpenRegister\Service\ObjectService|null
+     * @phpstan-return \OCA\OpenRegister\Service\ObjectService|null
      */
     public function getOpenRegisters(): ?\OCA\OpenRegister\Service\ObjectService
     {

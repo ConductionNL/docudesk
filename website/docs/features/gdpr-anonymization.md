@@ -105,6 +105,22 @@ Configure the anonymization feature in the DocuDesk admin settings:
 4. Adjust the **Confidence Threshold** (0.0-1.0) for entity detection sensitivity
 5. Enable or disable the **Store Original Text** option for de-anonymization capability
 
+### OpenRegisters Integration
+
+DocuDesk supports storing anonymization data in OpenRegisters, which provides additional capabilities for data management:
+
+1. **External Storage**: Store anonymization logs in external databases through OpenRegisters
+2. **Advanced Querying**: Use OpenRegisters' query capabilities for complex searches
+3. **Data Sharing**: Share anonymization logs with other applications that use OpenRegisters
+
+To configure OpenRegisters integration:
+
+1. Install the OpenRegisters app from the Nextcloud App Store
+2. In DocuDesk settings, select "OpenRegister" as the storage source for anonymization data
+3. Choose the appropriate register and schema for storing the data
+
+This integration is optional - if you prefer to use Nextcloud's internal storage, select "Internal" as the storage source.
+
 ## Setting Up Presidio
 
 To use the anonymization feature, you need to set up Microsoft Presidio:
