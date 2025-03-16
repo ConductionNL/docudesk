@@ -59,9 +59,9 @@ class Application extends App implements IBootstrap
         );
 
         // Register background jobs
-        $server = $context->getServerContainer();
-        $jobList = $server->getJobList();
-        $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);
+        // $server = $context->getServerContainer();
+        //$jobList = $server->getJobList();
+        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);
     }
 
     public function boot(IBootContext $context): void

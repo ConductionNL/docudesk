@@ -126,7 +126,7 @@ class FileEventListener implements IEventListener
         ]);
         
         // Always try to create a report, the ReportingService will check if reporting is enabled
-        $this->createReportForNode($node);
+         $this->reportingService->createReport($node);
     }
 
     /**
@@ -145,7 +145,7 @@ class FileEventListener implements IEventListener
         ]);
         
         // Always try to create a report, the ReportingService will check if reporting is enabled
-        $this->createReportForNode($node);
+        //$this->reportingService->updateReport($node);  @todo this is becouse a a bug where creates are thrown instead of updates
     }
 
     /**
@@ -221,30 +221,5 @@ class FileEventListener implements IEventListener
     {
         // This event is triggered before a node is deleted
         // We can use this to prepare for the deletion if needed
-    }
-    
-    /**
-     * Create a report for a node
-     *
-     * @param \OCP\Files\Node $node The file node
-     *
-     * @return array<string, mixed>|null The created report or null if creation failed
-     *
-     * @psalm-return array<string, mixed>|null
-     * @phpstan-return array<string, mixed>|null
-     */
-    private function createReportForNode(\OCP\Files\Node $node): ?array
-    {
-        try {
-            // Let the ReportingService handle all decisions about reporting
-            // including whether reporting is enabled and whether to process synchronously
-            return $this->reportingService->createReport($node);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to create report for file: ' . $e->getMessage(), [
-                'node_id' => $node->getId(),
-                'exception' => $e
-            ]);
-            return null;
-        }
     }
 } 

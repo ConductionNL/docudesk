@@ -99,12 +99,20 @@ class ReportingService
     private readonly ExtractionService $extractionService;
 
     /**
+     * Root folder service for accessing files
+     *
+     * @var \OCP\Files\IRootFolder
+     */
+    private readonly \OCP\Files\IRootFolder $rootFolder;
+
+    /**
      * Constructor for ReportingService
      *
      * @param LoggerInterface   $logger            Logger for error reporting
      * @param IConfig           $config            Configuration service
      * @param ObjectService     $objectService     Service for storing objects
      * @param ExtractionService $extractionService Service for extracting text from documents
+     * @param \OCP\Files\IRootFolder $rootFolder   Root folder service for accessing files
      *
      * @return void
      */
@@ -112,12 +120,14 @@ class ReportingService
         LoggerInterface $logger,
         IConfig $config,
         ObjectService $objectService,
-        ExtractionService $extractionService
+        ExtractionService $extractionService,
+        \OCP\Files\IRootFolder $rootFolder
     ) {
         $this->logger = $logger;
         $this->config = $config;
         $this->objectService = $objectService;
         $this->extractionService = $extractionService;
+        $this->rootFolder = $rootFolder;
         
         // Initialize Guzzle HTTP client
         $this->client = new Client([
@@ -196,7 +206,7 @@ class ReportingService
             // Send text to Presidio for analysis
             $report['entites'] = $this->analyzeWithPresidio($text, $threshold);
             
-            if (empty($$report['entites'])) {
+            if (empty($report['entites'])) {
                 $this->logger->debug('No entities detected in document: ' . $filePath);
             }
             
@@ -462,7 +472,7 @@ class ReportingService
             $this->logger->debug('Using ETag as file hash: ' . $fileHash);
         } else {
             // Fall back to calculating hash
-            $fileHash = $this->calculateFileHash($filePath);
+            $fileHash = $this->calculateFileHash($node->getPath());
         }
 
         // If the file hash has not changed, skip the report update
@@ -471,22 +481,40 @@ class ReportingService
             return $report;
         }
 
-         // Update the report object with new values
-         $report['file_path'] = $node->getPath();
-         $report['file_name'] = $node->getName();
-         $report['status'] = 'pending'; // Lets set the status to pending again in order to trigger a new report
-         $report['file_hash'] = $fileHash;
+         
+        // Update the report object with new values
+        $report['file_path'] = $node->getPath();
+        $report['file_name'] = $node->getName();
+        $report['file_type'] = $node->getMimetype();
+        $report['file_extension'] = pathinfo($node->getName(), PATHINFO_EXTENSION);
+        $report['file_size'] = $node->getSize();
+        $report['status'] = 'pending'; // Reset status to pending to trigger a new report
+        $report['file_hash'] = $fileHash;
+        
+        // Reset analysis results since we're going to reprocess
+        $report['error_message'] = null;
+        
+        // Only reset these if they exist (they might be null in older reports)
+        if (isset($report['anonymization_results'])) {
+            $report['anonymization_results'] = null;
+        }
+        if (isset($report['wcag_compliance_results'])) {
+            $report['wcag_compliance_results'] = null;
+        }
+        if (isset($report['language_level_results'])) {
+            $report['language_level_results'] = null;
+        }
 
-         // Save the updated report
-         $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-         $report = $this->objectService->saveObject($reportObjectType, $report);              
+        // Save the updated report
+        $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
+        $report = $this->objectService->saveObject($reportObjectType, $report);              
 
         // Process the report now if synchronous processing is enabled
         if ($this->isSynchronousProcessingEnabled()) {
-            return $this->processReport($updatedReport, $filePath, $fileName);
+            return $this->processReport($report);
         }
 
-         return $report;
+        return $report;
     }  
    
     
@@ -693,28 +721,41 @@ class ReportingService
             $this->logger->debug('Report already exists for node: ' . $node->getId() . ' with hash: ' . $existingReport['file_hash']);
             return $this->updateReport($node);
         }
-
-        // Lets setup the report object
+        
+        // Lets setup the report object with all fields from the documentation
         $report = [
             'node_id' => $node->getId(),
             'file_path' => $node->getPath(),
             'file_name' => $node->getName(),
+            'file_type' => $node->getMimetype(),
+            'file_extension' => pathinfo($node->getName(), PATHINFO_EXTENSION),
+            'file_size' => $node->getSize(),
             'status' => 'pending',
+            'error_message' => null,
+            'risk_score' => null, // Will be calculated during processing
+            'risk_level' => 'unknown', // Default value, will be updated during processing
+            'anonymization_results' => [], // Will be populated during processing
+            'entities' => [], // Will be populated during processing
+            'wcag_compliance_results' => [], // Will be populated if WCAG analysis is enabled
+            'language_level_results' => [], // Will be populated if language level analysis is enabled
+            'retention_period' => 0, // Default to indefinite retention
+            'retention_expiry' => null,
+            'legal_basis' => null,
+            'data_controller' => null,
         ];
 
         // Use ETag as file hash if available
-        $fileHash = null;
         if (method_exists($node, 'getEtag')) {
             $report['file_hash'] = $node->getEtag();
-            $this->logger->debug('Using ETag as file hash: ' . $fileHash);
+            $this->logger->debug('Using ETag as file hash: ' . $report['file_hash']);
         } else {
             // Fall back to calculating hash
-            $report['file_hash'] = $this->calculateFileHash($filePath);
+            $report['file_hash'] = $this->calculateFileHash($node->getPath());
         }
         
-        // Save the updated report
+        // Save the report
         $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-        $report = $this->objectService->saveObject($reportObjectType, $existingReport);        
+        $report = $this->objectService->saveObject($reportObjectType, $report);        
 
         // Process the report now if synchronous processing is enabled
         if ($this->isSynchronousProcessingEnabled()) {

@@ -163,11 +163,15 @@ The `DocumentReport` object is the core component for document analysis. It cont
 | id | string | Unique identifier for the report |
 | node_id | string | Nextcloud node ID of the document |
 | file_name | string | Name of the document |
+| file_path | string | Full path to the document in Nextcloud |
+| file_type | string | MIME type of the document (e.g., application/pdf) |
+| file_extension | string | File extension (e.g., pdf, docx) |
+| file_size | integer | Size of the file in bytes |
 | file_hash | string | Hash of the file content to determine if a new report is needed |
 | status | string | Status of the report generation (pending, processing, completed, failed) |
 | error_message | string | Error message if report processing failed |
 | risk_score | float | Numerical score indicating overall risk level (0-100) |
-| risk_level | string | Risk level classification (low, medium, high) based on risk score |
+| risk_level | string | Risk level classification (low, medium, high) based on risk score, or unknown if report is not completed |
 | anonymization_results | object | Results of anonymization analysis |
 | entities | object | List of entities found made during anonymization |
 | wcag_compliance_results | object | Results of WCAG compliance analysis |
@@ -398,6 +402,10 @@ Creates a new document report. You need to specify:
 
 - `node_id`: Nextcloud node ID of the document
 - `file_name`: Name of the document
+- `file_path`: Full path to the document in Nextcloud
+- `file_type`: MIME type of the document
+- `file_extension`: File extension of the document
+- `file_size`: Size of the file in bytes
 - `file_hash`: Hash of the file content
 - `analysis_types`: Types of analysis to perform (anonymization, wcag_compliance, language_level)
 
@@ -489,10 +497,14 @@ The document reports system integrates with DocuDesk's document processing capab
 ### Generating a Document Report
 
 ```php
-// Create a new document report
+// Create a new report
 $reportData = [
     'node_id' => '12345',
     'file_name' => 'important-document.pdf',
+    'file_path' => '/Documents/important-document.pdf',
+    'file_type' => 'application/pdf',
+    'file_extension' => 'pdf',
+    'file_size' => 1024567,
     'file_hash' => 'a1b2c3d4e5f6g7h8i9j0',
     'analysis_types' => ['anonymization', 'wcag_compliance', 'language_level']
 ];
