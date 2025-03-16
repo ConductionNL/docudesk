@@ -12,7 +12,6 @@ DocuDesk provides a RESTful API that allows you to interact with documents, fold
 Our API is documented using the [OpenAPI Specification](https://swagger.io/specification/) (OAS), which provides a standardized way to describe RESTful APIs. The OAS files are available in the following formats:
 
 - [YAML Format](/oas/docudesk-api.yaml)
-- [JSON Format](/oas/docudesk-api.json) (coming soon)
 
 ## Using the API Documentation
 
@@ -22,7 +21,7 @@ You can use the OAS files with various tools:
 
 You can view the API documentation using Swagger UI by:
 
-1. Visiting our [Swagger UI page](/swagger-ui.html) (coming soon)
+1. Visiting our [Redocly UI page](/api) (coming soon)
 2. Downloading the OAS file and importing it into the [Swagger Editor](https://editor.swagger.io/)
 
 ### Postman
