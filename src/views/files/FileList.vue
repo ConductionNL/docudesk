@@ -27,7 +27,8 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					:key="`${report.id}${i}`"
 					:name="report.fileName || 'Unnamed file'"
 					:force-display-actions="true"
-					:active="reportStore.reportItem?.id === report?.id">
+					:active="reportStore.reportItem?.id === report?.id"
+					@click="handleReportSelect(report)">
 					<template #icon>
 						<div class="file-icon-container">
 							<FileOutline :size="44" />
@@ -142,6 +143,8 @@ export default {
 		async handleReportSelect(report) {
 			// Set the selected report in the store
 			reportStore.setReportItem(report)
+			// Ensure we're in the files view
+			navigationStore.setSelected('files')
 		},
 		
 		/**

@@ -8,7 +8,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			<FileList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!reportStore.reportItem || navigationStore.selected != 'files'"
+			<NcEmptyContent v-if="!reportStore.reportItem || navigationStore.selected !== 'files'"
 				class="detailContainer" 
 				name="No Report Selected"
 				description="Select a report from the list or create a new one">
