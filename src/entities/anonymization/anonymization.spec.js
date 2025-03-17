@@ -10,84 +10,89 @@ describe('Anonymization Entity', () => {
     it('creates an anonymization instance with default values', () => {
         const anonymization = new Anonymization({})
         expect(anonymization.id).toBe('')
-        expect(anonymization.nodeId).toBe('')
+        expect(anonymization.nodeId).toBe(0)
+        expect(anonymization.fileHash).toBe('')
+        expect(anonymization.originalFileName).toBe('')
+        expect(anonymization.anonymizedFileName).toBe('')
+        expect(anonymization.anonymizedFilePath).toBe('')
         expect(anonymization.status).toBe('pending')
-        expect(anonymization.entityReplacements).toEqual([])
-        expect(anonymization.entitiesFound).toEqual([])
-        expect(anonymization.totalEntitiesFound).toBe(0)
-        expect(anonymization.totalEntitiesReplaced).toBe(0)
+        expect(anonymization.message).toBe('')
+        expect(anonymization.entities).toEqual([])
+        expect(anonymization.replacements).toEqual([])
+        expect(anonymization.startTime).toBe(0)
+        expect(anonymization.endTime).toBe(null)
+        expect(anonymization.processingTime).toBe(null)
     })
 
     it('creates an anonymization instance with provided values', () => {
         const data = {
-            id: '123',
-            nodeId: '456',
-            fileName: 'test.pdf',
+            id: '230ea667-4f66-4040-8b9d-c2bfab86282d',
+            nodeId: 12673,
+            fileHash: '293bc95ff577f0d8faaf54477fc45304',
+            originalFileName: 'test25.txt',
+            anonymizedFileName: 'test25_anonymized.txt',
+            anonymizedFilePath: '/path/to/test25_anonymized.txt',
             status: 'completed',
-            anonymizationKey: 'secret-key',
-            originalText: 'Original text with personal data',
-            anonymizedText: 'Anonymized text with [PERSON]',
-            entityReplacements: [
+            message: 'Anonymization completed successfully',
+            entities: [
                 {
-                    id: 'rep1',
                     entityType: 'PERSON',
                     text: 'John Doe',
+                    score: 0.95,
+                    startPosition: 10,
+                    endPosition: 18
+                }
+            ],
+            replacements: [
+                {
+                    entityType: 'PERSON',
+                    originalText: 'John Doe',
                     replacementText: '[PERSON]',
-                    score: 0.95,
-                    startPosition: 10,
-                    endPosition: 18
+                    key: 'abc123',
+                    start: 10,
+                    end: 18
                 }
             ],
-            entitiesFound: [
-                {
-                    entityType: 'PERSON',
-                    text: 'John Doe',
-                    score: 0.95,
-                    startPosition: 10,
-                    endPosition: 18
-                }
-            ],
-            totalEntitiesFound: 1,
-            totalEntitiesReplaced: 1,
-            outputNodeId: '789',
-            confidenceThreshold: 0.8
+            startTime: 1742178348.186755,
+            endTime: 1742178349.186755,
+            processingTime: 1.0
         }
         
         const anonymization = new Anonymization(data)
-        expect(anonymization.id).toBe('123')
-        expect(anonymization.nodeId).toBe('456')
-        expect(anonymization.fileName).toBe('test.pdf')
+        expect(anonymization.id).toBe('230ea667-4f66-4040-8b9d-c2bfab86282d')
+        expect(anonymization.nodeId).toBe(12673)
+        expect(anonymization.fileHash).toBe('293bc95ff577f0d8faaf54477fc45304')
+        expect(anonymization.originalFileName).toBe('test25.txt')
+        expect(anonymization.anonymizedFileName).toBe('test25_anonymized.txt')
+        expect(anonymization.anonymizedFilePath).toBe('/path/to/test25_anonymized.txt')
         expect(anonymization.status).toBe('completed')
-        expect(anonymization.anonymizationKey).toBe('secret-key')
-        expect(anonymization.originalText).toBe('Original text with personal data')
-        expect(anonymization.anonymizedText).toBe('Anonymized text with [PERSON]')
-        expect(anonymization.entityReplacements).toHaveLength(1)
-        expect(anonymization.entityReplacements[0].entityType).toBe('PERSON')
-        expect(anonymization.entitiesFound).toHaveLength(1)
-        expect(anonymization.entitiesFound[0].text).toBe('John Doe')
-        expect(anonymization.totalEntitiesFound).toBe(1)
-        expect(anonymization.totalEntitiesReplaced).toBe(1)
-        expect(anonymization.outputNodeId).toBe('789')
-        expect(anonymization.confidenceThreshold).toBe(0.8)
+        expect(anonymization.message).toBe('Anonymization completed successfully')
+        expect(anonymization.entities).toHaveLength(1)
+        expect(anonymization.entities[0].entityType).toBe('PERSON')
+        expect(anonymization.replacements).toHaveLength(1)
+        expect(anonymization.replacements[0].originalText).toBe('John Doe')
+        expect(anonymization.startTime).toBe(1742178348.186755)
+        expect(anonymization.endTime).toBe(1742178349.186755)
+        expect(anonymization.processingTime).toBe(1.0)
     })
 
     it('validates a valid anonymization object', () => {
         const data = {
-            id: '123',
-            nodeId: '456',
+            id: '230ea667-4f66-4040-8b9d-c2bfab86282d',
+            nodeId: 12673,
+            fileHash: '293bc95ff577f0d8faaf54477fc45304',
+            originalFileName: 'test25.txt',
             status: 'completed',
-            entityReplacements: [
+            replacements: [
                 {
-                    id: 'rep1',
                     entityType: 'PERSON',
-                    text: 'John Doe',
+                    originalText: 'John Doe',
                     replacementText: '[PERSON]',
-                    score: 0.95,
-                    startPosition: 10,
-                    endPosition: 18
+                    key: 'abc123',
+                    start: 10,
+                    end: 18
                 }
-            ],
-            confidenceThreshold: 0.7
+            ]
         }
         
         const anonymization = new Anonymization(data)
@@ -97,20 +102,19 @@ describe('Anonymization Entity', () => {
 
     it('validates an invalid anonymization object', () => {
         const data = {
-            id: '123',
-            nodeId: '456',
-            status: 'invalid_status', // Invalid status
-            confidenceThreshold: 2.0 // Invalid threshold (> 1)
+            id: '230ea667-4f66-4040-8b9d-c2bfab86282d',
+            nodeId: '12673', // Invalid nodeId type (should be number)
+            status: 'invalid_status' // Invalid status value
         }
         
         const anonymization = new Anonymization(data)
         const result = anonymization.validate()
-        expect(result.success).be.false
+        expect(result.success).toBe(false)
     })
 
-    it('gets entity counts by type', () => {
+    it('counts entities by type', () => {
         const anonymization = new Anonymization({
-            entitiesFound: [
+            entities: [
                 { entityType: 'PERSON', text: 'John Doe', score: 0.95 },
                 { entityType: 'PERSON', text: 'Jane Smith', score: 0.92 },
                 { entityType: 'EMAIL', text: 'john@example.com', score: 0.98 },
@@ -126,19 +130,35 @@ describe('Anonymization Entity', () => {
 
     it('calculates success rate correctly', () => {
         const anonymization = new Anonymization({
-            totalEntitiesFound: 10,
-            totalEntitiesReplaced: 8
+            entities: [
+                { entityType: 'PERSON', text: 'John Doe', score: 0.95 },
+                { entityType: 'PERSON', text: 'Jane Smith', score: 0.92 },
+                { entityType: 'EMAIL', text: 'john@example.com', score: 0.98 }
+            ],
+            replacements: [
+                { entityType: 'PERSON', originalText: 'John Doe', replacementText: '[PERSON]' },
+                { entityType: 'PERSON', originalText: 'Jane Smith', replacementText: '[PERSON]' }
+            ]
         })
         
-        expect(anonymization.getSuccessRate()).toBe(80)
+        expect(anonymization.getSuccessRate()).toBeCloseTo(66.67, 1)
     })
 
-    it('returns 100% success rate when no entities found', () => {
+    it('calculates processing time correctly', () => {
         const anonymization = new Anonymization({
-            totalEntitiesFound: 0,
-            totalEntitiesReplaced: 0
+            startTime: 1742178348.186755,
+            endTime: 1742178349.186755
         })
         
-        expect(anonymization.getSuccessRate()).toBe(100)
+        expect(anonymization.getProcessingTime()).toBe(1.0)
     })
-}) 
+
+    it('returns 0 processing time when times are not set', () => {
+        const anonymization = new Anonymization({
+            startTime: null,
+            endTime: null
+        })
+        
+        expect(anonymization.getProcessingTime()).toBe(0)
+    })
+})

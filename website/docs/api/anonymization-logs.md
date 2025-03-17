@@ -17,23 +17,56 @@ The Anonymization Logs system in DocuDesk enables you to:
 - Ensure GDPR compliance through proper documentation
 - Generate audit trails for privacy-related actions
 
-## Anonymization Log Object
+## Anonymization Object Structure
 
-The `AnonymizationLog` object is the core component for tracking document anonymization. It contains detailed information about the anonymization process, including the original text, anonymized text, and a secure key for de-anonymization.
+The `Anonymization` object is the core component for tracking document anonymization. It contains detailed information about the anonymization process, including the original document, anonymized document, and replacements made.
 
 ### Key Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| id | string | Unique identifier for the log |
-| node_id | string | Nextcloud node ID of the original document |
-| file_hash | string | Hash of the file content |
-| status | string | Status of the anonymization operation |
-| anonymization_key | string | Key used to de-anonymize the document (encrypted) |
-| original_text | string | Original text of the document (stored securely) |
-| anonymized_text | string | Anonymized text of the document |
-| entity_replacements | object | List of entity replacements made during anonymization |
-| output_node_id | string | Nextcloud node ID of the anonymized document |
+| id | string | Unique identifier for the anonymization log |
+| nodeId | number | Nextcloud node ID of the original document |
+| fileHash | string | Hash of the file content for change detection |
+| originalFileName | string | Name of the original document |
+| anonymizedFileName | string | Name of the anonymized document |
+| anonymizedFilePath | string | Path to the anonymized document |
+| status | string | Status of the anonymization operation ('pending', 'processing', 'completed', 'failed') |
+| message | string | Message about the anonymization process |
+| entities | array | List of entities found during anonymization |
+| replacements | array | List of entity replacements made during anonymization |
+| startTime | number | Timestamp when the anonymization process started |
+| endTime | number | Timestamp when the anonymization process ended |
+| processingTime | number | Duration of the anonymization process in seconds |
+
+### Entity Object
+
+Each entity found during anonymization has the following structure:
+
+```json
+{
+  "entityType": "PERSON",
+  "text": "John Doe",
+  "score": 0.95,
+  "startPosition": 10,
+  "endPosition": 18
+}
+```
+
+### Replacement Object
+
+Each replacement made during anonymization has the following structure:
+
+```json
+{
+  "entityType": "PERSON",
+  "originalText": "John Doe",
+  "replacementText": "[PERSON: abc123]",
+  "key": "abc123",
+  "start": 10,
+  "end": 18
+}
+```
 
 ## Anonymization Process
 
@@ -43,7 +76,7 @@ When a document is submitted for anonymization, DocuDesk follows these steps:
 2. **Entity Detection**: Personal data entities are identified and categorized
 3. **Replacement Generation**: Replacement text is generated for each entity
 4. **Text Replacement**: The original text is replaced with anonymized text
-5. **Key Generation**: A secure key is generated for potential de-anonymization
+5. **Key Generation**: A secure key is generated for each entity for potential de-anonymization
 6. **Log Creation**: An anonymization log is created with all relevant information
 7. **Output Generation**: An anonymized document is generated
 
@@ -91,16 +124,70 @@ DocuDesk integrates with Microsoft Presidio for entity detection and anonymizati
 }
 ```
 
-This response is transformed into the `AnonymizationLog` object, with additional information such as:
+This response is transformed into the `Anonymization` object, with additional information such as:
 
 - Unique identifiers for each replacement
 - Positions of entities in the document
-- A secure key for de-anonymization
+- A secure key for each entity
 - Metadata about the document and operation
+
+## Complete Anonymization Example
+
+Here's a complete example of an anonymization object:
+
+```json
+{
+  "id": "230ea667-4f66-4040-8b9d-c2bfab86282d",
+  "nodeId": 12673,
+  "fileHash": "293bc95ff577f0d8faaf54477fc45304",
+  "originalFileName": "test25.txt",
+  "anonymizedFileName": "test25_anonymized.txt",
+  "anonymizedFilePath": "/path/to/test25_anonymized.txt",
+  "status": "completed",
+  "message": "Anonymization completed successfully",
+  "entities": [
+    {
+      "entityType": "PERSON",
+      "text": "John Doe",
+      "score": 0.95,
+      "startPosition": 10,
+      "endPosition": 18
+    },
+    {
+      "entityType": "EMAIL",
+      "text": "john@example.com",
+      "score": 0.98,
+      "startPosition": 25,
+      "endPosition": 41
+    }
+  ],
+  "replacements": [
+    {
+      "entityType": "PERSON",
+      "originalText": "John Doe",
+      "replacementText": "[PERSON: abc123]",
+      "key": "abc123",
+      "start": 10,
+      "end": 18
+    },
+    {
+      "entityType": "EMAIL",
+      "originalText": "john@example.com",
+      "replacementText": "[EMAIL: def456]",
+      "key": "def456",
+      "start": 25,
+      "end": 41
+    }
+  ],
+  "startTime": 1742178348.186755,
+  "endTime": 1742178349.186755,
+  "processingTime": 1.0
+}
+```
 
 ## De-anonymization
 
-DocuDesk supports de-anonymization of documents using the anonymization key. This feature is useful in scenarios where:
+DocuDesk supports de-anonymization of documents using the replacement keys. This feature is useful in scenarios where:
 
 - The original document is needed for legal proceedings
 - The anonymization was too aggressive and removed non-personal data
@@ -109,7 +196,7 @@ DocuDesk supports de-anonymization of documents using the anonymization key. Thi
 De-anonymization is a secure process that requires:
 
 1. The anonymized document (identified by its node ID)
-2. The anonymization key (which is encrypted and stored securely)
+2. The anonymization object containing the replacements
 
 ## API Endpoints
 
@@ -123,7 +210,7 @@ GET /apps/docudesk/api/v1/anonymization/logs
 
 Returns a list of anonymization logs. You can filter the logs by:
 
-- `node_id`: Filter logs by Nextcloud node ID
+- `nodeId`: Filter logs by Nextcloud node ID
 - `status`: Filter logs by status
 
 ### Create Anonymization Log
@@ -134,9 +221,9 @@ POST /apps/docudesk/api/v1/anonymization/logs
 
 Creates a new anonymization log. You need to specify:
 
-- `node_id`: Nextcloud node ID of the document to anonymize
-- `file_name`: Name of the document
-- `confidence_threshold`: (Optional) Confidence threshold for entity detection
+- `nodeId`: Nextcloud node ID of the document to anonymize
+- `originalFileName`: Name of the document
+- `confidenceThreshold`: (Optional) Confidence threshold for entity detection
 
 ### Get Anonymization Log
 
@@ -168,75 +255,52 @@ Returns the latest anonymization log for a specific Nextcloud node.
 POST /apps/docudesk/api/v1/anonymization/deanonymize
 ```
 
-De-anonymizes a document using the anonymization key.
+De-anonymizes a document using the anonymization log.
 
 ## Examples
 
 ### Anonymizing a Document
 
 ```php
-// Create a new anonymization log
-$logData = [
-    'node_id' => '12345',
-    'file_name' => 'sensitive-document.pdf',
-    'confidence_threshold' => 0.7
-];
+// Get the anonymization service
+$anonymizationService = \OC::$server->get(OCA\DocuDesk\Service\AnonymizationService::class);
 
-$response = $client->post('/apps/docudesk/api/v1/anonymization/logs', [
-    'json' => $logData
-]);
-
-$log = json_decode($response->getBody(), true);
-$logId = $log['id'];
+// Process anonymization for a file node
+$fileNode = $rootFolder->get('path/to/document.txt');
+$anonymization = $anonymizationService->processAnonymization($fileNode);
 
 // Check anonymization status
-$response = $client->get('/apps/docudesk/api/v1/anonymization/logs/' . $logId);
-$log = json_decode($response->getBody(), true);
-
-if ($log['status'] === 'completed') {
-    // Get the anonymized document
-    $anonymizedNodeId = $log['output_node_id'];
-    
-    // Store the anonymization key securely
-    $anonymizationKey = $log['anonymization_key'];
+if ($anonymization['status'] === 'completed') {
+    // Get the anonymized document path
+    $anonymizedFilePath = $anonymization['anonymizedFilePath'];
     
     // Check anonymization results
-    $totalEntitiesFound = $log['total_entities_found'];
-    $totalEntitiesReplaced = $log['total_entities_replaced'];
+    $totalEntitiesFound = count($anonymization['entities']);
+    $totalEntitiesReplaced = count($anonymization['replacements']);
     
     echo "Anonymization completed: Found $totalEntitiesFound entities, replaced $totalEntitiesReplaced entities.";
 }
 ```
 
-### De-anonymizing a Document
+### Retrieving Anonymization Data
 
 ```php
-// De-anonymize a document
-$deanonymizeData = [
-    'anonymized_node_id' => '67890',
-    'anonymization_key' => 'secure-key-retrieved-from-storage'
-];
+// Get anonymization data for a file node
+$anonymizationService = \OC::$server->get(OCA\DocuDesk\Service\AnonymizationService::class);
+$anonymization = $anonymizationService->getAnonymization($fileNode);
 
-$response = $client->post('/apps/docudesk/api/v1/anonymization/deanonymize', [
-    'json' => $deanonymizeData
-]);
-
-$result = json_decode($response->getBody(), true);
-
-if ($result['success']) {
-    // Get the de-anonymized document
-    $originalNodeId = $result['original_node_id'];
-    echo "Document successfully de-anonymized. Original document ID: $originalNodeId";
-}
+// Or retrieve anonymization by ID
+$anonymization = $anonymizationService->getAnonymizationById('anonymization-id');
 ```
 
 ## Best Practices
 
-1. **Secure Key Storage**: Store anonymization keys securely, preferably in a separate system from the anonymized documents
-2. **Regular Audits**: Regularly audit anonymization logs to ensure personal data is being properly protected
-3. **Confidence Threshold**: Adjust the confidence threshold based on your needs (higher for more precision, lower for more coverage)
-4. **Access Control**: Restrict access to de-anonymization functionality to authorized users only
-5. **Retention Policy**: Implement a retention policy for anonymization logs in line with your GDPR compliance requirements
+1. **Regular Audits**: Regularly audit anonymization logs to ensure personal data is being properly protected
+2. **Confidence Threshold**: Adjust the confidence threshold based on your needs (higher for more precision, lower for more coverage)
+3. **Review Anonymized Documents**: Always review automatically anonymized documents
+4. **Customize Entity Types**: Configure custom entity recognizers for domain-specific data
+5. **Implement Access Controls**: Restrict access to de-anonymization functionality to authorized users only
+6. **Retention Policy**: Implement a retention policy for anonymization logs in line with your GDPR compliance requirements
 
 ## Integration with Document Reports
 

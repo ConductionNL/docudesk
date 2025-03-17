@@ -264,7 +264,7 @@ class ReportingService
             
             // Process anonymization if enabled
             if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
-                $this->anonymizationService->processAnonymization($node, $report);
+              $this->anonymizationService->processAnonymization($node, $report);
             }
             
             return $report;

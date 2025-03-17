@@ -225,7 +225,7 @@ class AnonymizationService
             // Initialize base anonymization result array only if no existing anonymization found
             $anonymization = [
                 'nodeId' => $node->getId(),
-                'fileHash' => $report['fileHash'] ?? '',
+                'fileHash' => $report['fileHash'] ?? $fileHash,
                 'originalFileName' => $report['fileName'] ?? $node->getName(),
                 'anonymizedFileName' => '',
                 'anonymizedFilePath' => '',
@@ -240,28 +240,39 @@ class AnonymizationService
         }
 
         // Lets return the anonymization if the hash is the same
-        if ($anonymization['fileHash'] === $fileHash) {
+        if ($anonymization['fileHash'] === $fileHash && $anonymization['status'] === 'completed') {
             $this->logger->debug('File hash matches existing anonymization, returning cached result', [
                 'fileHash' => $fileHash,
                 'anonymizationId' => $anonymization['id'] ?? null
             ]);
+            // Save the anonymization result before returning
+            $anonymization['message'] = 'File hash matches existing anonymization, returning cached result';
+            $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
             return $anonymization;
-        }        
+        }
 
         // Check if anonymization is needed (if there are entities)
         if (empty($report['entities'])) {
             $this->logger->info('No entities detected for anonymization in document: ' . $node->getPath());            
+
             // Update result array
             $anonymization['status'] = 'completed';
-            $anonymization['message'] = 'No entities detected for anonymization';
+            $anonymization['message'] = 'No entities detected for anonymization in document: ' . $node->getPath();
             $anonymization['endTime'] = microtime(true);
-            $anonymization['processingTime'] = $anonymizationResult['endTime'] - $startTime;
+            $anonymization['processingTime'] = $anonymization['endTime'] - $startTime;
             
             // Save the anonymization result before returning
             $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
             
             return $anonymization;
         }
+
+        // Update anonymization with entities from report
+        $anonymization['entities'] = $report['entities'];
+        $anonymization['status'] = 'processing';
+        
+        // Save the updated log
+        // $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
 
         // Get the file content
         $content = $node->getContent();
@@ -325,9 +336,9 @@ class AnonymizationService
             
             // Record the replacement
             $replacements[] = [
-                'entity_type' => $entityType,
-                'original_text' => $entityText,
-                'replacement_text' => $replacementText,
+                'entityType' => $entityType,
+                'originalText' => $entityText,
+                'replacementText' => $replacementText,
                 'key' => $key,
                 'start' => $start,
                 'end' => $end
@@ -337,15 +348,15 @@ class AnonymizationService
         // Create the anonymized file
         $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedContent);
         
-        // Create anonymization log
-        //$anonymizationKey = $this->generateAnonymizationKey();
-
-        // Add file hash to the log
-        //$anonymization['anonymizationKey'] = $anonymizationKey;
-        $anonymization['fileHash'] = $fileHash;
+        // Update anonymization object
+        $endTime = microtime(true);
+        $anonymization['status'] = 'completed';
+        $anonymization['message'] = 'Anonymization completed successfully';
         $anonymization['replacements'] = $replacements;
-        $anonymization['anonymizedFileId'] = $newFile->getId();
+        $anonymization['anonymizedFileName'] = $anonymizedFileName;
         $anonymization['anonymizedFilePath'] = $newFile->getPath();
+        $anonymization['endTime'] = $endTime;
+        $anonymization['processingTime'] = $endTime - $startTime;
         
         // Save the updated log
         return $this->objectService->saveObject('anonymization', $anonymization);

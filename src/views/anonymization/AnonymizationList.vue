@@ -35,10 +35,10 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 			<div v-if="anonymizationStore.anonymizationList && anonymizationStore.anonymizationList.length > 0 && !anonymizationStore.isLoadingAnonymizationList">
 				<NcListItem v-for="(document, i) in anonymizationStore.anonymizationList"
 					:key="`${document}${i}`"
-					:name="document?.name || 'Unnamed Document'"
+					:name="document?.originalFileName || 'Unnamed Document'"
 					:force-display-actions="true"
 					:active="anonymizationStore.anonymizationItem?.id === document?.id"
-					:counter-number="document?.rules?.length || 0"
+					:counter-number="document?.entities?.length || 0"
 					@click="handleAnonymizationSelect(document)">
 					<template #icon>
 						<Incognito :class="anonymizationStore.anonymizationItem?.id === document?.id && 'selectedIcon'"
@@ -46,7 +46,10 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 							:size="44" />
 					</template>
 					<template #subname>
-						{{ document?.summary || 'No summary available' }}
+						<div class="document-status">
+							<span>Status: {{ document?.status || 'unknown' }}</span>
+							<span v-if="document?.anonymizedFileName">| Anonymized: {{ document.anonymizedFileName }}</span>
+						</div>
 					</template>
 					<template #actions>
 						<NcActionButton @click="anonymizationStore.setAnonymizationItem(document); navigationStore.setModal('editAnonymization')">
@@ -148,5 +151,11 @@ export default {
 
 .loadingIcon {
     margin-block-start: var(--OC-margin-20);
+}
+
+.document-status {
+    display: flex;
+    gap: 8px;
+    color: var(--color-text-maxcontrast);
 }
 </style>

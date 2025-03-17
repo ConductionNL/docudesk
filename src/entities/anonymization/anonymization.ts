@@ -25,13 +25,15 @@ import { TAnonymization } from './anonymization.types'
 export class Anonymization implements TAnonymization {
     /**
      * Unique identifier for the anonymization log
+     * 
+     * @readonly
      */
     public readonly id: string;
 
     /**
      * Nextcloud node ID of the original document
      */
-    public nodeId: string;
+    public nodeId: number;
 
     /**
      * Hash of the file content
@@ -39,9 +41,19 @@ export class Anonymization implements TAnonymization {
     public fileHash: string;
 
     /**
-     * Name of the document
+     * Original name of the document
      */
-    public fileName: string;
+    public originalFileName: string;
+
+    /**
+     * Name of the anonymized document
+     */
+    public anonymizedFileName: string;
+
+    /**
+     * Path of the anonymized document
+     */
+    public anonymizedFilePath: string;
 
     /**
      * Status of the anonymization operation
@@ -49,37 +61,14 @@ export class Anonymization implements TAnonymization {
     public status: 'pending' | 'processing' | 'completed' | 'failed';
 
     /**
-     * Key used to de-anonymize the document (encrypted)
+     * Message about the anonymization process
      */
-    public anonymizationKey: string;
-
-    /**
-     * Original text of the document (stored securely)
-     */
-    public originalText: string;
-
-    /**
-     * Anonymized text of the document
-     */
-    public anonymizedText: string;
-
-    /**
-     * List of entity replacements made during anonymization
-     */
-    public entityReplacements: Array<{
-        id: string;
-        entityType: string;
-        text: string;
-        replacementText: string;
-        score: number;
-        startPosition: number;
-        endPosition: number;
-    }>;
+    public message: string;
 
     /**
      * List of entities found during anonymization
      */
-    public entitiesFound: Array<{
+    public entities: Array<{
         entityType: string;
         text: string;
         score: number;
@@ -88,106 +77,63 @@ export class Anonymization implements TAnonymization {
     }>;
 
     /**
-     * Total number of entities found
+     * List of entity replacements made during anonymization
      */
-    public totalEntitiesFound: number;
+    public replacements: Array<{
+        entityType: string;
+        originalText: string;
+        replacementText: string;
+        key?: string;
+        start?: number;
+        end?: number;
+    }>;
 
     /**
-     * Total number of entities replaced
+     * Start time of the anonymization process (timestamp)
      */
-    public totalEntitiesReplaced: number;
+    public startTime: number;
 
     /**
-     * Nextcloud node ID of the anonymized document
+     * End time of the anonymization process (timestamp)
      */
-    public outputNodeId: string;
+    public endTime: number | null;
 
     /**
-     * Confidence threshold used for entity detection
+     * Duration of the anonymization process in seconds
      */
-    public confidenceThreshold: number;
-
-    /**
-     * Start time of the anonymization process
-     */
-    public startTime: string;
-
-    /**
-     * End time of the anonymization process
-     */
-    public endTime: string;
-
-    /**
-     * Duration of the anonymization process in milliseconds
-     */
-    public duration: number;
-
-    /**
-     * Error message if the anonymization failed
-     */
-    public errorMessage: string;
-
-    /**
-     * ID of the user who initiated the anonymization
-     */
-    public userId: string;
-
-    /**
-     * Creation timestamp
-     */
-    public created: string;
-
-    /**
-     * Last update timestamp
-     */
-    public updated: string;
+    public processingTime: number | null;
 
     /**
      * Creates a new Anonymization instance
      * 
      * @param {TAnonymization} anonymization - Anonymization data
      */
-    constructor(anonymization: TAnonymization) {
+    constructor(anonymization: TAnonymization = {}) {
         this.id = anonymization.id || '';
-        this.nodeId = anonymization.nodeId || '';
+        this.nodeId = anonymization.nodeId || 0;
         this.fileHash = anonymization.fileHash || '';
-        this.fileName = anonymization.fileName || '';
+        this.originalFileName = anonymization.originalFileName || '';
+        this.anonymizedFileName = anonymization.anonymizedFileName || '';
+        this.anonymizedFilePath = anonymization.anonymizedFilePath || '';
         this.status = anonymization.status || 'pending';
-        this.anonymizationKey = anonymization.anonymizationKey || '';
-        this.originalText = anonymization.originalText || '';
-        this.anonymizedText = anonymization.anonymizedText || '';
-        this.entityReplacements = anonymization.entityReplacements || [];
-        this.entitiesFound = anonymization.entitiesFound || [];
-        this.totalEntitiesFound = anonymization.totalEntitiesFound || 0;
-        this.totalEntitiesReplaced = anonymization.totalEntitiesReplaced || 0;
-        this.outputNodeId = anonymization.outputNodeId || '';
-        this.confidenceThreshold = anonymization.confidenceThreshold || 0.7;
-        this.startTime = anonymization.startTime || '';
-        this.endTime = anonymization.endTime || '';
-        this.duration = anonymization.duration || 0;
-        this.errorMessage = anonymization.errorMessage || '';
-        this.userId = anonymization.userId || '';
-        this.created = anonymization.created || '';
-        this.updated = anonymization.updated || '';
+        this.message = anonymization.message || '';
+        this.entities = anonymization.entities || [];
+        this.replacements = anonymization.replacements || [];
+        this.startTime = anonymization.startTime || 0;
+        this.endTime = anonymization.endTime || null;
+        this.processingTime = anonymization.processingTime || null;
     }
 
     /**
      * Validates the anonymization data
      * 
      * @returns {SafeParseReturnType<TAnonymization, unknown>} Validation result
+     * 
+     * @psalm-return SafeParseReturnType<TAnonymization, unknown>
+     * @phpstan-return SafeParseReturnType<TAnonymization, unknown>
      */
     public validate(): SafeParseReturnType<TAnonymization, unknown> {
-        const entityReplacementSchema = z.object({
-            id: z.string(),
-            entityType: z.string(),
-            text: z.string(),
-            replacementText: z.string(),
-            score: z.number(),
-            startPosition: z.number(),
-            endPosition: z.number()
-        });
-
-        const entityFoundSchema = z.object({
+        const entitySchema = z.object({
             entityType: z.string(),
             text: z.string(),
             score: z.number(),
@@ -195,28 +141,29 @@ export class Anonymization implements TAnonymization {
             endPosition: z.number().optional()
         });
 
+        const replacementSchema = z.object({
+            entityType: z.string(),
+            originalText: z.string(),
+            replacementText: z.string(),
+            key: z.string().optional(),
+            start: z.number().optional(),
+            end: z.number().optional()
+        });
+
         const schema = z.object({
             id: z.string().optional(),
-            nodeId: z.string().optional(),
+            nodeId: z.number().optional(),
             fileHash: z.string().optional(),
-            fileName: z.string().optional(),
+            originalFileName: z.string().optional(),
+            anonymizedFileName: z.string().optional(),
+            anonymizedFilePath: z.string().optional(),
             status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
-            anonymizationKey: z.string().optional(),
-            originalText: z.string().optional(),
-            anonymizedText: z.string().optional(),
-            entityReplacements: z.array(entityReplacementSchema).optional(),
-            entitiesFound: z.array(entityFoundSchema).optional(),
-            totalEntitiesFound: z.number().optional(),
-            totalEntitiesReplaced: z.number().optional(),
-            outputNodeId: z.string().optional(),
-            confidenceThreshold: z.number().min(0).max(1).optional(),
-            startTime: z.string().optional(),
-            endTime: z.string().optional(),
-            duration: z.number().optional(),
-            errorMessage: z.string().optional(),
-            userId: z.string().optional(),
-            created: z.string().optional(),
-            updated: z.string().optional()
+            message: z.string().optional(),
+            entities: z.array(entitySchema).optional(),
+            replacements: z.array(replacementSchema).optional(),
+            startTime: z.number().optional(),
+            endTime: z.number().nullable().optional(),
+            processingTime: z.number().nullable().optional()
         });
 
         return schema.safeParse(this);
@@ -226,11 +173,14 @@ export class Anonymization implements TAnonymization {
      * Gets the entity counts by type
      * 
      * @returns {Record<string, number>} Entity counts by type
+     * 
+     * @psalm-return Record<string, number>
+     * @phpstan-return Record<string, number>
      */
     public getEntityCounts(): Record<string, number> {
         const counts: Record<string, number> = {};
         
-        this.entitiesFound.forEach(entity => {
+        this.entities.forEach(entity => {
             if (!counts[entity.entityType]) {
                 counts[entity.entityType] = 0;
             }
@@ -244,12 +194,31 @@ export class Anonymization implements TAnonymization {
      * Calculates the anonymization success rate
      * 
      * @returns {number} Success rate as a percentage
+     * 
+     * @psalm-return number
+     * @phpstan-return number
      */
     public getSuccessRate(): number {
-        if (this.totalEntitiesFound === 0) {
+        if (this.entities.length === 0) {
             return 100;
         }
         
-        return (this.totalEntitiesReplaced / this.totalEntitiesFound) * 100;
+        return (this.replacements.length / this.entities.length) * 100;
     }
-} 
+
+    /**
+     * Gets the processing time in seconds
+     * 
+     * @returns {number} Processing time in seconds
+     * 
+     * @psalm-return number
+     * @phpstan-return number
+     */
+    public getProcessingTime(): number {
+        if (!this.startTime || !this.endTime) {
+            return 0;
+        }
+        
+        return this.endTime - this.startTime;
+    }
+}
