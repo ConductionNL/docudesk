@@ -295,8 +295,6 @@ class AnonymizationService
             throw new Exception('Failed to get content from file: ' . $node->getPath());
         }
 
-        
-        
         // Get the parent folder
         $parentFolder = $node->getParent();
                     
@@ -314,27 +312,64 @@ class AnonymizationService
         $anonymizedContent = $content;
         $replacements = [];
         
-        // Add unique keys to entities and sort by start position in descending order
-        $entities = array_map(function($entity) {
-            $entity['key'] = substr(Uuid::v4()->toRfc4122(), 0, 8);
-            return $entity;
-        }, $report['entities']);
+        // Process entities and find their positions in the content if not provided
+        $processedEntities = [];
+        foreach ($report['entities'] as $entity) {
+            $entityType = $entity['entityType'] ?? 'UNKNOWN';
+            $entityText = $entity['text'] ?? '';
+            $score = $entity['score'] ?? 0;
+            
+            // Skip if we don't have text
+            if (empty($entityText)) {
+                continue;
+            }
+            
+            // If start and end positions are not provided, find them in the content
+            if (!isset($entity['start']) || !isset($entity['end'])) {
+                // Find all occurrences of the entity text in the content
+                $offset = 0;
+                while (($pos = mb_stripos($content, $entityText, $offset)) !== false) {
+                    $processedEntities[] = [
+                        'entityType' => $entityType,
+                        'text' => $entityText,
+                        'score' => $score,
+                        'start' => $pos,
+                        'end' => $pos + mb_strlen($entityText),
+                        'key' => substr(Uuid::v4()->toRfc4122(), 0, 8)
+                    ];
+                    $offset = $pos + mb_strlen($entityText);
+                }
+            } else {
+                // Use the provided positions
+                $processedEntities[] = [
+                    'entityType' => $entityType,
+                    'text' => $entityText,
+                    'score' => $score,
+                    'start' => $entity['start'],
+                    'end' => $entity['end'],
+                    'key' => substr(Uuid::v4()->toRfc4122(), 0, 8)
+                ];
+            }
+        }
         
-        usort($entities, function ($a, $b) {
+        // Sort entities by start position in descending order to avoid position shifts
+        usort($processedEntities, function ($a, $b) {
             return ($b['start'] ?? 0) - ($a['start'] ?? 0);
         });
         
-        foreach ($entities as $entity) {
-            $entityType = $entity['entityType'] ?? 'UNKNOWN';
-            $entityText = $entity['text'] ?? '';
-            $start = $entity['start'] ?? null;
-            $end = $entity['end'] ?? null;
+        // Log the processed entities for debugging
+        $this->logger->debug('Processed entities for anonymization:', [
+            'processedEntities' => $processedEntities,
+            'originalEntities' => $report['entities']
+        ]);
+        
+        // Replace entities in the content
+        foreach ($processedEntities as $entity) {
+            $entityType = $entity['entityType'];
+            $entityText = $entity['text'];
+            $start = $entity['start'];
+            $end = $entity['end'];
             $key = $entity['key'];
-            
-            // Skip if we don't have position information
-            if ($start === null || $end === null || empty($entityText)) {
-                continue;
-            }
             
             // Create replacement text
             $replacementText = '[' . $entityType . ': ' . $key . ']';
