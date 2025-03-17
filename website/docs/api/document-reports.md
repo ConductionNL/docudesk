@@ -168,6 +168,7 @@ The `DocumentReport` object is the core component for document analysis. It cont
 | fileExtension | string | File extension (e.g., pdf, docx) |
 | fileSize | integer | Size of the file in bytes |
 | fileHash | string | Hash of the file content to determine if a new report is needed |
+| fileText | string | The extracted text content from the document, used for analysis |
 | status | string | Status of the report generation (pending, processing, completed, failed) |
 | errorMessage | string | Error message if report processing failed |
 | riskScore | float | Numerical score indicating overall risk level (0-100) |

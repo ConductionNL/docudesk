@@ -194,21 +194,21 @@ class ReportingService
 
             // Extract text from document
             $filePath = $node->getPath();
-            //try {
+            try {
                 $extraction = $this->extractionService->extractText($node);
-                $text = $extraction['text'];
-                $errorMessage = $extraction['errorMessage'];
-            // } catch (Exception $e) {
-            //     $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
-            //     $report['status'] = 'failed';
-            //     $report['errorMessage'] = 'Failed to extract text from document';
-            //     return $report;
-            // }
+                $report['text'] = $extraction['text'];
+                $report['errorMessage'] = $extraction['errorMessage'];
+             } catch (Exception $e) {
+                $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
+                $report['status'] = 'failed';
+                $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
+                return $this->objectService->saveObject($reportObjectType, $report);
+            }
             
-            if (empty($text)) {
+            if (empty($report['text'])) {
                 $this->logger->warning('No text content found in document: ' . $filePath);
                 $report['status'] = 'completed';
-                $report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
+                //$report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
                 $report['entities'] = [];
                 
                 // Set appropriate values for non-text documents
@@ -224,7 +224,7 @@ class ReportingService
             }
                         
             // Send text to Presidio for analysis
-            $report['entities'] = $this->analyzeWithPresidio($text, $threshold);
+            $report['entities'] = $this->analyzeWithPresidio($report['text'], $threshold);
             
             if (empty($report['entities'])) {
                 $this->logger->debug('No entities detected in document: ' . $filePath);

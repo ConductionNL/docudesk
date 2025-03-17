@@ -75,15 +75,15 @@ class ExtractionService
      *
      * @param \OCP\Files\Node $node The file node to extract text from
      *
-     * @return string|null Extracted text content or null if extraction failed
+     * @return array{text: ?string, errorMessage: ?string} Extraction result with text content and error message
      *
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If the file type is not supported or extraction fails
      *
-     * @psalm-return string|null
-     * @phpstan-return string|null
+     * @psalm-return array{text: ?string, errorMessage: ?string}
+     * @phpstan-return array{text: ?string, errorMessage: ?string}
      */
-    public function extractText(\OCP\Files\Node $node): ?string
+    public function extractText(\OCP\Files\Node $node): array
     {
         // Check if node is a file
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
@@ -104,29 +104,34 @@ class ExtractionService
         // Extract text based on file type
         switch ($extension) {
             case 'pdf':
+                $this->logger->debug('File is a pdf, extracting text: ' . $filePath);
                 $extraction['text'] = $this->extractFromPdf($filePath);
-                return $extraction;
+                break;
             case 'doc':
             case 'docx':
+                $this->logger->debug('File is a word document, extracting text: ' . $filePath);
                 $extraction['text'] = $this->extractFromWord($filePath);
-                return $extraction;
+                break;
             case 'xls':
             case 'xlsx':
             case 'csv':
+                $this->logger->debug('File is a spreadsheet, extracting text: ' . $filePath);
                 $extraction['text'] = $this->extractFromSpreadsheet($filePath);
-                return $extraction;
+                break;
             case 'ppt':
             case 'pptx':
+                $this->logger->debug('File is a presentation, extracting text: ' . $filePath);
                 $extraction['text'] = $this->extractFromPresentation($filePath);
-                return $extraction;
+                break;
             case 'txt':
             case 'md':
             case 'html':
             case 'htm':
             case 'xml':
             case 'json':
-                $extraction['text'] = $this->extractFromTextFile($filePath);
-                return $extraction;
+                $this->logger->debug('File is a text file, extracting text: ' . $filePath);
+                $extraction['text'] = $node->getContent();
+                break;
             // Image files - return empty string with a log message
             case 'jpg':
             case 'jpeg':
@@ -136,9 +141,9 @@ class ExtractionService
             case 'webp':
             case 'svg':
             case 'tiff':
-                $this->logger->info('File is an image, no text extraction possible: ' . $filePath);
+                $this->logger->debug('File is an image, no text extraction possible: ' . $filePath);
                 $extraction['errorMessage'] = 'File is an image, no text extraction possible';
-                return $extraction;
+                break;
             // Video files - return empty string with a log message
             case 'mp4':
             case 'avi':
@@ -147,9 +152,9 @@ class ExtractionService
             case 'flv':
             case 'webm':
             case 'mkv':
-                $this->logger->info('File is a video, no text extraction possible: ' . $filePath);
+                $this->logger->debug('File is a video, no text extraction possible: ' . $filePath);
                 $extraction['errorMessage'] = 'File is a video, no text extraction possible';
-                return $extraction;
+                break;
             // Audio files - return empty string with a log message
             case 'mp3':
             case 'wav':
@@ -157,15 +162,16 @@ class ExtractionService
             case 'flac':
             case 'aac':
             case 'm4a':
-                $this->logger->info('File is an audio file, no text extraction possible: ' . $filePath);
+                $this->logger->debug('File is an audio file, no text extraction possible: ' . $filePath);
                 $extraction['errorMessage'] = 'File is an audio file, no text extraction possible';
-                return $extraction;
+                break;
             default:
-                // Log warning and throw exception for unsupported file type
+                // Log warning for unsupported file type
                 $this->logger->warning('Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType);
-                $extraction['errorMessage'] = 'Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeTyp;
-                return $extraction;
+                $extraction['errorMessage'] = 'Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType;
         }
+
+        return $extraction;
     }
 
     /**
@@ -347,30 +353,6 @@ class ExtractionService
         }
         
         return trim($text);
-    }
-
-    /**
-     * Extract text from a plain text file
-     *
-     * @param string $filePath Path to the text file
-     *
-     * @return string Extracted text content
-     *
-     * @throws Exception If file reading fails
-     *
-     * @psalm-return string
-     * @phpstan-return string
-     */
-    private function extractFromTextFile(string $filePath): string
-    {
-        // Read file contents
-        $content = file_get_contents($filePath);
-        
-        if ($content === false) {
-            throw new Exception('Failed to read file: ' . $filePath);
-        }
-        
-        return $content;
     }
 
     /**
