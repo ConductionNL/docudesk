@@ -222,9 +222,15 @@ class ReportingService
                 
                 return $this->objectService->saveObject($reportObjectType, $report);
             }
-                        
-            // Send text to Presidio for analysis
-            $report['entities'] = $this->analyzeWithPresidio($report['text'], $threshold);
+            // Send text to Presidio for analysis and get entities
+            $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
+            
+            // Map entity_type to entityType in each entity
+            $report['entities'] = array_map(function($entity) {
+                $entity['entityType'] = $entity['entity_type'];
+                unset($entity['entity_type']);
+                return $entity;
+            }, $presidioResults['entities_found']);
             
             if (empty($report['entities'])) {
                 $this->logger->debug('No entities detected in document: ' . $filePath);
@@ -232,6 +238,12 @@ class ReportingService
             
             // Update report with results
             $report['status'] = 'completed';
+
+            // Lets calculate the risk score    
+            $report['riskScore'] = $this->calculateRiskScore($report['entities']);
+
+            // Lets calculate the risk level
+            $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
             
             // Save updated report
             return $this->objectService->saveObject($reportObjectType, $report);
@@ -266,7 +278,7 @@ class ReportingService
     {
         // Get Presidio API URL from configuration or use default
         $presidioUrl = $this->config->getSystemValue(
-            'docudesk_presidio_url',
+            'docudesk_presidio_analyzer_url',
             self::DEFAULT_PRESIDIO_URL
         );
 
@@ -322,51 +334,58 @@ class ReportingService
             return 0.0;
         }
         
-        // Define weights for different entity types
-        $entityWeights = [
-            'PERSON' => 5.0,
-            'EMAIL_ADDRESS' => 8.0,
-            'PHONE_NUMBER' => 7.0,
-            'CREDIT_CARD' => 10.0,
-            'IBAN_CODE' => 9.0,
-            'US_SSN' => 10.0,
-            'US_BANK_NUMBER' => 9.0,
-            'LOCATION' => 3.0,
-            'DATE_TIME' => 1.0,
-            'NRP' => 8.0,
-            'IP_ADDRESS' => 6.0,
-            'US_DRIVER_LICENSE' => 8.0,
-            'US_PASSPORT' => 9.0,
-            'US_ITIN' => 9.0,
-            'MEDICAL_LICENSE' => 7.0,
-            'URL' => 2.0,
-            'DEFAULT' => 4.0,
+        // Define base scores for different entity types (out of 100)
+        $entityBaseScores = [
+            'PERSON' => 50.0, // Finding a person is automatically medium risk
+            'EMAIL_ADDRESS' => 60.0,
+            'PHONE_NUMBER' => 55.0,
+            'CREDIT_CARD' => 90.0,
+            'IBAN_CODE' => 85.0,
+            'US_SSN' => 90.0,
+            'US_BANK_NUMBER' => 85.0,
+            'LOCATION' => 30.0,
+            'DATE_TIME' => 10.0,
+            'NRP' => 70.0,
+            'IP_ADDRESS' => 45.0,
+            'US_DRIVER_LICENSE' => 65.0,
+            'US_PASSPORT' => 85.0,
+            'US_ITIN' => 85.0,
+            'MEDICAL_LICENSE' => 60.0,
+            'URL' => 20.0,
+            'DEFAULT' => 40.0,
         ];
         
-        // Calculate weighted sum of entities
-        $weightedSum = 0.0;
-        $totalWeight = 0.0;
+        // Calculate maximum risk score from entities
+        $maxRiskScore = 0.0;
+        $totalRiskScore = 0.0;
+        $entityCount = count($entities);
         
         foreach ($entities as $entity) {
-            $type = $entity['entity_type'] ?? 'DEFAULT';
-            $score = $entity['score'] ?? 0.7;
+            $type = $entity['entityType'] ?? 'DEFAULT';
+            $confidence = $entity['score'] ?? 0.7;
             
-            // Get weight for this entity type
-            $weight = $entityWeights[$type] ?? $entityWeights['DEFAULT'];
+            // Get base score for this entity type
+            $baseScore = $entityBaseScores[$type] ?? $entityBaseScores['DEFAULT'];
             
-            // Add to weighted sum
-            $weightedSum += $weight * $score;
-            $totalWeight += $weight;
+            // Calculate risk score for this entity based on confidence
+            $entityRiskScore = $baseScore * $confidence;
+            
+            // Track highest individual risk score
+            $maxRiskScore = max($maxRiskScore, $entityRiskScore);
+            
+            // Add to total risk score
+            $totalRiskScore += $entityRiskScore;
         }
         
-        // Normalize to 0-100 scale
-        $baseScore = ($totalWeight > 0) ? ($weightedSum / $totalWeight) * 10 : 0;
+        // Final score is weighted combination of:
+        // - Highest individual risk (70% weight)
+        // - Average risk across all entities (30% weight)
+        $averageRisk = $entityCount > 0 ? $totalRiskScore / $entityCount : 0;
+        $finalScore = ($maxRiskScore * 0.7) + ($averageRisk * 0.3);
         
-        // Adjust based on number of entities (more entities = higher risk)
-        $countFactor = min(count($entities) / 10, 1.0);
-        
-        // Final score is a combination of entity weights and count
-        $finalScore = $baseScore * (1 + $countFactor);
+        // Apply multiplier based on number of entities
+        $countMultiplier = min(1 + ($entityCount / 5), 2.0);
+        $finalScore *= $countMultiplier;
         
         // Cap at 100
         return min($finalScore, 100.0);
@@ -384,11 +403,11 @@ class ReportingService
      */
     private function getRiskLevel(float $riskScore): string
     {
-        if ($riskScore < 20) {
+        if ($riskScore < 30) {
             return 'Low';
-        } elseif ($riskScore < 50) {
+        } elseif ($riskScore < 60) {
             return 'Medium';
-        } elseif ($riskScore < 80) {
+        } elseif ($riskScore < 85) {
             return 'High';
         } else {
             return 'Critical';
@@ -712,6 +731,20 @@ class ReportingService
         return $this->config->getSystemValue('docudesk_synchronous_processing', false);
     }
 
+
+    /**
+     * Check if anonymization is enabled
+     *
+     * @return bool True if anonymization is enabled, false otherwise
+     *
+     * @psalm-return bool
+     * @phpstan-return bool
+     */
+    public function isAnonymizationEnabled(): bool
+    {
+        return $this->config->getSystemValue('docudesk_enable_anonymization', true);
+    }
+
     /**
      * Create a report from a Nextcloud node
      *
@@ -785,18 +818,5 @@ class ReportingService
         }
 
         return $report;
-    }
-
-    /**
-     * Check if anonymization is enabled
-     *
-     * @return bool True if anonymization is enabled, false otherwise
-     *
-     * @psalm-return bool
-     * @phpstan-return bool
-     */
-    public function isAnonymizationEnabled(): bool
-    {
-        return $this->config->getSystemValue('docudesk_enable_anonymization', true);
     }
 } 

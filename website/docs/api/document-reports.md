@@ -940,3 +940,45 @@ graph LR
 ```
 
 This risk assessment helps organizations prioritize which documents need attention for privacy compliance. 
+
+### Risk Assessment Visualization
+
+DocuDesk provides a comprehensive risk assessment visualization in the document details view. This feature helps users understand:
+
+1. The overall risk score of a document (0-100)
+2. The risk level classification (Low, Medium, High, Critical)
+3. The specific entities that contribute to the risk assessment
+4. The weight of each entity type in the risk calculation
+
+The risk visualization includes:
+
+- A color-coded risk score indicator (green for low risk, yellow for medium, red for high/critical)
+- A detailed breakdown of detected entity types and their counts
+- An explanation of the risk level and recommended actions
+- The weighting system used for different types of personal data
+
+This visual representation helps users quickly identify high-risk documents and understand why they are classified as such, enabling more effective privacy management and compliance efforts.
+
+```mermaid
+flowchart TD
+    A[Document Report] --> B[Risk Assessment Section]
+    B --> C[Risk Score Indicator]
+    B --> D[Risk Level Classification]
+    B --> E[Entity Type Breakdown]
+    B --> F[Risk Explanation]
+    
+    C --> G[Visual Representation]
+    D --> H[Action Recommendations]
+    E --> I[Entity Weights Display]
+    
+    G --> J[Color-Coded Circle]
+    H --> K[Compliance Guidance]
+    I --> L[Prioritized Entity List]
+```
+
+The risk assessment visualization is particularly useful for:
+
+- Privacy officers reviewing document collections
+- Compliance teams conducting audits
+- Content creators checking their documents before publication
+- Administrators monitoring organizational risk levels 
