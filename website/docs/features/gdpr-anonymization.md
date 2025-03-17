@@ -62,27 +62,98 @@ DocuDesk supports different anonymization methods for different types of data:
 - **Hashing**: Replace the entity with a hash value
 - **Redaction**: Completely remove the entity from the text
 
-## Using Anonymization
+## Automatic Anonymization with Reports
 
-You can anonymize documents programmatically:
+DocuDesk now supports automatic anonymization of documents when reports are processed. When the anonymization feature is enabled in the settings, the system will:
+
+1. Process the document report as usual, detecting sensitive entities
+2. Automatically create an anonymized version of the document with the same name plus "_anonymized" suffix
+3. Replace all detected sensitive entities with placeholders in the format `[ENTITY_TYPE: key]`
+4. Store the anonymization log with references to both the original and anonymized files
+5. Update the report with anonymization results
+
+This integration provides a seamless workflow for identifying and anonymizing sensitive information in documents.
+
+### How It Works
+
+When a document report is processed:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReportingService
+    participant AnonymizationService
+    participant PresidioAPI
+    participant FileSystem
+
+    User->>ReportingService: Process document report
+    ReportingService->>PresidioAPI: Analyze document for entities
+    PresidioAPI-->>ReportingService: Return detected entities
+    
+    alt Anonymization Enabled
+        ReportingService->>AnonymizationService: Process anonymization
+        AnonymizationService->>FileSystem: Create anonymized file
+        AnonymizationService->>AnonymizationService: Replace entities with [TYPE: key]
+        AnonymizationService-->>ReportingService: Return anonymization results
+        ReportingService->>ReportingService: Update report with anonymization info
+    end
+    
+    ReportingService-->>User: Return completed report
+```
+
+### Configuration
+
+Anonymization can be enabled or disabled in the DocuDesk admin settings. When enabled, all documents processed for reporting will automatically be anonymized.
+
+### Accessing Anonymized Documents
+
+Anonymized documents are stored in the same folder as the original document, with "_anonymized" added to the filename. For example, if the original document is "contract.pdf", the anonymized version will be "contract_anonymized.pdf".
+
+The report details will include links to both the original and anonymized documents, making it easy to access either version.
+
+## Manual Anonymization
+
+In addition to automatic anonymization, you can also manually anonymize documents using the API:
 
 ```php
-// Example: Anonymize a document
 $anonymizationService = \OC::$server->get(OCA\DocuDesk\Service\AnonymizationService::class);
 $result = $anonymizationService->anonymizeDocument(
     '/path/to/document.pdf',
     '/path/to/output/anonymized.pdf',
     'doc-123',
-    'Sensitive Contract'
+    'Important Contract'
 );
+```
 
-// Example: De-anonymize a document (if original text was stored)
+## Retrieving Anonymization Data
+
+You can retrieve anonymization data for a specific file:
+
+```php
+// Get anonymization data for a file node
+$anonymizationService = \OC::$server->get(OCA\DocuDesk\Service\AnonymizationService::class);
+$anonymization = $anonymizationService->getAnonymization($fileNode);
+
+// Or retrieve anonymization by ID
+$anonymization = $anonymizationService->getAnonymizationById('anonymization-id');
+```
+
+## De-anonymization
+
+If you need to recover the original content, you can de-anonymize a document using the anonymization log ID:
+
+```php
 $result = $anonymizationService->deanonymizeDocument(
     'anonymization-log-id',
     '/path/to/output/deanonymized.pdf'
 );
+```
 
-// Example: Get anonymization logs for a document
+## Anonymization Logs
+
+You can retrieve anonymization logs to track anonymization activities:
+
+```php
 $logs = $anonymizationService->getAnonymizationLogs('doc-123');
 ```
 

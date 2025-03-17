@@ -113,6 +113,13 @@ class AnonymizationService
     private readonly IUserSession $userSession;
 
     /**
+     * Reporting service for getting reports
+     *
+     * @var ReportingService
+     */
+    private readonly ReportingService $reportingService;
+
+    /**
      * Constructor for AnonymizationService
      *
      * @param LoggerInterface   $logger            Logger for error reporting
@@ -120,6 +127,7 @@ class AnonymizationService
      * @param ObjectService     $objectService     Service for storing objects
      * @param ExtractionService $extractionService Service for extracting text from documents
      * @param IUserSession      $userSession       User session for getting current user
+     * @param ReportingService  $reportingService  Service for generating reports
      *
      * @return void
      */
@@ -128,13 +136,15 @@ class AnonymizationService
         IConfig $config,
         ObjectService $objectService,
         ExtractionService $extractionService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        ReportingService $reportingService
     ) {
         $this->logger = $logger;
         $this->config = $config;
         $this->objectService = $objectService;
         $this->extractionService = $extractionService;
         $this->userSession = $userSession;
+        $this->reportingService = $reportingService;
         
         // Initialize Guzzle HTTP client
         $this->client = new Client([
@@ -144,18 +154,14 @@ class AnonymizationService
     }
 
     /**
-     * Anonymize a document
+     * Process anonymization for a document based on a report
      *
-     * This method extracts text from a document, detects sensitive information using Presidio,
-     * anonymizes the text, and stores the anonymization data.
+     * This method checks if anonymization is needed based on the file hash/etag,
+     * creates a new anonymized file with the same name plus "_anonymized",
+     * and replaces entities with [entityType: key] format.
      *
-     * @param string $filePath                Path to the document file
-     * @param string $outputPath              Path where the anonymized document should be saved
-     * @param string $documentId              ID of the document (optional)
-     * @param string $documentTitle           Title of the document (optional)
-     * @param float  $threshold               Confidence threshold for entity detection (optional)
-     * @param array  $anonymizationOperators  Custom anonymization operators (optional)
-     * @param bool   $storeOriginalText       Whether to store the original text for de-anonymization (optional)
+     * @param \OCP\Files\Node $node   The file node to anonymize
+     * @param array<string, mixed>|null $report The report containing detected entities (optional)
      *
      * @return array<string, mixed> The anonymization result
      *
@@ -164,601 +170,260 @@ class AnonymizationService
      * @psalm-return array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
-    public function anonymizeDocument(
-        string $filePath,
-        string $outputPath,
-        string $documentId = '',
-        string $documentTitle = '',
-        float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD,
-        array $anonymizationOperators = [],
-        bool $storeOriginalText = true
-    ): array {
+    public function processAnonymization(\OCP\Files\Node $node, ?array $report = null): array
+    {
         $startTime = microtime(true);
-        
-        try {
-            // Extract text from document
-            $originalText = $this->extractionService->extractText($filePath);
-            
-            if (empty($originalText)) {
-                throw new Exception('Failed to extract text from document: ' . $filePath);
-            }
-            
-            // Extract metadata
-            $metadata = $this->extractionService->extractMetadata($filePath);
-            
-            // If document title is not provided, use filename from metadata
-            if (empty($documentTitle) && isset($metadata['filename'])) {
-                $documentTitle = $metadata['filename'];
-            }
-            
-            // Detect entities using Presidio
-            $analysisResults = $this->analyzeWithPresidio($originalText, $threshold);
-            
-            if (empty($analysisResults) || empty($analysisResults['entities'])) {
-                $this->logger->info('No entities detected for anonymization in document: ' . $filePath);
-                // Return early with empty result
-                return $this->createAnonymizationResult(
-                    $documentId,
-                    $documentTitle,
-                    $originalText,
-                    $originalText,
-                    [],
-                    [],
-                    $startTime,
-                    'No entities detected for anonymization'
-                );
-            }
-            
-            // Anonymize text using Presidio
-            $anonymizationResult = $this->anonymizeWithPresidio(
-                $originalText,
-                $analysisResults,
-                $anonymizationOperators
-            );
-            
-            if (empty($anonymizationResult) || !isset($anonymizationResult['text'])) {
-                throw new Exception('Failed to anonymize text');
-            }
-            
-            $anonymizedText = $anonymizationResult['text'];
-            
-            // Generate a unique anonymization key for de-anonymization
-            $anonymizationKey = $this->generateAnonymizationKey();
-            
-            // Create anonymization log
-            $log = $this->createAnonymizationLog(
-                $documentId,
-                $documentTitle,
-                $originalText,
-                $anonymizedText,
-                $analysisResults['entities'],
-                $anonymizationResult['items'] ?? [],
-                $anonymizationKey,
-                $storeOriginalText,
-                $startTime
-            );
-            
-            // Write anonymized text to output file
-            $this->writeAnonymizedDocument($filePath, $outputPath, $anonymizedText);
-            
-            return $log;
-        } catch (Exception $e) {
-            $this->logger->error('Error anonymizing document: ' . $e->getMessage(), ['exception' => $e]);
-            
-            // Create error log
-            $errorLog = $this->createAnonymizationResult(
-                $documentId,
-                $documentTitle,
-                '',
-                '',
-                [],
-                [],
-                $startTime,
-                $e->getMessage()
-            );
-            
-            // Store error log
-            $this->objectService->saveObject('anonymization', $errorLog);
-            
-            throw $e;
-        }
-    }
 
-    /**
-     * Analyze text with Presidio
-     *
-     * Sends text to the Presidio Analyzer API for entity detection.
-     *
-     * @param string $text      Text to analyze
-     * @param float  $threshold Confidence threshold for entity detection
-     *
-     * @return array<string, mixed> Presidio analysis results
-     *
-     * @throws Exception If the API request fails
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    private function analyzeWithPresidio(string $text, float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD): array
-    {
-        // Get Presidio Analyzer API URL from configuration or use default
-        $presidioUrl = $this->config->getSystemValue(
-            'docudesk_presidio_analyzer_url',
-            self::DEFAULT_PRESIDIO_ANALYZER_URL
-        );
+        /*
+        // If no report is provided, try to get one
+        if ($report === null) {
+            $this->logger->debug('No report provided, trying to get existing report');
+            
+            // Try to get existing report
+            $report = $this->reportingService->getReport($node);
+            
+            // If no report exists, create one
+            if ($report === null) {
+                $this->logger->debug('No existing report found, creating new report');
+                $report = $this->reportingService->createReport($node);
+            }
+            
+            // If report is not completed, process it
+            if ($report['status'] !== 'completed') {
+                $this->logger->debug('Report not completed, processing report');
+                $report = $this->reportingService->processReport($report);
+            }
+        }
+        */
         
-        // Prepare request payload
-        $payload = [
-            'text' => $text,
-            'language' => 'en', // Default to English
-            'score_threshold' => $threshold,
-            'return_decision_process' => false,
-        ];
-        
-        try {
-            // Send request to Presidio Analyzer
-            $response = $this->client->post($presidioUrl, [
-                'json' => $payload,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
+        // Use ETag as file hash if available, otherwise calculate hash
+        $fileHash = null;
+        if (method_exists($node, 'getEtag')) {
+            $fileHash = $node->getEtag();
+            $this->logger->debug('Using ETag as file hash: ' . $fileHash);
+        } else {
+            // Fall back to calculating hash
+            $fileHash = $this->reportingService->calculateFileHash($node->getPath());
+        }
+
+        // Check if anonymization already exists for this node
+        $anonymization = $this->getAnonymization($node);
+        if ($anonymization === null) {
+            // Initialize base anonymization result array only if no existing anonymization found
+            $anonymization = [
+                'nodeId' => $node->getId(),
+                'fileHash' => $report['fileHash'] ?? '',
+                'originalFileName' => $report['fileName'] ?? $node->getName(),
+                'anonymizedFileName' => '',
+                'anonymizedFilePath' => '',
+                'entities' => [],
+                'replacements' => [],
+                'startTime' => $startTime,
+                'endTime' => null,
+                'processingTime' => null,
+                'status' => 'pending',
+                'message' => ''
+            ];
+        }
+
+        // Lets return the anonymization if the hash is the same
+        if ($anonymization['fileHash'] === $fileHash) {
+            $this->logger->debug('File hash matches existing anonymization, returning cached result', [
+                'fileHash' => $fileHash,
+                'anonymizationId' => $anonymization['id'] ?? null
             ]);
-            
-            // Parse response
-            $responseBody = $response->getBody()->getContents();
-            $results = json_decode($responseBody, true);
-            
-            if (!is_array($results)) {
-                throw new Exception('Invalid response from Presidio Analyzer API');
-            }
-            
-            return $results;
-        } catch (GuzzleException $e) {
-            $this->logger->error('Presidio Analyzer API request failed: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to communicate with Presidio Analyzer API: ' . $e->getMessage(), 0, $e);
-        }
-    }
+            return $anonymization;
+        }        
 
-    /**
-     * Anonymize text with Presidio
-     *
-     * Sends text and analysis results to the Presidio Anonymizer API for anonymization.
-     *
-     * @param string               $text                  Text to anonymize
-     * @param array<string, mixed> $analysisResults       Results from Presidio Analyzer
-     * @param array<string, mixed> $anonymizationOperators Custom anonymization operators
-     *
-     * @return array<string, mixed> Presidio anonymization results
-     *
-     * @throws Exception If the API request fails
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    private function anonymizeWithPresidio(
-        string $text,
-        array $analysisResults,
-        array $anonymizationOperators = []
-    ): array {
-        // Get Presidio Anonymizer API URL from configuration or use default
-        $presidioUrl = $this->config->getSystemValue(
-            'docudesk_presidio_anonymizer_url',
-            self::DEFAULT_PRESIDIO_ANONYMIZER_URL
-        );
-        
-        // Default anonymization operators if none provided
-        if (empty($anonymizationOperators)) {
-            $anonymizationOperators = $this->getDefaultAnonymizationOperators();
+        // Check if anonymization is needed (if there are entities)
+        if (empty($report['entities'])) {
+            $this->logger->info('No entities detected for anonymization in document: ' . $node->getPath());            
+            // Update result array
+            $anonymization['status'] = 'completed';
+            $anonymization['message'] = 'No entities detected for anonymization';
+            $anonymization['endTime'] = microtime(true);
+            $anonymization['processingTime'] = $anonymizationResult['endTime'] - $startTime;
+            
+            // Save the anonymization result before returning
+            $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
+            
+            return $anonymization;
+        }
+
+        // Get the file content
+        $content = $node->getContent();
+        if (empty($content)) {
+            throw new Exception('Failed to get content from file: ' . $node->getPath());
+        }
+
+        // Create a new file name with "_anonymized" suffix
+        $fileName = $node->getName();
+        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+        $anonymizedFileName = $fileNameWithoutExtension . '_anonymized';
+        if (!empty($fileExtension)) {
+            $anonymizedFileName .= '.' . $fileExtension;
         }
         
-        // Prepare request payload
-        $payload = [
-            'text' => $text,
-            'analyzer_results' => $analysisResults['entities'],
-            'anonymizers' => $anonymizationOperators,
-        ];
-        
+        // Get the parent folder
+        $parentFolder = $node->getParent();
+                    
+        // Check if anonymized file already exists and delete it
         try {
-            // Send request to Presidio Anonymizer
-            $response = $this->client->post($presidioUrl, [
-                'json' => $payload,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-            ]);
-            
-            // Parse response
-            $responseBody = $response->getBody()->getContents();
-            $results = json_decode($responseBody, true);
-            
-            if (!is_array($results)) {
-                throw new Exception('Invalid response from Presidio Anonymizer API');
+            if ($parentFolder->nodeExists($anonymizedFileName)) {
+                $parentFolder->get($anonymizedFileName)->delete();
+                $this->logger->debug('Deleted existing anonymized file: ' . $anonymizedFileName);
             }
-            
-            return $results;
-        } catch (GuzzleException $e) {
-            $this->logger->error('Presidio Anonymizer API request failed: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to communicate with Presidio Anonymizer API: ' . $e->getMessage(), 0, $e);
-        }
-    }
-
-    /**
-     * Get default anonymization operators
-     *
-     * Returns the default anonymization operators for different entity types.
-     *
-     * @return array<string, mixed> Default anonymization operators
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    private function getDefaultAnonymizationOperators(): array
-    {
-        return [
-            'DEFAULT' => [
-                'type' => 'replace',
-                'new_value' => '[REDACTED]',
-            ],
-            'PERSON' => [
-                'type' => 'replace',
-                'new_value' => '[PERSON]',
-            ],
-            'EMAIL_ADDRESS' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'PHONE_NUMBER' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 6,
-                'from_end' => false,
-            ],
-            'CREDIT_CARD' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 12,
-                'from_end' => true,
-            ],
-            'LOCATION' => [
-                'type' => 'replace',
-                'new_value' => '[LOCATION]',
-            ],
-            'DATE_TIME' => [
-                'type' => 'replace',
-                'new_value' => '[DATE]',
-            ],
-            'US_SSN' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'US_BANK_NUMBER' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'US_DRIVER_LICENSE' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'US_PASSPORT' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'IP_ADDRESS' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-            'NRP' => [
-                'type' => 'mask',
-                'masking_char' => '*',
-                'chars_to_mask' => 'all',
-                'from_end' => false,
-            ],
-        ];
-    }
-
-    /**
-     * Generate a unique anonymization key
-     *
-     * @return string Unique anonymization key
-     *
-     * @psalm-return string
-     * @phpstan-return string
-     */
-    private function generateAnonymizationKey(): string
-    {
-        return Uuid::v4()->toRfc4122();
-    }
-
-    /**
-     * Create an anonymization log
-     *
-     * @param string                        $documentId        ID of the document
-     * @param string                        $documentTitle     Title of the document
-     * @param string                        $originalText      Original document text
-     * @param string                        $anonymizedText    Anonymized document text
-     * @param array<int, array<string, mixed>> $entities       Entities detected in the document
-     * @param array<int, array<string, mixed>> $replacements   Replacements made during anonymization
-     * @param string                        $anonymizationKey  Key for de-anonymization
-     * @param bool                          $storeOriginalText Whether to store the original text
-     * @param float                         $startTime         Start time of anonymization process
-     *
-     * @return array<string, mixed> The created anonymization log
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    private function createAnonymizationLog(
-        string $documentId,
-        string $documentTitle,
-        string $originalText,
-        string $anonymizedText,
-        array $entities,
-        array $replacements,
-        string $anonymizationKey,
-        bool $storeOriginalText,
-        float $startTime
-    ): array {
-        // Create anonymization result
-        $log = $this->createAnonymizationResult(
-            $documentId,
-            $documentTitle,
-            $storeOriginalText ? $originalText : '',
-            $anonymizedText,
-            $entities,
-            $replacements,
-            $startTime
-        );
-        
-        // Add anonymization key
-        $log['anonymizationKey'] = $anonymizationKey;
-        
-        // Store log using ObjectService
-        try {
-            $savedLog = $this->objectService->saveObject('anonymization', $log);
-            return is_array($savedLog) ? $savedLog : $log;
         } catch (Exception $e) {
-            $this->logger->error('Failed to store anonymization log: ' . $e->getMessage(), ['exception' => $e]);
-            // Return the log even if saving failed
-            return $log;
+            $this->logger->warning('Failed to delete existing anonymized file: ' . $e->getMessage(), ['exception' => $e]);
         }
-    }
 
-    /**
-     * Create an anonymization result object
-     *
-     * @param string                        $documentId     ID of the document
-     * @param string                        $documentTitle  Title of the document
-     * @param string                        $originalText   Original document text
-     * @param string                        $anonymizedText Anonymized document text
-     * @param array<int, array<string, mixed>> $entities    Entities detected in the document
-     * @param array<int, array<string, mixed>> $replacements Replacements made during anonymization
-     * @param float                         $startTime      Start time of anonymization process
-     * @param string                        $errorMessage   Error message if anonymization failed
-     *
-     * @return array<string, mixed> Anonymization result object
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    private function createAnonymizationResult(
-        string $documentId,
-        string $documentTitle,
-        string $originalText,
-        string $anonymizedText,
-        array $entities,
-        array $replacements,
-        float $startTime,
-        string $errorMessage = ''
-    ): array {
-        $endTime = microtime(true);
-        $duration = round(($endTime - $startTime) * 1000); // Duration in milliseconds
+        // Anonymize the content by replacing entities with [entityType: key]
+        $anonymizedContent = $content;
+        $replacements = [];
         
-        // Get current user ID
-        $userId = '';
-        $user = $this->userSession->getUser();
-        if ($user !== null) {
-            $userId = $user->getUID();
-        }
+        // Add unique keys to entities and sort by start position in descending order
+        $entities = array_map(function($entity) {
+            $entity['key'] = substr(Uuid::v4()->toRfc4122(), 0, 8);
+            return $entity;
+        }, $report['entities']);
         
-        // Count entities by type
-        $entityCounts = [];
+        usort($entities, function ($a, $b) {
+            return ($b['start'] ?? 0) - ($a['start'] ?? 0);
+        });
+        
         foreach ($entities as $entity) {
-            $type = $entity['entity_type'] ?? 'UNKNOWN';
-            if (!isset($entityCounts[$type])) {
-                $entityCounts[$type] = 0;
-            }
-            $entityCounts[$type]++;
-        }
-        
-        // Generate a unique ID for the log
-        $logId = Uuid::v4()->toRfc4122();
-        
-        // Create log object
-        return [
-            'id' => $logId,
-            'documentId' => $documentId,
-            'documentTitle' => $documentTitle,
-            'status' => empty($errorMessage) ? 'success' : 'error',
-            'startTime' => (new DateTime('@' . intval($startTime)))->format('c'),
-            'endTime' => (new DateTime('@' . intval($endTime)))->format('c'),
-            'duration' => $duration,
-            'errorMessage' => $errorMessage,
-            'userId' => $userId,
-            'originalText' => $originalText,
-            'anonymizedText' => $anonymizedText,
-            'entities' => $entities,
-            'entityCounts' => $entityCounts,
-            'totalEntities' => count($entities),
-            'replacements' => $replacements,
-            'totalReplacements' => count($replacements),
-            'createdAt' => (new DateTime())->format('c'),
-        ];
-    }
-
-    /**
-     * Write anonymized text to a document
-     *
-     * @param string $inputPath  Path to the original document
-     * @param string $outputPath Path where the anonymized document should be saved
-     * @param string $anonymizedText Anonymized text content
-     *
-     * @return bool True if successful, false otherwise
-     *
-     * @throws Exception If writing the document fails
-     *
-     * @psalm-return bool
-     * @phpstan-return bool
-     */
-    private function writeAnonymizedDocument(string $inputPath, string $outputPath, string $anonymizedText): bool
-    {
-        // Get file extension
-        $extension = strtolower(pathinfo($inputPath, PATHINFO_EXTENSION));
-        
-        // For now, just write the anonymized text to a text file
-        // In a real implementation, this would need to handle different file formats
-        // and preserve formatting
-        
-        // For simplicity, we'll just write the text to the output file
-        $result = file_put_contents($outputPath, $anonymizedText);
-        
-        if ($result === false) {
-            throw new Exception('Failed to write anonymized document to: ' . $outputPath);
-        }
-        
-        return true;
-    }
-
-    /**
-     * De-anonymize a document
-     *
-     * @param string $anonymizationId ID of the anonymization log
-     * @param string $outputPath      Path where the de-anonymized document should be saved
-     *
-     * @return array<string, mixed> The de-anonymization result
-     *
-     * @throws Exception If de-anonymization fails
-     *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
-     */
-    public function deanonymizeDocument(string $anonymizationId, string $outputPath): array
-    {
-        try {
-            // Get anonymization log
-            $log = $this->objectService->getObject('anonymization', $anonymizationId);
+            $entityType = $entity['entityType'] ?? 'UNKNOWN';
+            $entityText = $entity['text'] ?? '';
+            $start = $entity['start'] ?? null;
+            $end = $entity['end'] ?? null;
+            $key = $entity['key'];
             
-            if (!is_array($log)) {
-                throw new Exception('Anonymization log not found: ' . $anonymizationId);
+            // Skip if we don't have position information
+            if ($start === null || $end === null || empty($entityText)) {
+                continue;
             }
             
-            // Check if original text is available
-            if (empty($log['originalText'])) {
-                throw new Exception('Original text not available for de-anonymization');
-            }
+            // Create replacement text
+            $replacementText = '[' . $entityType . ': ' . $key . ']';
             
-            // Write original text to output file
-            $result = file_put_contents($outputPath, $log['originalText']);
+            // Replace the entity in the content
+            $anonymizedContent = substr_replace($anonymizedContent, $replacementText, $start, $end - $start);
             
-            if ($result === false) {
-                throw new Exception('Failed to write de-anonymized document to: ' . $outputPath);
-            }
-            
-            // Create de-anonymization result
-            return [
-                'success' => true,
-                'documentId' => $log['documentId'] ?? '',
-                'documentTitle' => $log['documentTitle'] ?? '',
-                'outputPath' => $outputPath,
-            ];
-        } catch (Exception $e) {
-            $this->logger->error('Error de-anonymizing document: ' . $e->getMessage(), ['exception' => $e]);
-            
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
+            // Record the replacement
+            $replacements[] = [
+                'entity_type' => $entityType,
+                'original_text' => $entityText,
+                'replacement_text' => $replacementText,
+                'key' => $key,
+                'start' => $start,
+                'end' => $end
             ];
         }
+        
+        // Create the anonymized file
+        $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedContent);
+        
+        // Create anonymization log
+        //$anonymizationKey = $this->generateAnonymizationKey();
+
+        // Add file hash to the log
+        //$anonymization['anonymizationKey'] = $anonymizationKey;
+        $anonymization['fileHash'] = $fileHash;
+        $anonymization['replacements'] = $replacements;
+        $anonymization['anonymizedFileId'] = $newFile->getId();
+        $anonymization['anonymizedFilePath'] = $newFile->getPath();
+        
+        // Save the updated log
+        return $this->objectService->saveObject('anonymization', $anonymization);
     }
 
     /**
-     * Get an anonymization log by ID
+     * Get anonymization for a node
      *
-     * @param string $logId ID of the anonymization log to retrieve
+     * This method retrieves the anonymization data for a specific file node.
      *
-     * @return array<string, mixed>|null The anonymization log or null if not found
+     * @param \OCP\Files\Node $node The file node to get the anonymization for
+     *
+     * @return array<string, mixed>|null The anonymization data or null if not found
+     *
+     * @throws \InvalidArgumentException If the node is not a file
+     * @throws \RuntimeException If multiple anonymizations are found for the node
      *
      * @psalm-return array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
-    public function getAnonymizationLog(string $logId): ?array
+    public function getAnonymization(\OCP\Files\Node $node): ?array
     {
+        // Validate that the node is a file
+        if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
+            throw new \InvalidArgumentException('Node must be a file to get anonymization data');
+        }
+
         try {
-            $log = $this->objectService->getObject('anonymization', $logId);
-            return is_array($log) ? $log : null;
+            $anonymizationObjectType = 'anonymization';
+            
+            $filters = [
+                'nodeId' => $node->getId()
+            ];
+
+            $anonymizations = $this->objectService->getObjects($anonymizationObjectType, null, 0, $filters);
+            
+            // Throw error if multiple anonymizations found
+            if (count($anonymizations) > 1) {
+                throw new \RuntimeException('Multiple anonymizations found for node ' . $node->getId() . '. There should only be one anonymization per node.');
+            }
+            
+            return !empty($anonymizations) ? $anonymizations[0] : null;
         } catch (Exception $e) {
-            $this->logger->error('Failed to retrieve anonymization log: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Failed to retrieve anonymization: ' . $e->getMessage(), [
+                'nodeId' => $node->getId(),
+                'exception' => $e
+            ]);
             return null;
         }
     }
 
     /**
-     * Get all anonymization logs, optionally filtered by document ID
+     * Delete an anonymization by ID
      *
-     * @param string|null $documentId Optional document ID to filter by
-     * @param int|null    $limit      Maximum number of logs to return
-     * @param int|null    $offset     Offset for pagination
-     *
-     * @return array<int, array<string, mixed>> List of anonymization logs
-     *
-     * @psalm-return array<int, array<string, mixed>>
-     * @phpstan-return array<int, array<string, mixed>>
-     */
-    public function getAnonymizationLogs(?string $documentId = null, ?int $limit = null, ?int $offset = null): array
-    {
-        try {
-            $filters = [];
-            if ($documentId !== null) {
-                $filters['documentId'] = $documentId;
-            }
-            
-            return $this->objectService->getObjects('anonymization', $limit, $offset, $filters);
-        } catch (Exception $e) {
-            $this->logger->error('Failed to retrieve anonymization logs: ' . $e->getMessage(), ['exception' => $e]);
-            return [];
-        }
-    }
-
-    /**
-     * Delete an anonymization log by ID
-     *
-     * @param string $logId ID of the anonymization log to delete
+     * @param string $anonymizationId ID of the anonymization to delete
      *
      * @return bool True if deletion was successful, false otherwise
      *
      * @psalm-return bool
      * @phpstan-return bool
      */
-    public function deleteAnonymizationLog(string $logId): bool
+    public function deleteAnonymization(string $anonymizationId): bool
     {
         try {
-            return $this->objectService->deleteObject('anonymization', $logId);
+            return $this->objectService->deleteObject('anonymization', $anonymizationId);
         } catch (Exception $e) {
-            $this->logger->error('Failed to delete anonymization log: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Failed to delete anonymization: ' . $e->getMessage(), ['exception' => $e]);
             return false;
+        }
+    }
+
+    /**
+     * Get anonymization by ID
+     *
+     * @param string $anonymizationId The ID of the anonymization to retrieve
+     *
+     * @return array<string, mixed>|null The anonymization data or null if not found
+     *
+     * @psalm-return array<string, mixed>|null
+     * @phpstan-return array<string, mixed>|null
+     */
+    public function getAnonymizationById(string $anonymizationId): ?array
+    {
+        try {
+            return $this->objectService->getObject('anonymization', $anonymizationId);
+        } catch (Exception $e) {
+            $this->logger->error('Failed to retrieve anonymization by ID: ' . $e->getMessage(), [
+                'anonymizationId' => $anonymizationId,
+                'exception' => $e
+            ]);
+            return null;
         }
     }
 }
