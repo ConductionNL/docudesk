@@ -269,6 +269,8 @@ class ReportingService
             'docudesk_presidio_url',
             self::DEFAULT_PRESIDIO_URL
         );
+
+        $this->logger->debug('Analyzing text with Presidio(' . $presidioUrl . '): ' . $text);
         
         // Prepare request payload
         $payload = [
