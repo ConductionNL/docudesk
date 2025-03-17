@@ -251,3 +251,31 @@ Key aspects of the EUPL-1.2 license:
 - Compatible with other licenses like GPL, AGPL, MPL, and more
 - Provides clear patent licensing provisions
 - Available in all official EU languages with equal validity
+
+## Technical Implementation Notes
+
+### Dependency Management
+
+The `AnonymizationService` and `ReportingService` have a mutual dependency relationship. To avoid circular dependency issues, the `AnonymizationService` uses setter injection for the `ReportingService` dependency:
+
+```php
+// In ReportingService constructor
+public function __construct(
+    // ... other dependencies
+    AnonymizationService $anonymizationService
+) {
+    // ... other initializations
+    $this->anonymizationService = $anonymizationService;
+    
+    // Set this service in the anonymization service to avoid circular dependency
+    $this->anonymizationService->setReportingService($this);
+}
+
+// In AnonymizationService
+public function setReportingService(ReportingService $reportingService): void
+{
+    $this->reportingService = $reportingService;
+}
+```
+
+This approach ensures that both services can reference each other without causing infinite loops during dependency resolution.

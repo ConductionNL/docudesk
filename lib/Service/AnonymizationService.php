@@ -117,7 +117,7 @@ class AnonymizationService
      *
      * @var ReportingService
      */
-    private readonly ReportingService $reportingService;
+    private ReportingService $reportingService;
 
     /**
      * Constructor for AnonymizationService
@@ -127,7 +127,6 @@ class AnonymizationService
      * @param ObjectService     $objectService     Service for storing objects
      * @param ExtractionService $extractionService Service for extracting text from documents
      * @param IUserSession      $userSession       User session for getting current user
-     * @param ReportingService  $reportingService  Service for generating reports
      *
      * @return void
      */
@@ -136,21 +135,37 @@ class AnonymizationService
         IConfig $config,
         ObjectService $objectService,
         ExtractionService $extractionService,
-        IUserSession $userSession,
-        ReportingService $reportingService
+        IUserSession $userSession
     ) {
         $this->logger = $logger;
         $this->config = $config;
         $this->objectService = $objectService;
         $this->extractionService = $extractionService;
         $this->userSession = $userSession;
-        $this->reportingService = $reportingService;
         
         // Initialize Guzzle HTTP client
         $this->client = new Client([
             'timeout' => 30,
             'connect_timeout' => 5,
         ]);
+    }
+
+    /**
+     * Set the reporting service
+     *
+     * This method is used to set the reporting service after construction
+     * to avoid circular dependencies.
+     *
+     * @param ReportingService $reportingService Service for generating reports
+     *
+     * @return void
+     *
+     * @psalm-return void
+     * @phpstan-return void
+     */
+    public function setReportingService(ReportingService $reportingService): void
+    {
+        $this->reportingService = $reportingService;
     }
 
     /**
@@ -174,7 +189,6 @@ class AnonymizationService
     {
         $startTime = microtime(true);
 
-        /*
         // If no report is provided, try to get one
         if ($report === null) {
             $this->logger->debug('No report provided, trying to get existing report');
@@ -194,7 +208,6 @@ class AnonymizationService
                 $report = $this->reportingService->processReport($report);
             }
         }
-        */
         
         // Use ETag as file hash if available, otherwise calculate hash
         $fileHash = null;

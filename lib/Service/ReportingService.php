@@ -106,13 +106,21 @@ class ReportingService
     private readonly \OCP\Files\IRootFolder $rootFolder;
 
     /**
+     * Anonymization service for anonymizing documents
+     *
+     * @var AnonymizationService
+     */
+    private readonly AnonymizationService $anonymizationService;
+
+    /**
      * Constructor for ReportingService
      *
-     * @param LoggerInterface   $logger            Logger for error reporting
-     * @param IConfig           $config            Configuration service
-     * @param ObjectService     $objectService     Service for storing objects
-     * @param ExtractionService $extractionService Service for extracting text from documents
-     * @param \OCP\Files\IRootFolder $rootFolder   Root folder service for accessing files
+     * @param LoggerInterface      $logger               Logger for error reporting
+     * @param IConfig              $config               Configuration service
+     * @param ObjectService        $objectService        Service for storing objects
+     * @param ExtractionService    $extractionService    Service for extracting text from documents
+     * @param \OCP\Files\IRootFolder $rootFolder         Root folder service for accessing files
+     * @param AnonymizationService $anonymizationService Service for anonymizing documents
      *
      * @return void
      */
@@ -121,13 +129,18 @@ class ReportingService
         IConfig $config,
         ObjectService $objectService,
         ExtractionService $extractionService,
-        \OCP\Files\IRootFolder $rootFolder
+        \OCP\Files\IRootFolder $rootFolder,
+        AnonymizationService $anonymizationService
     ) {
         $this->logger = $logger;
         $this->config = $config;
         $this->objectService = $objectService;
         $this->extractionService = $extractionService;
         $this->rootFolder = $rootFolder;
+        $this->anonymizationService = $anonymizationService;
+        
+        // Set this service in the anonymization service to avoid circular dependency
+        $this->anonymizationService->setReportingService($this);
         
         // Initialize Guzzle HTTP client
         $this->client = new Client([
@@ -141,6 +154,7 @@ class ReportingService
      *
      * This method extracts text from a document, sends it to Presidio for analysis,
      * and stores the results as a report object. It can accept either a Node or an existing report array.
+     * If anonymization is enabled, it will also anonymize the document.
      *
      * @param \OCP\Files\Node|array<string,mixed> $input Either a Node object or an existing report array
      * @param float $threshold Confidence threshold for entity detection (optional)
@@ -246,7 +260,14 @@ class ReportingService
             $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
             
             // Save updated report
-            return $this->objectService->saveObject($reportObjectType, $report);
+            $report = $this->objectService->saveObject($reportObjectType, $report);   
+            
+            // Process anonymization if enabled
+            if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
+                $this->anonymizationService->processAnonymization($node, $report);
+            }
+            
+            return $report;
             
         } catch (Exception $e) {
             $this->logger->error('Error processing report: ' . $e->getMessage(), ['exception' => $e]);
@@ -818,5 +839,5 @@ class ReportingService
         }
 
         return $report;
-    }
+    }    
 } 
