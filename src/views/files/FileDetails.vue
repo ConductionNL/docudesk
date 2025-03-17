@@ -20,18 +20,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							</template>
 							Edit Report
 						</NcActionButton>
-						<NcActionButton @click="downloadReport()">
-							<template #icon>
-								<Download :size="20" />
-							</template>
-							Download Report
-						</NcActionButton>
-						<NcActionButton @click="navigationStore.setDialog('deleteReport')">
-							<template #icon>
-								<Delete :size="20" />
-							</template>
-							Delete
-						</NcActionButton>
 					</NcActions>
 				</div>
 
@@ -55,40 +43,73 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					{{ reportStore.reportItem.errorMessage }}
 				</NcNoteCard>
 
-				<!-- File Information Section -->
+				<!-- Risk Assessment Section -->
 				<div class="section-container">
-					<h2>File Information</h2>
-					<div class="detail-grid">
-						<div class="detail-item">
-							<span class="detail-label">File Path:</span>
-							<span class="detail-value">{{ reportStore.reportItem.filePath }}</span>
+					<h2>Risk Assessment</h2>
+					<div class="risk-score-container">
+						<div class="risk-score-circle" :class="getRiskScoreClass(reportStore.reportItem.riskScore)">
+							<span class="risk-score-value">{{ formatRiskScore(reportStore.reportItem.riskScore) }}</span>
 						</div>
-						<div class="detail-item">
-							<span class="detail-label">File Type:</span>
-							<span class="detail-value">{{ reportStore.reportItem.fileType }}</span>
+						<div class="risk-score-details">
+							<h3>Risk Level: <span class="risk-level-badge" :class="getRiskLevelClass(reportStore.reportItem.riskLevel)">{{ reportStore.reportItem.riskLevel }}</span></h3>
+							<p class="risk-explanation">
+								{{ getRiskExplanation(reportStore.reportItem.riskLevel) }}
+							</p>
 						</div>
-						<div class="detail-item">
-							<span class="detail-label">File Extension:</span>
-							<span class="detail-value">{{ reportStore.reportItem.fileExtension }}</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">File Size:</span>
-							<span class="detail-value">{{ formatFileSize(reportStore.reportItem.fileSize) }}</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">File Hash:</span>
-							<span class="detail-value">{{ reportStore.reportItem.fileHash }}</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Node ID:</span>
-							<span class="detail-value">{{ reportStore.reportItem.nodeId }}</span>
-						</div>
+					</div>
+					
+					<div v-if="reportStore.reportItem.entities && reportStore.reportItem.entities.length > 0" class="risk-factors">
+						<h3>Risk Factors</h3>
+						<p>The risk assessment is based on {{ reportStore.reportItem.entities.length }} detected entities:</p>
+						<ul class="risk-factors-list">
+							<li v-for="(entityType, index) in getEntityTypes(reportStore.reportItem.entities)" :key="index">
+								<strong>{{ formatEntityType(entityType.type) }}:</strong> {{ entityType.count }} occurrences
+								<span class="entity-weight">(Weight: {{ getEntityWeight(entityType.type) }})</span>
+							</li>
+						</ul>
+						<p class="risk-calculation-note">
+							Risk score is calculated based on entity types, their confidence scores, and the total number of entities found.
+							Higher weights are assigned to more sensitive data types like credit card numbers and personal identifiers.
+						</p>
+					</div>
+					<div v-else class="empty-state">
+						<p>No risk factors detected in this document.</p>
 					</div>
 				</div>
 
 				<!-- Tabs for different analysis results -->
 				<div class="tabContainer">
 					<BTabs content-class="mt-3" justified>
+						<!-- File Information Tab (Default) -->
+						<BTab title="File Information" active>
+							<div class="detail-grid">
+								<div class="detail-item">
+									<span class="detail-label">File Path:</span>
+									<span class="detail-value">{{ reportStore.reportItem.filePath }}</span>
+								</div>
+								<div class="detail-item">
+									<span class="detail-label">File Type:</span>
+									<span class="detail-value">{{ reportStore.reportItem.fileType }}</span>
+								</div>
+								<div class="detail-item">
+									<span class="detail-label">File Extension:</span>
+									<span class="detail-value">{{ reportStore.reportItem.fileExtension }}</span>
+								</div>
+								<div class="detail-item">
+									<span class="detail-label">File Size:</span>
+									<span class="detail-value">{{ formatFileSize(reportStore.reportItem.fileSize) }}</span>
+								</div>
+								<div class="detail-item">
+									<span class="detail-label">File Hash:</span>
+									<span class="detail-value">{{ reportStore.reportItem.fileHash }}</span>
+								</div>
+								<div class="detail-item">
+									<span class="detail-label">Node ID:</span>
+									<span class="detail-value">{{ reportStore.reportItem.nodeId }}</span>
+								</div>
+							</div>
+						</BTab>
+						
 						<!-- Entities Tab -->
 						<BTab title="Entities">
 							<div v-if="reportStore.reportItem.entities && reportStore.reportItem.entities.length > 0">
@@ -102,21 +123,6 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							</div>
 							<div v-else class="empty-state">
 								<p>No entities detected in this document.</p>
-							</div>
-						</BTab>
-
-						<!-- Anonymization Results Tab -->
-						<BTab title="Anonymization">
-							<div v-if="reportStore.reportItem.anonymizationResults && Object.keys(reportStore.reportItem.anonymizationResults).length > 0">
-								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.anonymizationResults" :key="key" class="detail-item">
-										<span class="detail-label">{{ formatKey(key) }}:</span>
-										<span class="detail-value">{{ formatValue(value) }}</span>
-									</div>
-								</div>
-							</div>
-							<div v-else class="empty-state">
-								<p>No anonymization results available.</p>
 							</div>
 						</BTab>
 
@@ -339,7 +345,149 @@ export default {
 				default:
 					return 'secondary'
 			}
-		}
+		},
+		
+		/**
+		 * Get CSS class for risk level
+		 * 
+		 * @param {string} riskLevel - Risk level
+		 * @returns {string} CSS class
+		 */
+		getRiskLevelClass(riskLevel) {
+			switch (riskLevel?.toLowerCase()) {
+				case 'low':
+					return 'risk-low'
+				case 'medium':
+					return 'risk-medium'
+				case 'high':
+					return 'risk-high'
+				case 'critical':
+					return 'risk-critical'
+				default:
+					return 'risk-unknown'
+			}
+		},
+		
+		/**
+		 * Format risk score for display
+		 * 
+		 * @param {number|null} score - Risk score
+		 * @returns {string} Formatted risk score
+		 */
+		formatRiskScore(score) {
+			if (score === null || score === undefined) {
+				return 'N/A';
+			}
+			return Math.round(score).toString();
+		},
+		
+		/**
+		 * Get CSS class for risk score
+		 * 
+		 * @param {number|null} score - Risk score
+		 * @returns {string} CSS class
+		 */
+		getRiskScoreClass(score) {
+			if (score === null || score === undefined) {
+				return 'risk-unknown';
+			}
+			
+			if (score < 20) {
+				return 'risk-low';
+			} else if (score < 50) {
+				return 'risk-medium';
+			} else if (score < 80) {
+				return 'risk-high';
+			} else {
+				return 'risk-critical';
+			}
+		},
+		
+		/**
+		 * Get explanation for risk level
+		 * 
+		 * @param {string} riskLevel - Risk level
+		 * @returns {string} Risk explanation
+		 */
+		getRiskExplanation(riskLevel) {
+			switch (riskLevel?.toLowerCase()) {
+				case 'low':
+					return 'This document contains minimal sensitive information and poses little privacy risk.';
+				case 'medium':
+					return 'This document contains some sensitive information that may require attention.';
+				case 'high':
+					return 'This document contains significant sensitive information and should be handled with care.';
+				case 'critical':
+					return 'This document contains highly sensitive information and requires immediate attention.';
+				default:
+					return 'Risk level could not be determined for this document.';
+			}
+		},
+		
+		/**
+		 * Get unique entity types and their counts
+		 * 
+		 * @param {Array} entities - List of entities
+		 * @returns {Array} Entity types with counts
+		 */
+		getEntityTypes(entities) {
+			if (!entities || !Array.isArray(entities)) {
+				return [];
+			}
+			
+			const typeCounts = {};
+			
+			entities.forEach(entity => {
+				const type = entity.entityType || 'UNKNOWN';
+				typeCounts[type] = (typeCounts[type] || 0) + 1;
+			});
+			
+			return Object.keys(typeCounts).map(type => ({
+				type,
+				count: typeCounts[type]
+			})).sort((a, b) => this.getEntityWeight(b.type) - this.getEntityWeight(a.type));
+		},
+		
+		/**
+		 * Format entity type for display
+		 * 
+		 * @param {string} entityType - Entity type
+		 * @returns {string} Formatted entity type
+		 */
+		formatEntityType(entityType) {
+			return entityType
+				.replace(/_/g, ' ')
+				.replace(/\b\w/g, l => l.toUpperCase());
+		},
+		
+		/**
+		 * Get weight for entity type
+		 * 
+		 * @param {string} entityType - Entity type
+		 * @returns {number} Entity weight
+		 */
+		getEntityWeight(entityType) {
+			const weights = {
+				'PERSON': 5.0,
+				'EMAIL_ADDRESS': 8.0,
+				'PHONE_NUMBER': 7.0,
+				'CREDIT_CARD': 10.0,
+				'IBAN_CODE': 9.0,
+				'US_SSN': 10.0,
+				'US_BANK_NUMBER': 9.0,
+				'LOCATION': 3.0,
+				'DATE_TIME': 1.0,
+				'NRP': 8.0,
+				'IP_ADDRESS': 6.0,
+				'US_DRIVER_LICENSE': 8.0,
+				'US_PASSPORT': 9.0,
+				'US_ITIN': 9.0,
+				'MEDICAL_LICENSE': 7.0,
+				'URL': 2.0
+			};
+			
+			return weights[entityType] || 4.0; // Default weight
+		},
 	},
 }
 </script>
@@ -464,5 +612,121 @@ h4 {
 
 .tabContainer {
   margin-top: 20px;
+}
+
+/* Risk Assessment Styles */
+.risk-score-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.risk-score-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.risk-score-value {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.risk-score-details {
+  flex: 1;
+}
+
+.risk-score-details h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.risk-level-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  text-transform: capitalize;
+}
+
+.risk-explanation {
+  margin: 0;
+  color: var(--color-text-maxcontrast);
+}
+
+.risk-factors {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.risk-factors h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.risk-factors-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 12px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.risk-factors-list li {
+  padding: 8px 12px;
+  background-color: var(--color-background-hover);
+  border-radius: 4px;
+  border-left: 3px solid var(--color-primary);
+}
+
+.entity-weight {
+  font-size: 0.85em;
+  color: var(--color-text-maxcontrast);
+  margin-left: 4px;
+}
+
+.risk-calculation-note {
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--color-text-maxcontrast);
+  margin-top: 12px;
+}
+
+/* Risk color classes */
+.risk-low {
+  background-color: #2ecc71;
+  border-color: #27ae60;
+}
+
+.risk-medium {
+  background-color: #f39c12;
+  border-color: #e67e22;
+}
+
+.risk-high {
+  background-color: #e74c3c;
+  border-color: #c0392b;
+}
+
+.risk-critical {
+  background-color: #c0392b;
+  border-color: #922b21;
+}
+
+.risk-unknown {
+  background-color: #95a5a6;
+  border-color: #7f8c8d;
 }
 </style>

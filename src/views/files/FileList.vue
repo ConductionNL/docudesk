@@ -36,8 +36,9 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					<template #subname>
 						<div class="report-subname">
 							<span v-if="report.riskLevel" 
-								:class="['risk-level', getRiskLevelClass(report.riskLevel)]">
-								Risk: {{ report.riskLevel }}
+								class="risk-level-badge"
+								:class="getRiskLevelClass(report.riskLevel)">
+								{{ report.riskLevel }}
 							</span>
 						</div>
 					</template>
@@ -228,38 +229,51 @@ export default {
     font-size: 0.9em;
 }
 
-.risk-level {
-    font-size: 0.85em;
-    font-weight: bold;
-    padding: 2px 6px;
+.risk-level-badge {
+    display: inline-block;
+    padding: 4px 10px;
     border-radius: 4px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    text-transform: capitalize;
+    font-size: 0.75em;
+}
+
+.risk-badge {
+    font-size: 0.75em;
+    font-weight: normal;
+    padding: 1px 6px;
+    border-radius: 10px;
     display: inline-block;
     width: fit-content;
+    text-transform: capitalize;
 }
 
 .risk-low {
-    color: #2ecc71;
-    background-color: rgba(46, 204, 113, 0.1);
+    background-color: #2ecc71;
+    border-color: #27ae60;
 }
 
 .risk-medium {
-    color: #f39c12;
-    background-color: rgba(243, 156, 18, 0.1);
+    background-color: #f39c12;
+    border-color: #e67e22;
 }
 
 .risk-high {
-    color: #e74c3c;
-    background-color: rgba(231, 76, 60, 0.1);
+    background-color: #e74c3c;
+    border-color: #c0392b;
 }
 
 .risk-critical {
-    color: #c0392b;
-    background-color: rgba(192, 57, 43, 0.1);
+    background-color: #c0392b;
+    border-color: #922b21;
 }
 
 .risk-unknown {
-    color: var(--color-text-maxcontrast);
-    background-color: rgba(127, 140, 141, 0.1);
+    background-color: #95a5a6;
+    border-color: #7f8c8d;
 }
 
 .empty-state {
