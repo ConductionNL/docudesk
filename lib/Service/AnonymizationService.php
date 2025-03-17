@@ -178,14 +178,14 @@ class AnonymizationService
      * @param \OCP\Files\Node $node   The file node to anonymize
      * @param array<string, mixed>|null $report The report containing detected entities (optional)
      *
-     * @return array<string, mixed> The anonymization result
+     * @return array<string, mixed>|void The anonymization result or void if no anonymization needed
      *
      * @throws Exception If anonymization fails
      *
-     * @psalm-return array<string, mixed>
-     * @phpstan-return array<string, mixed>
+     * @psalm-return array<string, mixed>|void
+     * @phpstan-return array<string, mixed>|void
      */
-    public function processAnonymization(\OCP\Files\Node $node, ?array $report = null): array
+    public function processAnonymization(\OCP\Files\Node $node, ?array $report = null)
     {
         $startTime = microtime(true);
 
@@ -207,6 +207,21 @@ class AnonymizationService
                 $this->logger->debug('Report not completed, processing report');
                 $report = $this->reportingService->processReport($report);
             }
+        }
+
+        // If the file name end in _anonymized, we can return the anonymization result @todo we should solve this with taging or something else, this is touch and go it should also be handled in the porccesReport function or something else
+        // Create a new file name with "_anonymized" suffix
+        $fileName = $node->getName();
+        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+        $anonymizedFileName = $fileNameWithoutExtension . '_anonymized';
+        if (!empty($fileExtension)) {
+            $anonymizedFileName .= '.' . $fileExtension;
+        }
+
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized')) {
+            $this->logger->debug('File name ends with _anonymized, returning anonymization result');
+            return;
         }
         
         // Use ETag as file hash if available, otherwise calculate hash
@@ -280,14 +295,7 @@ class AnonymizationService
             throw new Exception('Failed to get content from file: ' . $node->getPath());
         }
 
-        // Create a new file name with "_anonymized" suffix
-        $fileName = $node->getName();
-        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
-        $anonymizedFileName = $fileNameWithoutExtension . '_anonymized';
-        if (!empty($fileExtension)) {
-            $anonymizedFileName .= '.' . $fileExtension;
-        }
+        
         
         // Get the parent folder
         $parentFolder = $node->getParent();
