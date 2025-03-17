@@ -45,18 +45,6 @@ class Application extends App implements IBootstrap
             \OCP\Files\Events\Node\NodeWrittenEvent::class,
             \OCA\DocuDesk\EventListener\FileEventListener::class
         );
-        $context->registerEventListener(
-            \OCP\Files\Events\Node\BeforeNodeCreatedEvent::class,
-            \OCA\DocuDesk\EventListener\FileEventListener::class
-        );
-        $context->registerEventListener(
-            \OCP\Files\Events\Node\BeforeNodeDeletedEvent::class,
-            \OCA\DocuDesk\EventListener\FileEventListener::class
-        );
-        $context->registerEventListener(
-            \OCP\Files\Events\Node\BeforeNodeWrittenEvent::class,
-            \OCA\DocuDesk\EventListener\FileEventListener::class
-        );
 
         // Register background jobs
         // $server = $context->getServerContainer();

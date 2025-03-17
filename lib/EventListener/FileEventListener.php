@@ -34,9 +34,6 @@ use OCP\Files\Events\Node\NodeCreatedEvent;
 use OCP\Files\Events\Node\NodeDeletedEvent;
 use OCP\Files\Events\Node\NodeTouchedEvent;
 use OCP\Files\Events\Node\NodeWrittenEvent;
-use OCP\Files\Events\Node\BeforeNodeCreatedEvent;
-use OCP\Files\Events\Node\BeforeNodeDeletedEvent;
-use OCP\Files\Events\Node\BeforeNodeWrittenEvent;
 use OCP\Files\FileInfo;
 use OCA\DocuDesk\Service\ReportingService;
 use Psr\Log\LoggerInterface;
@@ -96,9 +93,6 @@ class FileEventListener implements IEventListener
                 $event instanceof NodeDeletedEvent => $this->handleNodeDeleted($event),
                 $event instanceof NodeTouchedEvent => $this->handleNodeTouched($event),
                 $event instanceof NodeWrittenEvent => $this->handleNodeWritten($event),
-                $event instanceof BeforeNodeCreatedEvent => $this->handleBeforeNodeCreated($event),
-                $event instanceof BeforeNodeDeletedEvent => $this->handleBeforeNodeDeleted($event),
-                $event instanceof BeforeNodeWrittenEvent => $this->handleBeforeNodeWritten($event),
                 default => throw new InvalidArgumentException('Unsupported event type: ' . get_class($event)),
             };
         } catch (\Exception $e) {
@@ -184,42 +178,4 @@ class FileEventListener implements IEventListener
         // No report creation needed for touched files (metadata only changes)
     }
 
-    /**
-     * Handle before node created event
-     *
-     * @param BeforeNodeCreatedEvent $event The before node created event
-     *
-     * @return void
-     */
-    private function handleBeforeNodeCreated(BeforeNodeCreatedEvent $event): void
-    {
-        // This event is triggered before a node is created
-        // We can use this to prepare for the creation if needed
-    }
-
-    /**
-     * Handle before node written event
-     *
-     * @param BeforeNodeWrittenEvent $event The before node written event
-     *
-     * @return void
-     */
-    private function handleBeforeNodeWritten(BeforeNodeWrittenEvent $event): void
-    {
-        // This event is triggered before a node is written
-        // We can use this to prepare for the write if needed
-    }
-
-    /**
-     * Handle before node deleted event
-     *
-     * @param BeforeNodeDeletedEvent $event The before node deleted event
-     *
-     * @return void
-     */
-    private function handleBeforeNodeDeleted(BeforeNodeDeletedEvent $event): void
-    {
-        // This event is triggered before a node is deleted
-        // We can use this to prepare for the deletion if needed
-    }
 } 

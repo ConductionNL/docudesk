@@ -194,14 +194,16 @@ class ReportingService
 
             // Extract text from document
             $filePath = $node->getPath();
-            try {
-                $text = $this->extractionService->extractText($filePath);
-            } catch (Exception $e) {
-                $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
-                $report['status'] = 'failed';
-                $report['errorMessage'] = 'Failed to extract text from document';
-                return $report;
-            }
+            //try {
+                $extraction = $this->extractionService->extractText($node);
+                $text = $extraction['text'];
+                $errorMessage = $extraction['errorMessage'];
+            // } catch (Exception $e) {
+            //     $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
+            //     $report['status'] = 'failed';
+            //     $report['errorMessage'] = 'Failed to extract text from document';
+            //     return $report;
+            // }
             
             if (empty($text)) {
                 $this->logger->warning('No text content found in document: ' . $filePath);
