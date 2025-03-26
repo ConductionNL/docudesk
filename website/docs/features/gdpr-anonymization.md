@@ -36,7 +36,7 @@ The anonymization process follows these steps:
 - **Detailed Logging**: Maintains records of all anonymization operations
 - **Multiple Document Formats**: Works with PDF, Word, Excel, and text documents
 
-![Workflow Automation](./diagrams/gdpr-anonymization-flow.svg)
+![Gdpr Anonymization](./diagrams/gdpr-anonymization-flow.svg)
 
 ## Supported Entity Types
 
