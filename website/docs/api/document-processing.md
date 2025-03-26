@@ -34,8 +34,6 @@ A typical document processing workflow in DocuDesk consists of the following ste
 
 Document processing in DocuDesk is tightly integrated with several other systems:
 
-- **[Privacy Tracking](./privacy-tracking.md)**: Tracks privacy-related metadata for documents
-- **[Parsing Logs](./parsing-logs.md)**: Logs document processing operations
 - **[Document Reports](./document-reports.md)**: Stores analysis results for documents
 - **[Anonymization Logs](./anonymization-logs.md)**: Tracks anonymization operations and replacements
 - **[Presidio Integration](./presidio-integration.md)**: Provides entity recognition and anonymization capabilities
