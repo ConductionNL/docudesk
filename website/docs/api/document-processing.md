@@ -365,9 +365,3 @@ public function analyzeAccessibility(string $fileId, string $fileName): array
 Document processing is a core feature of DocuDesk that enables powerful document transformation and analysis capabilities. By integrating with privacy tracking, parsing logs, document reports, and anonymization logs, DocuDesk ensures that all document operations are properly tracked and comply with privacy and accessibility regulations.
 
 For more detailed information on specific aspects of document processing, refer to the following documentation:
-
-- [Privacy Tracking](./privacy-tracking.md)
-- [Parsing Logs](./parsing-logs.md)
-- [Document Reports](./document-reports.md)
-- [Anonymization Logs](./anonymization-logs.md)
-- [Presidio Integration](./presidio-integration.md) 
