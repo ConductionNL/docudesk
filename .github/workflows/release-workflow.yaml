@@ -74,6 +74,8 @@ jobs:
       - run: npm run build
 
       # Step 7: Build composer dependencies
+      - name: Sync composer.lock with composer.json
+        run: composer update --lock --no-dev
       - run: composer i --no-dev
 
       # Step 8: Copy the files into the package directory
