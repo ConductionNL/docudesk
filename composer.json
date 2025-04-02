@@ -41,7 +41,8 @@
 		"phpoffice/phpspreadsheet": "^1.29",
 		"phpoffice/phppresentation": "^1.0",
 		"smalot/pdfparser": "^2.7",
-		"psr/log": "^3.0"
+		"psr/log": "^1.1.4"
+
 	},
 	"require-dev": {
 		"nextcloud/ocp": "dev-stable29",
