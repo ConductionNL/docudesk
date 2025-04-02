@@ -3,34 +3,38 @@ import { navigationStore } from '../store/store.js'
 </script>
 
 <template>
-	<!-- Placeholder div for all of the views-->
+	<!-- Main content container for all views -->
 	<NcAppContent>
 		<template #default>
 			<Dashboard v-if="navigationStore.selected === 'dashboard'" />
-			<RegistersIndex v-if="navigationStore.selected === 'registers'" />
-			<SourcesIndex v-if="navigationStore.selected === 'sources'" />
-			<SchemasIndex v-if="navigationStore.selected === 'schemas'" />
-			<ObjectsIndex v-if="navigationStore.selected === 'objects'" />
+			<FileIndex v-if="navigationStore.selected === 'files'" />
+			<AnonymizationIndex v-if="navigationStore.selected === 'anonymization'" />
+			<TemplatesIndex v-if="navigationStore.selected === 'templates'" />
 		</template>
 	</NcAppContent>
 </template>
 
 <script>
+/**
+ * Main view component that handles routing between different views based on navigation selection
+ * Uses the navigationStore to determine which view to display
+ */
 import { NcAppContent } from '@nextcloud/vue'
+
+// View components
 import Dashboard from './dashboard/DashboardIndex.vue'
-import RegistersIndex from './register/RegistersIndex.vue'
-import SourcesIndex from './source/SourcesIndex.vue'
-import SchemasIndex from './schema/SchemasIndex.vue'
-import ObjectsIndex from './object/ObjectsIndex.vue'
+import FileIndex from './files/FileIndex.vue'
+import AnonymizationIndex from './anonymization/AnonymizationIndex.vue'
+import TemplatesIndex from './templates/TemplatesIndex.vue'
+
 export default {
 	name: 'Views',
 	components: {
-		Dashboard,
 		NcAppContent,
-		RegistersIndex,
-		SourcesIndex,
-		SchemasIndex,
-		ObjectsIndex,
+		Dashboard,
+		FileIndex,
+		AnonymizationIndex,
+		TemplatesIndex
 	},
 }
 </script>

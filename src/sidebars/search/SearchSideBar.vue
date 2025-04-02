@@ -32,7 +32,7 @@ import { searchStore } from '../../store/store.js'
 		</NcAppSidebarTab>
 		<NcAppSidebarTab id="share-tab" name="Publicatie typen" :order="3">
 			<template #icon>
-				<FileTreeOutline :size="20" />
+				<FileOutline :size="20" />
 			</template>
 			<NcCheckboxRadioSwitch v-for="(metaData, i) in metadataStore.metaDataList"
 				:key="`${metaData}${i}`"
@@ -48,7 +48,7 @@ import { searchStore } from '../../store/store.js'
 import { NcAppSidebar, NcAppSidebarTab, NcTextField, NcNoteCard, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import Magnify from 'vue-material-design-icons/Magnify.vue'
 import DatabaseOutline from 'vue-material-design-icons/DatabaseOutline.vue'
-import FileTreeOutline from 'vue-material-design-icons/FileTreeOutline.vue'
+import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 import { debounce } from 'lodash'
 
 export default {
@@ -61,7 +61,7 @@ export default {
 		// Icons
 		Magnify,
 		DatabaseOutline,
-		FileTreeOutline,
+		FileOutline,
 	},
 	props: {
 		search: {

@@ -12,11 +12,16 @@ use Twig\Loader\ArrayLoader;
 /**
  * Service class for handling document templates
  */
-class TemplateService {
-    /** @var TemplateMapper */
+class TemplateService
+{
+    /**
+     * @var TemplateMapper 
+     */
     private $mapper;
     
-    /** @var Environment */
+    /**
+     * @var Environment 
+     */
     private $twig;
 
     /**
@@ -24,7 +29,8 @@ class TemplateService {
      *
      * @param TemplateMapper $mapper Database mapper for templates
      */
-    public function __construct(TemplateMapper $mapper) {
+    public function __construct(TemplateMapper $mapper)
+    {
         $this->mapper = $mapper;
         
         // Initialize Twig with array loader for dynamic templates
@@ -35,13 +41,14 @@ class TemplateService {
     /**
      * Creates a new template
      *
-     * @param string $name Template name
-     * @param string $content Template content in Twig format
-     * @param string $category Template category
-     * @param string $outputFormat Desired output format (pdf/docx)
+     * @param  string $name         Template name
+     * @param  string $content      Template content in Twig format
+     * @param  string $category     Template category
+     * @param  string $outputFormat Desired output format (pdf/docx)
      * @return Template The created template
      */
-    public function createTemplate(string $name, string $content, string $category, string $outputFormat): Template {
+    public function createTemplate(string $name, string $content, string $category, string $outputFormat): Template
+    {
         $template = new Template();
         $template->setName($name);
         $template->setContent($content);
@@ -54,19 +61,24 @@ class TemplateService {
     /**
      * Renders a template with provided data
      *
-     * @param int $templateId ID of the template to render
-     * @param array $data Data to render the template with
-     * @param string $format Output format (pdf/docx)
+     * @param  int    $templateId ID of the template to render
+     * @param  array  $data       Data to render the template with
+     * @param  string $format     Output format (pdf/docx)
      * @return string Rendered content
      * @throws DoesNotExistException If template not found
      */
-    public function renderTemplate(int $templateId, array $data, string $format): string {
+    public function renderTemplate(int $templateId, array $data, string $format): string
+    {
         $template = $this->mapper->find($templateId);
         
         // Create a new template in Twig environment
-        $this->twig->setLoader(new ArrayLoader([
-            'template' => $template->getContent()
-        ]));
+        $this->twig->setLoader(
+            new ArrayLoader(
+                [
+                'template' => $template->getContent()
+                ]
+            )
+        );
         
         // Render the template with provided data
         $html = $this->twig->render('template', $data);
@@ -84,10 +96,11 @@ class TemplateService {
     /**
      * Converts HTML content to PDF
      *
-     * @param string $html HTML content to convert
+     * @param  string $html HTML content to convert
      * @return string PDF content
      */
-    private function convertToPdf(string $html): string {
+    private function convertToPdf(string $html): string
+    {
         // @TODO: Implement PDF conversion using library like wkhtmltopdf
         // This is a placeholder for actual implementation
         return $html;
@@ -96,10 +109,11 @@ class TemplateService {
     /**
      * Converts HTML content to Word document
      *
-     * @param string $html HTML content to convert
+     * @param  string $html HTML content to convert
      * @return string Word document content
      */
-    private function convertToWord(string $html): string {
+    private function convertToWord(string $html): string
+    {
         // @TODO: Implement Word conversion using PHPWord
         // This is a placeholder for actual implementation
         return $html;

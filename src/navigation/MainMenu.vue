@@ -10,30 +10,22 @@ import { navigationStore } from '../store/store.js'
 					<Finance :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'registers'" name="Registers" @click="navigationStore.setSelected('registers')">
+			<NcAppNavigationItem :active="navigationStore.selected === 'files'" name="Files" @click="navigationStore.setSelected('files')">
 				<template #icon>
-					<DatabaseOutline :size="20" />
+					<FileOutline :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'schemas'" name="Schemas" @click="navigationStore.setSelected('schemas')">
+			<NcAppNavigationItem :active="navigationStore.selected === 'anonymization'" name="Anonymization" @click="navigationStore.setSelected('anonymization')">
 				<template #icon>
-					<FileTreeOutline :size="20" />
+					<Incognito :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'objects'" name="Objects" @click="navigationStore.setSelected('objects')">
+			<NcAppNavigationItem :active="navigationStore.selected === 'templates'" name="Templates" @click="navigationStore.setSelected('templates')">
 				<template #icon>
-					<CubeOutline :size="20" />
+					<FileOutline :size="20" />
 				</template>
 			</NcAppNavigationItem>
 		</NcAppNavigationList>
-
-		<NcAppNavigationSettings>
-			<NcAppNavigationItem :active="navigationStore.selected === 'sources'" name="Data sources" @click="navigationStore.setSelected('sources')">
-				<template #icon>
-					<DatabaseArrowRightOutline :size="20" />
-				</template>
-			</NcAppNavigationItem>
-		</NcAppNavigationSettings>
 	</NcAppNavigation>
 </template>
 <script>
@@ -47,10 +39,10 @@ import {
 
 // Icons
 import Finance from 'vue-material-design-icons/Finance.vue'
-import DatabaseOutline from 'vue-material-design-icons/DatabaseOutline.vue'
-import FileTreeOutline from 'vue-material-design-icons/FileTreeOutline.vue'
-import DatabaseArrowRightOutline from 'vue-material-design-icons/DatabaseArrowRightOutline.vue'
-import CubeOutline from 'vue-material-design-icons/CubeOutline.vue'
+import Incognito from 'vue-material-design-icons/Incognito.vue'
+import FileSign from 'vue-material-design-icons/FileSign.vue'
+import CameraDocument from 'vue-material-design-icons/CameraDocument.vue'
+import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 
 export default {
 	name: 'MainMenu',
@@ -61,9 +53,10 @@ export default {
 		NcAppNavigationItem,
 		// icons
 		Finance,
-		DatabaseOutline,
-		DatabaseArrowRightOutline,
-		FileTreeOutline,
+		Incognito,
+		FileSign,
+		CameraDocument,
+		FileOutline
 	},
 	methods: {
 		openLink(url, type = '') {
