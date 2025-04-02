@@ -74,8 +74,9 @@ jobs:
       - run: npm run build
 
       # Step 7: Build composer dependencies
-      - name: Sync composer.lock with composer.json
-        run: composer update --lock --no-dev
+      - name: Force add missing packages to lock file
+        run: composer update phpoffice/phpword phpoffice/phpspreadsheet phpoffice/phppresentation smalot/pdfparser psr/log --no-dev
+
       - run: composer i --no-dev
 
       # Step 8: Copy the files into the package directory
