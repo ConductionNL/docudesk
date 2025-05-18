@@ -16,15 +16,18 @@ class Application extends App implements IBootstrap
 {
     public const APP_ID = 'docudesk';
 
+
     /**
      * Constructor
      *
      * @param array $urlParams
      */
-    public function __construct(array $urlParams = [])
+    public function __construct(array $urlParams=[])
     {
         parent::__construct(appName: self::APP_ID, urlParams: $urlParams);
-    }
+
+    }//end __construct()
+
 
     public function register(IRegistrationContext $context): void
     {
@@ -48,11 +51,9 @@ class Application extends App implements IBootstrap
 
         // Register background jobs
         // $server = $context->getServerContainer();
-        //$jobList = $server->getJobList();
-        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);
-    }
+        // $jobList = $server->getJobList();
+        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);    }//end register()    public function boot(IBootContext $context): void
+        {
+        }//end boot()
 
-    public function boot(IBootContext $context): void
-    {
-    }
-}
+    }//end register()

@@ -2,10 +2,10 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license EUPL-1.2
+ * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -53,14 +53,15 @@ class ProcessPendingReports extends TimedJob
      */
     private const MAX_REPORTS_PER_RUN = 10;
 
+
     /**
      * Constructor for ProcessPendingReports
      *
-     * @param ObjectService   $objectService   Service for handling objects
+     * @param ObjectService    $objectService    Service for handling objects
      * @param ReportingService $reportingService Service for generating reports
-     * @param IRootFolder     $rootFolder      Root folder service
-     * @param IConfig         $config          Configuration service
-     * @param LoggerInterface $logger          Logger for error reporting
+     * @param IRootFolder      $rootFolder       Root folder service
+     * @param IConfig          $config           Configuration service
+     * @param LoggerInterface  $logger           Logger for error reporting
      *
      * @return void
      */
@@ -73,7 +74,9 @@ class ProcessPendingReports extends TimedJob
     ) {
         // Run every 15 minutes
         $this->setInterval(15 * 60);
-    }
+
+    }//end __construct()
+
 
     /**
      * Execute the background job
@@ -82,7 +85,7 @@ class ProcessPendingReports extends TimedJob
      *
      * @return void
      *
-     * @psalm-param array<string, mixed> $argument
+     * @psalm-param   array<string, mixed> $argument
      * @phpstan-param array<string, mixed> $argument
      */
     protected function run($argument): void
@@ -90,29 +93,37 @@ class ProcessPendingReports extends TimedJob
         try {
             // Use the ReportingService to process pending reports
             $processedCount = $this->reportingService->processPendingReports(self::MAX_REPORTS_PER_RUN);
-            
+
             if ($processedCount > 0) {
                 $this->logger->info("Successfully processed {$processedCount} pending reports");
             } else {
                 $this->logger->debug('No pending reports were processed');
             }
         } catch (\Exception $e) {
-            $this->logger->error('Error in ProcessPendingReports job: ' . $e->getMessage(), [
-                'exception' => $e
-            ]);
+            $this->logger->error(
+                    'Error in ProcessPendingReports job: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
+                    );
         }
-    }
-    
+
+    }//end run()
+
+
     /**
      * Check if reporting is enabled
      *
      * @return bool True if reporting is enabled, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     private function isReportingEnabled(): bool
     {
         return $this->reportingService->isReportingEnabled();
-    }
-} 
+
+    }//end isReportingEnabled()
+
+
+}//end class
