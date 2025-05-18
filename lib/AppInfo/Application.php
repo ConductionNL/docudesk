@@ -57,3 +57,4 @@ class Application extends App implements IBootstrap
         }//end boot()
 
     }//end register()
+}//end class
