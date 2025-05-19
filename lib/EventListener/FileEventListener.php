@@ -125,7 +125,7 @@ class FileEventListener implements IEventListener
         );
         
         // Always try to create a report, the ReportingService will check if reporting is enabled
-         $this->reportingService->createReport($node);
+        $this->reportingService->createReport($node);
     }
 
     /**

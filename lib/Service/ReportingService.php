@@ -35,6 +35,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 use OCA\DocuDesk\Service\AnonymizationService;
 use OCA\OpenRegister\Service\ObjectService;
+use OCA\OpenRegister\Db\ObjectEntity;
 
 /**
  * Service for generating and managing document reports
@@ -116,13 +117,31 @@ class ReportingService
      * @param \OCP\Files\Node|array<string,mixed> $input     Either a Node object or an existing report array
      * @param float                               $threshold Confidence threshold for entity detection (optional)
      *
-     * @return array<string,mixed> The processed report
+     * @return array{
+     *     nodeId: int,
+     *     filePath: string,
+     *     fileName: string,
+     *     fileType: string,
+     *     fileExtension: string,
+     *     fileSize: int,
+     *     status: string,
+     *     errorMessage: string|null,
+     *     riskScore: float|null,
+     *     riskLevel: string,
+     *     anonymizationResults: array<string,mixed>|null,
+     *     entities: array<int,array<string,mixed>>,
+     *     wcagComplianceResults: array<string,mixed>|null,
+     *     languageLevelResults: array<string,mixed>|null,
+     *     retentionPeriod: int,
+     *     retentionExpiry: string|null,
+     *     legalBasis: string|null,
+     *     dataController: string|null,
+     *     fileHash: string,
+     *     text: string|null
+     * } The processed report
      *
      * @throws \InvalidArgumentException If input is invalid or node cannot be found
      * @throws Exception If report processing fails
-     *
-     * @psalm-return   array<string,mixed>
-     * @phpstan-return array<string,mixed>
      */
     public function processReport(
         \OCP\Files\Node|array $input,
@@ -247,12 +266,18 @@ class ReportingService
      * @param string $text      Text to analyze
      * @param float  $threshold Confidence threshold for entity detection
      *
-     * @return array<string, mixed> Presidio analysis results
+     * @return array{
+     *     entities_found: array<int,array{
+     *         entity_type: string,
+     *         start: int,
+     *         end: int,
+     *         score: float,
+     *         text: string
+     *     }>,
+     *     language: string
+     * } Presidio analysis results
      *
      * @throws Exception If the API request fails
-     *
-     * @psalm-return   array<string, mixed>
-     * @phpstan-return array<string, mixed>
      */
     private function analyzeWithPresidio(string $text, float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD): array
     {
@@ -401,13 +426,31 @@ class ReportingService
      *
      * @param \OCP\Files\Node $node The file node to get the report for
      *
-     * @return array<string, mixed>|null The report or null if not found
+     * @return array{
+     *     nodeId: int,
+     *     filePath: string,
+     *     fileName: string,
+     *     fileType: string,
+     *     fileExtension: string,
+     *     fileSize: int,
+     *     status: string,
+     *     errorMessage: string|null,
+     *     riskScore: float|null,
+     *     riskLevel: string,
+     *     anonymizationResults: array<string,mixed>|null,
+     *     entities: array<int,array<string,mixed>>,
+     *     wcagComplianceResults: array<string,mixed>|null,
+     *     languageLevelResults: array<string,mixed>|null,
+     *     retentionPeriod: int,
+     *     retentionExpiry: string|null,
+     *     legalBasis: string|null,
+     *     dataController: string|null,
+     *     fileHash: string,
+     *     text: string|null
+     * }|null The report or null if not found
      *
      * @throws \InvalidArgumentException If the node is not a file
      * @throws \RuntimeException If multiple reports are found for the node
-     *
-     * @psalm-return   array<string, mixed>|null
-     * @phpstan-return array<string, mixed>|null
      */
     public function getReport(\OCP\Files\Node $node): ?array
     {
@@ -467,13 +510,31 @@ class ReportingService
       *
       * @param \OCP\Files\Node $node The file node to process
       *
-      * @return array<string, mixed>|null The processed report or null if processing failed
+      * @return array{
+      *     nodeId: int,
+      *     filePath: string,
+      *     fileName: string,
+      *     fileType: string,
+      *     fileExtension: string,
+      *     fileSize: int,
+      *     status: string,
+      *     errorMessage: string|null,
+      *     riskScore: float|null,
+      *     riskLevel: string,
+      *     anonymizationResults: array<string,mixed>|null,
+      *     entities: array<int,array<string,mixed>>,
+      *     wcagComplianceResults: array<string,mixed>|null,
+      *     languageLevelResults: array<string,mixed>|null,
+      *     retentionPeriod: int,
+      *     retentionExpiry: string|null,
+      *     legalBasis: string|null,
+      *     dataController: string|null,
+      *     fileHash: string,
+      *     text: string|null
+      * }|null The processed report or null if processing failed
       *
       * @throws Exception If report processing fails
       * @throws \InvalidArgumentException If the node is not a file
-      *
-      * @psalm-return   array<string, mixed>|null
-      * @phpstan-return array<string, mixed>|null
       */
     public function updateReport(\OCP\Files\Node $node): ?array
     {
@@ -750,15 +811,33 @@ class ReportingService
      *
      * @param \OCP\Files\Node $node The file node
      *
-     * @return array<string, mixed>|null The created report or null if creation failed
+     * @return array{
+     *     nodeId: int,
+     *     filePath: string,
+     *     fileName: string,
+     *     fileType: string,
+     *     fileExtension: string,
+     *     fileSize: int,
+     *     status: string,
+     *     errorMessage: string|null,
+     *     riskScore: float|null,
+     *     riskLevel: string,
+     *     anonymizationResults: array<string,mixed>|null,
+     *     entities: array<int,array<string,mixed>>,
+     *     wcagComplianceResults: array<string,mixed>|null,
+     *     languageLevelResults: array<string,mixed>|null,
+     *     retentionPeriod: int,
+     *     retentionExpiry: string|null,
+     *     legalBasis: string|null,
+     *     dataController: string|null,
+     *     fileHash: string,
+     *     text: string|null
+     * }|null The created report or null if creation failed
      *
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If report creation fails
-     *
-     * @psalm-return   array<string, mixed>|null
-     * @phpstan-return array<string, mixed>|null
      */
-    public function createReport(\OCP\Files\Node $node): ?array
+    public function createReport(\OCP\Files\Node $node): ObjectEntity|null
     {
         // Validate that the node is a file
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
