@@ -5,7 +5,7 @@
  * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -53,6 +53,7 @@ class ProcessPendingReports extends TimedJob
      */
     private const MAX_REPORTS_PER_RUN = 10;
 
+
     /**
      * Constructor for ProcessPendingReports
      *
@@ -73,7 +74,9 @@ class ProcessPendingReports extends TimedJob
     ) {
         // Run every 15 minutes
         $this->setInterval(15 * 60);
-    }
+
+    }//end __construct()
+
 
     /**
      * Execute the background job
@@ -90,7 +93,7 @@ class ProcessPendingReports extends TimedJob
         try {
             // Use the ReportingService to process pending reports
             $processedCount = $this->reportingService->processPendingReports(self::MAX_REPORTS_PER_RUN);
-            
+
             if ($processedCount > 0) {
                 $this->logger->info("Successfully processed {$processedCount} pending reports");
             } else {
@@ -98,13 +101,16 @@ class ProcessPendingReports extends TimedJob
             }
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error in ProcessPendingReports job: ' . $e->getMessage(), [
-                'exception' => $e
-                ]
-            );
+                    'Error in ProcessPendingReports job: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
+                    );
         }
-    }
-    
+
+    }//end run()
+
+
     /**
      * Check if reporting is enabled
      *
@@ -116,5 +122,8 @@ class ProcessPendingReports extends TimedJob
     private function isReportingEnabled(): bool
     {
         return $this->reportingService->isReportingEnabled();
-    }
-} 
+
+    }//end isReportingEnabled()
+
+
+}//end class

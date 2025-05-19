@@ -15,15 +15,17 @@ use Twig\Loader\ArrayLoader;
  */
 class TemplateService
 {
+
     /**
-     * @var TemplateMapper 
+     * @var TemplateMapper
      */
     private $mapper;
-    
+
     /**
-     * @var Environment 
+     * @var Environment
      */
     private $twig;
+
 
     /**
      * Constructor for TemplateService
@@ -33,11 +35,13 @@ class TemplateService
     public function __construct(TemplateMapper $mapper)
     {
         $this->mapper = $mapper;
-        
+
         // Initialize Twig with array loader for dynamic templates
-        $loader = new ArrayLoader([]);
+        $loader     = new ArrayLoader([]);
         $this->twig = new Environment($loader);
-    }
+
+    }//end __construct()
+
 
     /**
      * Creates a new template
@@ -55,9 +59,11 @@ class TemplateService
         $template->setContent($content);
         $template->setCategory($category);
         $template->setOutputFormat($outputFormat);
-        
+
         return $this->mapper->insert($template);
-    }
+
+    }//end createTemplate()
+
 
     /**
      * Renders a template with provided data
@@ -71,28 +77,30 @@ class TemplateService
     public function renderTemplate(int $templateId, array $data, string $format): string
     {
         $template = $this->mapper->find($templateId);
-        
-        // Create a new template in Twig environment
+
+        // Create a new template in Twig environment.
         $this->twig->setLoader(
             new ArrayLoader(
                 [
-                'template' => $template->getContent()
+                    'template' => $template->getContent(),
                 ]
             )
         );
-        
-        // Render the template with provided data
+
+        // Render the template with provided data.
         $html = $this->twig->render('template', $data);
-        
-        // Convert to requested format
+
+        // Convert to requested format.
         if ($format === 'pdf') {
             return $this->convertToPdf($html);
-        } elseif ($format === 'docx') {
+        } else if ($format === 'docx') {
             return $this->convertToWord($html);
         }
-        
+
         return $html;
-    }
+
+    }//end renderTemplate()
+
 
     /**
      * Converts HTML content to PDF
@@ -105,7 +113,9 @@ class TemplateService
         // @TODO: Implement PDF conversion using library like wkhtmltopdf
         // This is a placeholder for actual implementation
         return $html;
-    }
+
+    }//end convertToPdf()
+
 
     /**
      * Converts HTML content to Word document
@@ -118,5 +128,8 @@ class TemplateService
         // @TODO: Implement Word conversion using PHPWord
         // This is a placeholder for actual implementation
         return $html;
-    }
-} 
+
+    }//end convertToWord()
+
+
+}//end class

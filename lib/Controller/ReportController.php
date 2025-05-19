@@ -5,7 +5,7 @@
  * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -53,6 +53,8 @@ use Symfony\Component\Uid\Uuid;
  */
 class ReportController extends Controller
 {
+
+
     /**
      * Constructor for ReportController
      *
@@ -87,7 +89,9 @@ class ReportController extends Controller
         $this->objectService->setSchema($reportObjectType);
 
         parent::__construct($appName, $request);
-    }
+
+    }//end __construct()
+
 
     /**
      * Get a list of reports
@@ -108,41 +112,44 @@ class ReportController extends Controller
      * @phpstan-return JSONResponse
      */
     public function index(
-        ?int $limit = null,
-        ?int $offset = null,
-        ?string $nodeId = null,
-        ?string $status = null,
-        ?string $orderBy = null,
-        ?string $order = null
+        ?int $limit=null,
+        ?int $offset=null,
+        ?string $nodeId=null,
+        ?string $status=null,
+        ?string $orderBy=null,
+        ?string $order=null
     ): JSONResponse {
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
+
             $filters = [];
             if ($nodeId !== null) {
                 $filters['nodeId'] = $nodeId;
             }
+
             if ($status !== null) {
                 $filters['status'] = $status;
             }
-            
+
             // Get the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
-            
+
             // Filter reports by user ID
             $filters['userId'] = $user->getUID();
-            
+
             $reports = $this->objectService->getObjects($reportObjectType, $limit, $offset, $filters, $orderBy, $order);
-            
+
             return new JSONResponse($reports);
         } catch (\Exception $e) {
-            $this->logger->error('Error getting reports: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Error getting reports: '.$e->getMessage(), ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
+        }//end try
+
+    }//end index()
+
 
     /**
      * Get a specific report by ID
@@ -161,29 +168,31 @@ class ReportController extends Controller
     {
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
+
             $report = $this->objectService->getObject($reportObjectType, $id);
-            
+
             if ($report === null) {
                 return new JSONResponse(['error' => 'Report not found'], Http::STATUS_NOT_FOUND);
             }
-            
+
             // Check if the report belongs to the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
-            
+
             if ($report['userId'] !== $user->getUID()) {
                 return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
             }
-            
+
             return new JSONResponse($report);
         } catch (\Exception $e) {
-            $this->logger->error('Error getting report: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Error getting report: '.$e->getMessage(), ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
+        }//end try
+
+    }//end show()
+
 
     /**
      * Create a new report
@@ -202,58 +211,61 @@ class ReportController extends Controller
      * @phpstan-return JSONResponse
      */
     public function create(
-        ?int $nodeId = null,
-        ?string $fileName = null,
-        ?string $filePath = null,
-        ?bool $processNow = false,
-        ?array $analysisTypes = null
+        ?int $nodeId=null,
+        ?string $fileName=null,
+        ?string $filePath=null,
+        ?bool $processNow=false,
+        ?array $analysisTypes=null
     ): JSONResponse {
         try {
             // Validate required parameters
             if ($nodeId === null) {
                 return new JSONResponse(['error' => 'Node ID is required'], 400);
             }
-            
+
             // Get the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
-            
+
             $userId = $user->getUID();
-            
+
             // Get the file node
             $userFolder = $this->rootFolder->getUserFolder($userId);
-            $nodes = $userFolder->getById($nodeId);
-            
+            $nodes      = $userFolder->getById($nodeId);
+
             if (empty($nodes)) {
                 return new JSONResponse(['error' => 'File not found'], 404);
             }
-            
+
             $node = $nodes[0];
-            
+
             // Create the report using the ReportingService
             $report = $this->reportingService->createReport($node);
-            
+
             // If processNow is true, process the report immediately
             if ($processNow && $report !== null) {
                 $report = $this->reportingService->processReport($report);
             }
-            
+
             if ($report === null) {
                 return new JSONResponse(['error' => 'Failed to create report'], 500);
             }
-            
+
             return new JSONResponse($report);
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error creating report: ' . $e->getMessage(), [
-                'exception' => $e
-                ]
-            );
+                    'Error creating report: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
+                    );
             return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
+        }//end try
+
+    }//end create()
+
 
     /**
      * Update a report
@@ -274,41 +286,44 @@ class ReportController extends Controller
         try {
             // Get the current report
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            $report = $this->objectService->getObject($reportObjectType, $id);
-            
+            $report           = $this->objectService->getObject($reportObjectType, $id);
+
             if ($report === null) {
                 return new JSONResponse(['error' => 'Report not found'], 404);
             }
-            
+
             // Validate that the user has permission to update this report
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
-            
+
             // Prevent updating certain fields
             foreach ($updates as $key => $value) {
                 if (in_array($key, ['id', 'nodeId', 'fileHash', 'userId', 'created'])) {
                     unset($updates[$key]);
                 }
             }
-            
+
             // Apply updates
             $updatedReport = array_merge($report, $updates);
-            
+
             // Save the updated report
             $result = $this->objectService->saveObject($reportObjectType, $updatedReport);
-            
+
             return new JSONResponse($result);
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error updating report: ' . $e->getMessage(), [
-                'exception' => $e
-                ]
-            );
+                    'Error updating report: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
+                    );
             return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
+        }//end try
+
+    }//end update()
+
 
     /**
      * Delete a report
@@ -327,35 +342,37 @@ class ReportController extends Controller
     {
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
+
             $report = $this->objectService->getObject($reportObjectType, $id);
-            
+
             if ($report === null) {
                 return new JSONResponse(['error' => 'Report not found'], Http::STATUS_NOT_FOUND);
             }
-            
+
             // Check if the report belongs to the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
-            
+
             if ($report['userId'] !== $user->getUID()) {
                 return new JSONResponse(['error' => 'Access denied'], Http::STATUS_FORBIDDEN);
             }
-            
+
             $success = $this->objectService->deleteObject($reportObjectType, $id);
-            
+
             if ($success) {
                 return new JSONResponse(['success' => true]);
             } else {
                 return new JSONResponse(['error' => 'Failed to delete report'], Http::STATUS_INTERNAL_SERVER_ERROR);
             }
         } catch (\Exception $e) {
-            $this->logger->error('Error deleting report: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Error deleting report: '.$e->getMessage(), ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
+        }//end try
+
+    }//end destroy()
+
 
     /**
      * Get the latest report for a node
@@ -374,30 +391,32 @@ class ReportController extends Controller
     {
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
+
             // Get the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
-            
+
             $filters = [
                 'nodeId' => $nodeId,
                 'userId' => $user->getUID(),
             ];
-            
+
             $reports = $this->objectService->getObjects($reportObjectType, 1, 0, $filters, 'created', 'desc');
-            
+
             if (empty($reports)) {
                 return new JSONResponse(['error' => 'No reports found for this node'], Http::STATUS_NOT_FOUND);
             }
-            
+
             return new JSONResponse($reports[0]);
         } catch (\Exception $e) {
-            $this->logger->error('Error getting latest report for node: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Error getting latest report for node: '.$e->getMessage(), ['exception' => $e]);
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
-        }
-    }
+        }//end try
+
+    }//end getLatestForNode()
+
 
     /**
      * Process a report
@@ -417,46 +436,50 @@ class ReportController extends Controller
         try {
             // Get the report
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            $report = $this->objectService->getObject($reportObjectType, $id);
-            
+            $report           = $this->objectService->getObject($reportObjectType, $id);
+
             if ($report === null) {
                 return new JSONResponse(['error' => 'Report not found'], 404);
             }
-            
+
             // Get the file node
             $filePath = $report['filePath'] ?? null;
             $fileName = $report['fileName'] ?? null;
-            
+
             if ($filePath === null) {
                 return new JSONResponse(['error' => 'Report has no file path'], 400);
             }
-            
+
             // Get the current user
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
-            
+
             $userId = $user->getUID();
-            
+
             // Process the report
             $processedReport = $this->reportingService->processReport($report);
-            
+
             // Update file path and name if they were missing
             if (!isset($processedReport['filePath']) || !isset($processedReport['fileName'])) {
                 $processedReport['filePath'] = $filePath;
                 $processedReport['fileName'] = $fileName;
                 $processedReport = $this->objectService->saveObject($reportObjectType, $processedReport);
             }
-            
+
             return new JSONResponse($processedReport);
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error processing report: ' . $e->getMessage(), [
-                'exception' => $e
-                ]
-            );
+                    'Error processing report: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
+                    );
             return new JSONResponse(['error' => $e->getMessage()], 500);
-        }
-    }
-} 
+        }//end try
+
+    }//end process()
+
+
+}//end class

@@ -5,7 +5,7 @@
  * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -141,3 +141,40 @@ class DocuDeskAdmin implements ISettings
         return 10;
     }
 }
+
+        return new TemplateResponse('docudesk', 'settings/admin', $parameters, '');
+
+    }//end getForm()
+
+
+    /**
+     * Get the section ID for the admin settings
+     *
+     * @return string The section ID
+     *
+     * @psalm-return   string
+     * @phpstan-return string
+     */
+    public function getSection(): string
+    {
+        return 'docudesk';
+
+    }//end getSection()
+
+
+    /**
+     * Get the priority for the admin settings
+     *
+     * @return int The priority (0-100)
+     *
+     * @psalm-return   int
+     * @phpstan-return int
+     */
+    public function getPriority(): int
+    {
+        return 10;
+
+    }//end getPriority()
+
+
+}//end class
