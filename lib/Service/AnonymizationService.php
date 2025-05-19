@@ -31,21 +31,17 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
+use OCA\OpenRegister\Service\ObjectService;
 
 /**
  * Service for anonymizing sensitive information in documents
  *
  * This service handles the anonymization of sensitive information in documents
  * using Presidio for entity detection and replacement.
- *
- * @category Service
- * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
 class AnonymizationService
 {
@@ -120,6 +116,13 @@ class AnonymizationService
     private ReportingService $reportingService;
 
     /**
+     * App config for getting app config
+     *
+     * @var IAppConfig
+     */
+    private readonly IAppConfig $appConfig;
+
+    /**
      * Constructor for AnonymizationService
      *
      * @param LoggerInterface   $logger            Logger for error reporting
@@ -135,14 +138,33 @@ class AnonymizationService
         IConfig $config,
         ObjectService $objectService,
         ExtractionService $extractionService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        IAppConfig $appConfig
     ) {
         $this->logger = $logger;
         $this->config = $config;
         $this->objectService = $objectService;
         $this->extractionService = $extractionService;
         $this->userSession = $userSession;
+        $this->appConfig = $appConfig;
+
         
+
+        // Set the object service to use the reporting service
+        $reportRegisterType = $this->appConfig->getValueString(
+            'DocuDesk', 
+            'anonymization_register', 
+            'document'
+        );
+        $this->objectService->setRegister($reportRegisterType);
+        
+        $reportObjectType = $this->appConfig->getValueString(
+            'DocuDesk', 
+            'anonymization_schema', 
+            'anonymization'
+        );
+        $this->objectService->setSchema($reportObjectType);
+
         // Initialize Guzzle HTTP client
         $this->client = new Client([
             'timeout' => 30,

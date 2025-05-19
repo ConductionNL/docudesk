@@ -32,7 +32,7 @@ use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IConfig;
-use OCA\DocuDesk\Service\ObjectService;
+use OCA\OpenRegister\Service\ObjectService;
 
 /**
  * Class SettingsController
@@ -98,7 +98,7 @@ class SettingsController extends Controller
 		foreach ($data['objectTypes'] as $type) {
 			$defaults["{$type}_source"] = 'internal';
 			$defaults["{$type}_schema"] = '';
-			$defaults["{$type}_register"] = '';
+			$defaults["{$type}_register"] = 'document';
 		}
 
 		// Add system configuration values

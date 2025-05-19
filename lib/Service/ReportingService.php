@@ -1,9 +1,6 @@
 <?php
 
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license GNU AGPL version 3 or any later version
- *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -17,11 +14,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with DocuDesk. If not, see <http://www.gnu.org/licenses/>.
  *
- * @category Service
- * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  AGPL-3.0-or-later
- * @link     https://github.com/conductionnl/docudesk
+ * @category  Service
+ * @package   OCA\DocuDesk\Service
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V. <info@conduction.nl>
+ * @license   GNU AGPL version 3 or any later version
+ * @link      https://github.com/conductionnl/docudesk
  */
 
 namespace OCA\DocuDesk\Service;
@@ -31,21 +29,18 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use OCP\IConfig;
+use OCP\IAppConfig;
 use OCP\ILogger;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
+use OCA\DocuDesk\Service\AnonymizationService;
+use OCA\OpenRegister\Service\ObjectService;
 
 /**
  * Service for generating and managing document reports
  *
  * This service handles the generation of reports based on document content,
- * including sending content to Presidio for analysis and storing the results.
- *
- * @category Service
- * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  AGPL-3.0-or-later
- * @link     https://github.com/conductionnl/docudesk
+ * including sending content to Presidio for analysis and storing the results. 
  */
 class ReportingService
 {
@@ -64,63 +59,14 @@ class ReportingService
     private const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 
     /**
-     * Logger instance for error reporting
-     *
-     * @var LoggerInterface
-     */
-    private readonly LoggerInterface $logger;
-
-    /**
-     * HTTP client for API requests
-     *
-     * @var Client
-     */
-    private readonly Client $client;
-
-    /**
-     * Configuration service
-     *
-     * @var IConfig
-     */
-    private readonly IConfig $config;
-
-    /**
-     * Object service for storing reports
-     *
-     * @var ObjectService
-     */
-    private readonly ObjectService $objectService;
-
-    /**
-     * Extraction service for getting text from documents
-     *
-     * @var ExtractionService
-     */
-    private readonly ExtractionService $extractionService;
-
-    /**
-     * Root folder service for accessing files
-     *
-     * @var \OCP\Files\IRootFolder
-     */
-    private readonly \OCP\Files\IRootFolder $rootFolder;
-
-    /**
-     * Anonymization service for anonymizing documents
-     *
-     * @var AnonymizationService
-     */
-    private readonly AnonymizationService $anonymizationService;
-
-    /**
      * Constructor for ReportingService
      *
-     * @param LoggerInterface      $logger               Logger for error reporting
-     * @param IConfig              $config               Configuration service
-     * @param ObjectService        $objectService        Service for storing objects
-     * @param ExtractionService    $extractionService    Service for extracting text from documents
-     * @param \OCP\Files\IRootFolder $rootFolder         Root folder service for accessing files
-     * @param AnonymizationService $anonymizationService Service for anonymizing documents
+     * @param LoggerInterface        $logger               Logger for error reporting
+     * @param IConfig                $config               Configuration service
+     * @param ObjectService          $objectService        Service for storing objects
+     * @param ExtractionService      $extractionService    Service for extracting text from documents
+     * @param \OCP\Files\IRootFolder $rootFolder           Root folder service for accessing files
+     * @param AnonymizationService   $anonymizationService Service for anonymizing documents
      *
      * @return void
      */
@@ -130,7 +76,8 @@ class ReportingService
         ObjectService $objectService,
         ExtractionService $extractionService,
         \OCP\Files\IRootFolder $rootFolder,
-        AnonymizationService $anonymizationService
+        AnonymizationService $anonymizationService,
+        IAppConfig $appConfig
     ) {
         $this->logger = $logger;
         $this->config = $config;
@@ -138,9 +85,17 @@ class ReportingService
         $this->extractionService = $extractionService;
         $this->rootFolder = $rootFolder;
         $this->anonymizationService = $anonymizationService;
-        
+        $this->appConfig = $appConfig;
+
         // Set this service in the anonymization service to avoid circular dependency
         $this->anonymizationService->setReportingService($this);
+
+        // Set the object service to use the reporting service
+        $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
+        $this->objectService->setRegister($reportRegisterType);
+        
+        $reportObjectType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $this->objectService->setSchema($reportObjectType);
         
         // Initialize Guzzle HTTP client
         $this->client = new Client([
@@ -260,7 +215,7 @@ class ReportingService
             $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
             
             // Save updated report
-            $report = $this->objectService->saveObject($reportObjectType, $report);   
+            $report = $this->objectService->saveObject($reportObjectType, $report); 
             
             // Process anonymization if enabled
             if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
@@ -458,11 +413,11 @@ class ReportingService
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             
-            $filters = [
+            $config['filters'] = [
                 'nodeId' => $node->getId()
             ];
 
-            $reports = $this->objectService->getObjects($reportObjectType, null, 0, $filters);
+            $reports = $this->objectService->findAll($config);
             
             // Throw error if multiple reports found
             if (count($reports) > 1) {
@@ -486,7 +441,7 @@ class ReportingService
      *
      * @return bool True if deletion was successful, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     public function deleteReport(string $reportId): bool
@@ -500,18 +455,18 @@ class ReportingService
     }
 
      /**
-     * Process an existing report
-     *
-     * @param \OCP\Files\Node $node The file node to process
-     *
-     * @return array<string, mixed>|null The processed report or null if processing failed
-     *
-     * @throws Exception If report processing fails
-     * @throws \InvalidArgumentException If the node is not a file
-     *
-     * @psalm-return array<string, mixed>|null
-     * @phpstan-return array<string, mixed>|null
-     */
+      * Process an existing report
+      *
+      * @param \OCP\Files\Node $node The file node to process
+      *
+      * @return array<string, mixed>|null The processed report or null if processing failed
+      *
+      * @throws Exception If report processing fails
+      * @throws \InvalidArgumentException If the node is not a file
+      *
+      * @psalm-return   array<string, mixed>|null
+      * @phpstan-return array<string, mixed>|null
+      */
     public function updateReport(\OCP\Files\Node $node): ?array
     {
         // Validate that the node is a file
@@ -831,7 +786,7 @@ class ReportingService
         
         // Save the report
         $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-        $report = $this->objectService->saveObject($reportObjectType, $report);        
+        $report = $this->objectService->saveObject($report);        
 
         // Process the report now if synchronous processing is enabled
         if ($this->isSynchronousProcessingEnabled()) {

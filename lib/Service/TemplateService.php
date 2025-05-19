@@ -6,6 +6,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCA\DocuDesk\Db\Template;
 use OCA\DocuDesk\Db\TemplateMapper;
+use OCP\IAppConfig;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 

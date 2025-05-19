@@ -32,6 +32,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory as SpreadsheetIOFactory;
 use PhpOffice\PhpPresentation\IOFactory as PresentationIOFactory;
 use Smalot\PdfParser\Parser as PdfParser;
 use Psr\Log\LoggerInterface;
+use OCA\OpenRegister\Service\ObjectService;
+use OCP\IAppConfig;
 
 /**
  * Service for extracting text content from various file types
@@ -39,12 +41,6 @@ use Psr\Log\LoggerInterface;
  * This service provides methods to extract text content from different file formats
  * including PDF, Word documents, Excel spreadsheets, PowerPoint presentations,
  * and plain text files.
- *
- * @category Service
- * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  AGPL-3.0-or-later
- * @link     https://github.com/conductionnl/docudesk
  */
 class ExtractionService
 {
@@ -62,9 +58,18 @@ class ExtractionService
      *
      * @return void
      */
-    public function __construct(LoggerInterface $logger)
+
+    /**
+     * App config for getting app config
+     *
+     * @var IAppConfig
+     */
+    private readonly IAppConfig $appConfig;
+
+    public function __construct(LoggerInterface $logger, IAppConfig $appConfig)
     {
         $this->logger = $logger;
+        $this->appConfig = $appConfig;
     }
 
     /**

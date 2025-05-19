@@ -114,10 +114,12 @@ class FileEventListener implements IEventListener
     private function handleNodeCreated(NodeCreatedEvent $event): void
     {
         $node = $event->getNode();
-        $this->logger->debug('File created: ' . $node->getName(), [
+        $this->logger->debug(
+            'File created: ' . $node->getName(), [
             'node_id' => $node->getId(),
             'path' => $node->getPath()
-        ]);
+            ]
+        );
         
         // Always try to create a report, the ReportingService will check if reporting is enabled
          $this->reportingService->createReport($node);
@@ -133,13 +135,12 @@ class FileEventListener implements IEventListener
     private function handleNodeWritten(NodeWrittenEvent $event): void
     {
         $node = $event->getNode();
-        $this->logger->debug('File written: ' . $node->getName(), [
-            'node_id' => $node->getId(),
-            'path' => $node->getPath()
-        ]);
-        
-        // Always try to create a report, the ReportingService will check if reporting is enabled
-        //$this->reportingService->updateReport($node);  @todo this is becouse a a bug where creates are thrown instead of updates
+        $this->logger->debug(
+            'File written: ' . $node->getName(), [
+                'node_id' => $node->getId(),
+                'path' => $node->getPath()
+            ]
+        );        
     }
 
     /**
@@ -152,10 +153,12 @@ class FileEventListener implements IEventListener
     private function handleNodeDeleted(NodeDeletedEvent $event): void
     {
         $node = $event->getNode();
-        $this->logger->debug('File deleted: ' . $node->getName(), [
-            'node_id' => $node->getId(),
-            'path' => $node->getPath()
-        ]);
+        $this->logger->debug(
+            'File deleted: ' . $node->getName(), [
+                'node_id' => $node->getId(),
+                'path' => $node->getPath()
+            ]
+        );
         
         // No report creation needed for deleted files
     }

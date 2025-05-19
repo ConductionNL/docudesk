@@ -26,7 +26,7 @@
 
 namespace OCA\DocuDesk\Controller;
 
-use OCA\DocuDesk\Service\ObjectService;
+use OCA\OpenRegister\Service\ObjectService;
 use OCA\DocuDesk\Service\ReportingService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -34,6 +34,7 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\Files\IRootFolder;
 use OCP\IConfig;
 use OCP\IRequest;
+use OCP\IAppConfig;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -63,6 +64,7 @@ class ReportController extends Controller
      * @param IUserSession     $userSession      User session service
      * @param IConfig          $config           Configuration service
      * @param LoggerInterface  $logger           Logger for error reporting
+     * @param IAppConfig       $appConfig        App config
      *
      * @return void
      */
@@ -74,8 +76,16 @@ class ReportController extends Controller
         private readonly IRootFolder $rootFolder,
         private readonly IUserSession $userSession,
         private readonly IConfig $config,
+        private readonly IAppConfig $appConfig,
         private readonly LoggerInterface $logger
     ) {
+        // Set the object service to use the reporting service
+        $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
+        $this->objectService->setRegister($reportRegisterType);
+        
+        $reportObjectType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $this->objectService->setSchema($reportObjectType);
+
         parent::__construct($appName, $request);
     }
 
