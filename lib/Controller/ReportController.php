@@ -2,7 +2,7 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license EUPL-1.2
+ * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL), 
@@ -71,13 +71,13 @@ class ReportController extends Controller
     public function __construct(
         string $appName,
         IRequest $request,
-        private readonly ObjectService $objectService,
-        private readonly ReportingService $reportingService,
-        private readonly IRootFolder $rootFolder,
-        private readonly IUserSession $userSession,
-        private readonly IConfig $config,
-        private readonly IAppConfig $appConfig,
-        private readonly LoggerInterface $logger
+    private readonly ObjectService $objectService,
+    private readonly ReportingService $reportingService,
+    private readonly IRootFolder $rootFolder,
+    private readonly IUserSession $userSession,
+    private readonly IConfig $config,
+    private readonly IAppConfig $appConfig,
+    private readonly LoggerInterface $logger
     ) {
         // Set the object service to use the reporting service
         $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
@@ -104,7 +104,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function index(
@@ -154,7 +154,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function show(string $id): JSONResponse
@@ -188,17 +188,17 @@ class ReportController extends Controller
     /**
      * Create a new report
      *
-     * @param int|null    $nodeId       The node ID of the file
-     * @param string|null $fileName     The name of the file
-     * @param string|null $filePath     The path of the file
-     * @param bool|null   $processNow   Whether to process the report immediately
+     * @param int|null    $nodeId        The node ID of the file
+     * @param string|null $fileName      The name of the file
+     * @param string|null $filePath      The path of the file
+     * @param bool|null   $processNow    Whether to process the report immediately
      * @param array|null  $analysisTypes The types of analysis to perform
      *
      * @return JSONResponse JSON response containing the created report
      *
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function create(
@@ -246,9 +246,11 @@ class ReportController extends Controller
             
             return new JSONResponse($report);
         } catch (\Exception $e) {
-            $this->logger->error('Error creating report: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error creating report: ' . $e->getMessage(), [
                 'exception' => $e
-            ]);
+                ]
+            );
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
@@ -264,7 +266,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function update(string $id, array $updates): JSONResponse
@@ -299,9 +301,11 @@ class ReportController extends Controller
             
             return new JSONResponse($result);
         } catch (\Exception $e) {
-            $this->logger->error('Error updating report: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error updating report: ' . $e->getMessage(), [
                 'exception' => $e
-            ]);
+                ]
+            );
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }
@@ -316,7 +320,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function destroy(string $id): JSONResponse
@@ -363,7 +367,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function getLatestForNode(int $nodeId): JSONResponse
@@ -405,7 +409,7 @@ class ReportController extends Controller
      * @NoAdminRequired
      * @NoCSRFRequired
      *
-     * @psalm-return JSONResponse
+     * @psalm-return   JSONResponse
      * @phpstan-return JSONResponse
      */
     public function process(string $id): JSONResponse
@@ -447,9 +451,11 @@ class ReportController extends Controller
             
             return new JSONResponse($processedReport);
         } catch (\Exception $e) {
-            $this->logger->error('Error processing report: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error processing report: ' . $e->getMessage(), [
                 'exception' => $e
-            ]);
+                ]
+            );
             return new JSONResponse(['error' => $e->getMessage()], 500);
         }
     }

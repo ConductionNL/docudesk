@@ -2,7 +2,7 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license EUPL-1.2
+ * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL), 
@@ -166,10 +166,12 @@ class AnonymizationService
         $this->objectService->setSchema($reportObjectType);
 
         // Initialize Guzzle HTTP client
-        $this->client = new Client([
+        $this->client = new Client(
+            [
             'timeout' => 30,
             'connect_timeout' => 5,
-        ]);
+            ]
+        );
     }
 
     /**
@@ -182,7 +184,7 @@ class AnonymizationService
      *
      * @return void
      *
-     * @psalm-return void
+     * @psalm-return   void
      * @phpstan-return void
      */
     public function setReportingService(ReportingService $reportingService): void
@@ -197,14 +199,14 @@ class AnonymizationService
      * creates a new anonymized file with the same name plus "_anonymized",
      * and replaces entities with [entityType: key] format.
      *
-     * @param \OCP\Files\Node $node   The file node to anonymize
+     * @param \OCP\Files\Node           $node   The file node to anonymize
      * @param array<string, mixed>|null $report The report containing detected entities (optional)
      *
      * @return array<string, mixed>|void The anonymization result or void if no anonymization needed
      *
      * @throws Exception If anonymization fails
      *
-     * @psalm-return array<string, mixed>|void
+     * @psalm-return   array<string, mixed>|void
      * @phpstan-return array<string, mixed>|void
      */
     public function processAnonymization(\OCP\Files\Node $node, ?array $report = null)
@@ -278,10 +280,12 @@ class AnonymizationService
 
         // Lets return the anonymization if the hash is the same
         if ($anonymization['fileHash'] === $fileHash && $anonymization['status'] === 'completed') {
-            $this->logger->debug('File hash matches existing anonymization, returning cached result', [
+            $this->logger->debug(
+                'File hash matches existing anonymization, returning cached result', [
                 'fileHash' => $fileHash,
                 'anonymizationId' => $anonymization['id'] ?? null
-            ]);
+                ]
+            );
             // Save the anonymization result before returning
             $anonymization['message'] = 'File hash matches existing anonymization, returning cached result';
             $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
@@ -375,15 +379,19 @@ class AnonymizationService
         }
         
         // Sort entities by start position in descending order to avoid position shifts
-        usort($processedEntities, function ($a, $b) {
-            return ($b['start'] ?? 0) - ($a['start'] ?? 0);
-        });
+        usort(
+            $processedEntities, function ($a, $b) {
+                return ($b['start'] ?? 0) - ($a['start'] ?? 0);
+            }
+        );
         
         // Log the processed entities for debugging
-        $this->logger->debug('Processed entities for anonymization:', [
+        $this->logger->debug(
+            'Processed entities for anonymization:', [
             'processedEntities' => $processedEntities,
             'originalEntities' => $report['entities']
-        ]);
+            ]
+        );
         
         // Replace entities in the content
         foreach ($processedEntities as $entity) {
@@ -439,7 +447,7 @@ class AnonymizationService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws \RuntimeException If multiple anonymizations are found for the node
      *
-     * @psalm-return array<string, mixed>|null
+     * @psalm-return   array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
     public function getAnonymization(\OCP\Files\Node $node): ?array
@@ -465,10 +473,12 @@ class AnonymizationService
             
             return !empty($anonymizations) ? $anonymizations[0] : null;
         } catch (Exception $e) {
-            $this->logger->error('Failed to retrieve anonymization: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Failed to retrieve anonymization: ' . $e->getMessage(), [
                 'nodeId' => $node->getId(),
                 'exception' => $e
-            ]);
+                ]
+            );
             return null;
         }
     }
@@ -480,7 +490,7 @@ class AnonymizationService
      *
      * @return bool True if deletion was successful, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     public function deleteAnonymization(string $anonymizationId): bool
@@ -500,7 +510,7 @@ class AnonymizationService
      *
      * @return array<string, mixed>|null The anonymization data or null if not found
      *
-     * @psalm-return array<string, mixed>|null
+     * @psalm-return   array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
     public function getAnonymizationById(string $anonymizationId): ?array
@@ -508,10 +518,12 @@ class AnonymizationService
         try {
             return $this->objectService->getObject('anonymization', $anonymizationId);
         } catch (Exception $e) {
-            $this->logger->error('Failed to retrieve anonymization by ID: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Failed to retrieve anonymization by ID: ' . $e->getMessage(), [
                 'anonymizationId' => $anonymizationId,
                 'exception' => $e
-            ]);
+                ]
+            );
             return null;
         }
     }

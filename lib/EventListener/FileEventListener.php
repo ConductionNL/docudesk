@@ -2,7 +2,7 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license EUPL-1.2
+ * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL), 
@@ -61,9 +61,10 @@ class FileEventListener implements IEventListener
      * @return void
      */
     public function __construct(
-        private readonly ReportingService $reportingService,
-        private readonly LoggerInterface $logger
-    ) {}
+    private readonly ReportingService $reportingService,
+    private readonly LoggerInterface $logger
+    ) {
+    }
 
     /**
      * Handle the event
@@ -93,14 +94,16 @@ class FileEventListener implements IEventListener
                 $event instanceof NodeDeletedEvent => $this->handleNodeDeleted($event),
                 $event instanceof NodeTouchedEvent => $this->handleNodeTouched($event),
                 $event instanceof NodeWrittenEvent => $this->handleNodeWritten($event),
-                default => throw new InvalidArgumentException('Unsupported event type: ' . get_class($event)),
+            default => throw new InvalidArgumentException('Unsupported event type: ' . get_class($event)),
             };
         } catch (\Exception $e) {
-            $this->logger->error('Error handling file event: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error handling file event: ' . $e->getMessage(), [
                 'event' => get_class($event),
                 'node_id' => $node->getId(),
                 'exception' => $e
-            ]);
+                ]
+            );
         }
     }
 
@@ -173,10 +176,12 @@ class FileEventListener implements IEventListener
     private function handleNodeTouched(NodeTouchedEvent $event): void
     {
         $node = $event->getNode();
-        $this->logger->debug('File touched: ' . $node->getName(), [
+        $this->logger->debug(
+            'File touched: ' . $node->getName(), [
             'node_id' => $node->getId(),
             'path' => $node->getPath()
-        ]);
+            ]
+        );
         
         // No report creation needed for touched files (metadata only changes)
     }

@@ -2,7 +2,7 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license GNU AGPL version 3 or any later version
+ * @license   GNU AGPL version 3 or any later version
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -85,7 +85,7 @@ class ExtractionService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If the file type is not supported or extraction fails
      *
-     * @psalm-return array{text: ?string, errorMessage: ?string}
+     * @psalm-return   array{text: ?string, errorMessage: ?string}
      * @phpstan-return array{text: ?string, errorMessage: ?string}
      */
     public function extractText(\OCP\Files\Node $node): array
@@ -108,72 +108,72 @@ class ExtractionService
 
         // Extract text based on file type
         switch ($extension) {
-            case 'pdf':
-                $this->logger->debug('File is a pdf, extracting text: ' . $filePath);
-                $extraction['text'] = $this->extractFromPdf($filePath);
-                break;
-            case 'doc':
-            case 'docx':
-                $this->logger->debug('File is a word document, extracting text: ' . $filePath);
-                $extraction['text'] = $this->extractFromWord($filePath);
-                break;
-            case 'xls':
-            case 'xlsx':
-            case 'csv':
-                $this->logger->debug('File is a spreadsheet, extracting text: ' . $filePath);
-                $extraction['text'] = $this->extractFromSpreadsheet($filePath);
-                break;
-            case 'ppt':
-            case 'pptx':
-                $this->logger->debug('File is a presentation, extracting text: ' . $filePath);
-                $extraction['text'] = $this->extractFromPresentation($filePath);
-                break;
-            case 'txt':
-            case 'md':
-            case 'html':
-            case 'htm':
-            case 'xml':
-            case 'json':
-                $this->logger->debug('File is a text file, extracting text: ' . $filePath);
-                $extraction['text'] = $node->getContent();
-                break;
+        case 'pdf':
+            $this->logger->debug('File is a pdf, extracting text: ' . $filePath);
+            $extraction['text'] = $this->extractFromPdf($filePath);
+            break;
+        case 'doc':
+        case 'docx':
+            $this->logger->debug('File is a word document, extracting text: ' . $filePath);
+            $extraction['text'] = $this->extractFromWord($filePath);
+            break;
+        case 'xls':
+        case 'xlsx':
+        case 'csv':
+            $this->logger->debug('File is a spreadsheet, extracting text: ' . $filePath);
+            $extraction['text'] = $this->extractFromSpreadsheet($filePath);
+            break;
+        case 'ppt':
+        case 'pptx':
+            $this->logger->debug('File is a presentation, extracting text: ' . $filePath);
+            $extraction['text'] = $this->extractFromPresentation($filePath);
+            break;
+        case 'txt':
+        case 'md':
+        case 'html':
+        case 'htm':
+        case 'xml':
+        case 'json':
+            $this->logger->debug('File is a text file, extracting text: ' . $filePath);
+            $extraction['text'] = $node->getContent();
+            break;
             // Image files - return empty string with a log message
-            case 'jpg':
-            case 'jpeg':
-            case 'png':
-            case 'gif':
-            case 'bmp':
-            case 'webp':
-            case 'svg':
-            case 'tiff':
-                $this->logger->debug('File is an image, no text extraction possible: ' . $filePath);
-                $extraction['errorMessage'] = 'File is an image, no text extraction possible';
-                break;
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif':
+        case 'bmp':
+        case 'webp':
+        case 'svg':
+        case 'tiff':
+            $this->logger->debug('File is an image, no text extraction possible: ' . $filePath);
+            $extraction['errorMessage'] = 'File is an image, no text extraction possible';
+            break;
             // Video files - return empty string with a log message
-            case 'mp4':
-            case 'avi':
-            case 'mov':
-            case 'wmv':
-            case 'flv':
-            case 'webm':
-            case 'mkv':
-                $this->logger->debug('File is a video, no text extraction possible: ' . $filePath);
-                $extraction['errorMessage'] = 'File is a video, no text extraction possible';
-                break;
+        case 'mp4':
+        case 'avi':
+        case 'mov':
+        case 'wmv':
+        case 'flv':
+        case 'webm':
+        case 'mkv':
+            $this->logger->debug('File is a video, no text extraction possible: ' . $filePath);
+            $extraction['errorMessage'] = 'File is a video, no text extraction possible';
+            break;
             // Audio files - return empty string with a log message
-            case 'mp3':
-            case 'wav':
-            case 'ogg':
-            case 'flac':
-            case 'aac':
-            case 'm4a':
-                $this->logger->debug('File is an audio file, no text extraction possible: ' . $filePath);
-                $extraction['errorMessage'] = 'File is an audio file, no text extraction possible';
-                break;
-            default:
-                // Log warning for unsupported file type
-                $this->logger->warning('Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType);
-                $extraction['errorMessage'] = 'Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType;
+        case 'mp3':
+        case 'wav':
+        case 'ogg':
+        case 'flac':
+        case 'aac':
+        case 'm4a':
+            $this->logger->debug('File is an audio file, no text extraction possible: ' . $filePath);
+            $extraction['errorMessage'] = 'File is an audio file, no text extraction possible';
+            break;
+        default:
+            // Log warning for unsupported file type
+            $this->logger->warning('Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType);
+            $extraction['errorMessage'] = 'Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType;
         }
 
         return $extraction;
@@ -188,7 +188,7 @@ class ExtractionService
      *
      * @throws Exception If PDF parsing fails
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     private function extractFromPdf(string $filePath): string
@@ -218,7 +218,7 @@ class ExtractionService
      *
      * @throws Exception If Word document parsing fails
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     private function extractFromWord(string $filePath): string
@@ -266,7 +266,7 @@ class ExtractionService
      *
      * @throws Exception If spreadsheet parsing fails
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     private function extractFromSpreadsheet(string $filePath): string
@@ -314,7 +314,7 @@ class ExtractionService
      *
      * @throws Exception If presentation parsing fails
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     private function extractFromPresentation(string $filePath): string
@@ -369,7 +369,7 @@ class ExtractionService
      *
      * @throws Exception If metadata extraction fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     public function extractMetadata(string $filePath): array
@@ -389,21 +389,21 @@ class ExtractionService
         try {
             // Extract additional metadata based on file type
             switch ($extension) {
-                case 'pdf':
-                    $metadata = array_merge($metadata, $this->extractPdfMetadata($filePath));
-                    break;
-                case 'doc':
-                case 'docx':
-                    $metadata = array_merge($metadata, $this->extractWordMetadata($filePath));
-                    break;
-                case 'xls':
-                case 'xlsx':
-                    $metadata = array_merge($metadata, $this->extractSpreadsheetMetadata($filePath));
-                    break;
-                case 'ppt':
-                case 'pptx':
-                    $metadata = array_merge($metadata, $this->extractPresentationMetadata($filePath));
-                    break;
+            case 'pdf':
+                $metadata = array_merge($metadata, $this->extractPdfMetadata($filePath));
+                break;
+            case 'doc':
+            case 'docx':
+                $metadata = array_merge($metadata, $this->extractWordMetadata($filePath));
+                break;
+            case 'xls':
+            case 'xlsx':
+                $metadata = array_merge($metadata, $this->extractSpreadsheetMetadata($filePath));
+                break;
+            case 'ppt':
+            case 'pptx':
+                $metadata = array_merge($metadata, $this->extractPresentationMetadata($filePath));
+                break;
             }
         } catch (Exception $e) {
             $this->logger->warning('Error extracting metadata: ' . $e->getMessage(), ['exception' => $e]);
@@ -422,7 +422,7 @@ class ExtractionService
      *
      * @throws Exception If PDF parsing fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     private function extractPdfMetadata(string $filePath): array
@@ -463,7 +463,7 @@ class ExtractionService
      *
      * @throws Exception If Word document parsing fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     private function extractWordMetadata(string $filePath): array
@@ -538,7 +538,7 @@ class ExtractionService
      *
      * @throws Exception If spreadsheet parsing fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     private function extractSpreadsheetMetadata(string $filePath): array
@@ -617,7 +617,7 @@ class ExtractionService
      *
      * @throws Exception If presentation parsing fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     private function extractPresentationMetadata(string $filePath): array

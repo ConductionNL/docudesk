@@ -2,7 +2,7 @@
 
 /**
  * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license EUPL-1.2
+ * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL), 
@@ -56,20 +56,20 @@ class ProcessPendingReports extends TimedJob
     /**
      * Constructor for ProcessPendingReports
      *
-     * @param ObjectService   $objectService   Service for handling objects
+     * @param ObjectService    $objectService    Service for handling objects
      * @param ReportingService $reportingService Service for generating reports
-     * @param IRootFolder     $rootFolder      Root folder service
-     * @param IConfig         $config          Configuration service
-     * @param LoggerInterface $logger          Logger for error reporting
+     * @param IRootFolder      $rootFolder       Root folder service
+     * @param IConfig          $config           Configuration service
+     * @param LoggerInterface  $logger           Logger for error reporting
      *
      * @return void
      */
     public function __construct(
-        private readonly ObjectService $objectService,
-        private readonly ReportingService $reportingService,
-        private readonly IRootFolder $rootFolder,
-        private readonly IConfig $config,
-        private readonly LoggerInterface $logger
+    private readonly ObjectService $objectService,
+    private readonly ReportingService $reportingService,
+    private readonly IRootFolder $rootFolder,
+    private readonly IConfig $config,
+    private readonly LoggerInterface $logger
     ) {
         // Run every 15 minutes
         $this->setInterval(15 * 60);
@@ -82,7 +82,7 @@ class ProcessPendingReports extends TimedJob
      *
      * @return void
      *
-     * @psalm-param array<string, mixed> $argument
+     * @psalm-param   array<string, mixed> $argument
      * @phpstan-param array<string, mixed> $argument
      */
     protected function run($argument): void
@@ -97,9 +97,11 @@ class ProcessPendingReports extends TimedJob
                 $this->logger->debug('No pending reports were processed');
             }
         } catch (\Exception $e) {
-            $this->logger->error('Error in ProcessPendingReports job: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error in ProcessPendingReports job: ' . $e->getMessage(), [
                 'exception' => $e
-            ]);
+                ]
+            );
         }
     }
     
@@ -108,7 +110,7 @@ class ProcessPendingReports extends TimedJob
      *
      * @return bool True if reporting is enabled, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     private function isReportingEnabled(): bool

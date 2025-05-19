@@ -98,10 +98,12 @@ class ReportingService
         $this->objectService->setSchema($reportObjectType);
         
         // Initialize Guzzle HTTP client
-        $this->client = new Client([
+        $this->client = new Client(
+            [
             'timeout' => 30,
             'connect_timeout' => 5,
-        ]);
+            ]
+        );
     }
 
     /**
@@ -111,15 +113,15 @@ class ReportingService
      * and stores the results as a report object. It can accept either a Node or an existing report array.
      * If anonymization is enabled, it will also anonymize the document.
      *
-     * @param \OCP\Files\Node|array<string,mixed> $input Either a Node object or an existing report array
-     * @param float $threshold Confidence threshold for entity detection (optional)
+     * @param \OCP\Files\Node|array<string,mixed> $input     Either a Node object or an existing report array
+     * @param float                               $threshold Confidence threshold for entity detection (optional)
      *
      * @return array<string,mixed> The processed report
      *
      * @throws \InvalidArgumentException If input is invalid or node cannot be found
      * @throws Exception If report processing fails
      *
-     * @psalm-return array<string,mixed>
+     * @psalm-return   array<string,mixed>
      * @phpstan-return array<string,mixed>
      */
     public function processReport(
@@ -167,7 +169,7 @@ class ReportingService
                 $extraction = $this->extractionService->extractText($node);
                 $report['text'] = $extraction['text'];
                 $report['errorMessage'] = $extraction['errorMessage'];
-             } catch (Exception $e) {
+            } catch (Exception $e) {
                 $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
                 $report['status'] = 'failed';
                 $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
@@ -195,11 +197,13 @@ class ReportingService
             $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
             
             // Map entity_type to entityType in each entity
-            $report['entities'] = array_map(function($entity) {
-                $entity['entityType'] = $entity['entity_type'];
-                unset($entity['entity_type']);
-                return $entity;
-            }, $presidioResults['entities_found']);
+            $report['entities'] = array_map(
+                function ($entity) {
+                    $entity['entityType'] = $entity['entity_type'];
+                    unset($entity['entity_type']);
+                    return $entity;
+                }, $presidioResults['entities_found']
+            );
             
             if (empty($report['entities'])) {
                 $this->logger->debug('No entities detected in document: ' . $filePath);
@@ -219,7 +223,7 @@ class ReportingService
             
             // Process anonymization if enabled
             if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
-              $this->anonymizationService->processAnonymization($node, $report);
+                $this->anonymizationService->processAnonymization($node, $report);
             }
             
             return $report;
@@ -247,7 +251,7 @@ class ReportingService
      *
      * @throws Exception If the API request fails
      *
-     * @psalm-return array<string, mixed>
+     * @psalm-return   array<string, mixed>
      * @phpstan-return array<string, mixed>
      */
     private function analyzeWithPresidio(string $text, float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD): array
@@ -270,13 +274,15 @@ class ReportingService
         
         try {
             // Send request to Presidio
-            $response = $this->client->post($presidioUrl, [
+            $response = $this->client->post(
+                $presidioUrl, [
                 'json' => $payload,
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                 ],
-            ]);
+                ]
+            );
             
             // Parse response
             $responseBody = $response->getBody()->getContents();
@@ -301,7 +307,7 @@ class ReportingService
      *
      * @return float Risk score between 0 and 100
      *
-     * @psalm-return float
+     * @psalm-return   float
      * @phpstan-return float
      */
     private function calculateRiskScore(array $entities): float
@@ -374,7 +380,7 @@ class ReportingService
      *
      * @return string Risk level label (Low, Medium, High, Critical)
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     private function getRiskLevel(float $riskScore): string
@@ -400,7 +406,7 @@ class ReportingService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws \RuntimeException If multiple reports are found for the node
      *
-     * @psalm-return array<string, mixed>|null
+     * @psalm-return   array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
     public function getReport(\OCP\Files\Node $node): ?array
@@ -426,10 +432,12 @@ class ReportingService
             
             return !empty($reports) ? $reports[0] : null;
         } catch (Exception $e) {
-            $this->logger->error('Failed to retrieve report: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Failed to retrieve report: ' . $e->getMessage(), [
                 'nodeId' => $node->getId(),
                 'exception' => $e
-            ]);
+                ]
+            );
             return null;
         }
     }
@@ -542,7 +550,7 @@ class ReportingService
      *
      * @return string The file hash
      *
-     * @psalm-return string
+     * @psalm-return   string
      * @phpstan-return string
      */
     public function calculateFileHash(string $filePath): string
@@ -554,11 +562,13 @@ class ReportingService
                 $content = file_get_contents($filePath);
                 if ($content !== false) {
                     $hash = md5($content);
-                    $this->logger->debug('Calculated content hash for file', [
+                    $this->logger->debug(
+                        'Calculated content hash for file', [
                         'filePath' => $filePath,
                         'hash' => $hash,
                         'method' => 'content'
-                    ]);
+                        ]
+                    );
                     return $hash;
                 }
             }
@@ -571,35 +581,43 @@ class ReportingService
                     $stats['size'] . 
                     $stats['mtime']
                 );
-                $this->logger->debug('Calculated metadata hash for file', [
+                $this->logger->debug(
+                    'Calculated metadata hash for file', [
                     'filePath' => $filePath,
                     'hash' => $hash,
                     'method' => 'metadata'
-                ]);
+                    ]
+                );
                 return $hash;
             }
             
             // Fallback to just the path
             $hash = md5($filePath);
-            $this->logger->debug('Calculated fallback hash for file', [
+            $this->logger->debug(
+                'Calculated fallback hash for file', [
                 'filePath' => $filePath,
                 'hash' => $hash,
                 'method' => 'path'
-            ]);
+                ]
+            );
             return $hash;
         } catch (Exception $e) {
-            $this->logger->warning('Failed to calculate file hash: ' . $e->getMessage(), [
+            $this->logger->warning(
+                'Failed to calculate file hash: ' . $e->getMessage(), [
                 'filePath' => $filePath,
                 'exception' => $e
-            ]);
+                ]
+            );
             
             // Fallback to just the path
             $hash = md5($filePath);
-            $this->logger->debug('Calculated fallback hash after error', [
+            $this->logger->debug(
+                'Calculated fallback hash after error', [
                 'filePath' => $filePath,
                 'hash' => $hash,
                 'method' => 'path'
-            ]);
+                ]
+            );
             return $hash;
         }
     }
@@ -611,7 +629,7 @@ class ReportingService
      *
      * @return int Number of reports processed
      *
-     * @psalm-return int
+     * @psalm-return   int
      * @phpstan-return int
      */
     public function processPendingReports(int $limit = 10): int
@@ -651,9 +669,11 @@ class ReportingService
                     $fileName = $report['fileName'] ?? null;
                     
                     if ($nodeId === null) {
-                        $this->logger->warning('Report has no nodeId, marking as failed', [
+                        $this->logger->warning(
+                            'Report has no nodeId, marking as failed', [
                             'reportId' => $report['id'] ?? 'unknown'
-                        ]);
+                            ]
+                        );
                         
                         $report['status'] = 'failed';
                         $report['errorMessage'] = 'Missing nodeId';
@@ -665,18 +685,22 @@ class ReportingService
                     $this->processReport($report);
                     $processedCount++;
                 } catch (Exception $e) {
-                    $this->logger->error('Error processing report: ' . $e->getMessage(), [
+                    $this->logger->error(
+                        'Error processing report: ' . $e->getMessage(), [
                         'reportId' => $report['id'] ?? 'unknown',
                         'exception' => $e
-                    ]);
+                        ]
+                    );
                 }
             }
             
             return $processedCount;
         } catch (Exception $e) {
-            $this->logger->error('Error processing pending reports: ' . $e->getMessage(), [
+            $this->logger->error(
+                'Error processing pending reports: ' . $e->getMessage(), [
                 'exception' => $e
-            ]);
+                ]
+            );
             return 0;
         }
     }
@@ -686,7 +710,7 @@ class ReportingService
      *
      * @return bool True if reporting is enabled, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     public function isReportingEnabled(): bool
@@ -699,7 +723,7 @@ class ReportingService
      *
      * @return bool True if synchronous processing is enabled, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     public function isSynchronousProcessingEnabled(): bool
@@ -713,7 +737,7 @@ class ReportingService
      *
      * @return bool True if anonymization is enabled, false otherwise
      *
-     * @psalm-return bool
+     * @psalm-return   bool
      * @phpstan-return bool
      */
     public function isAnonymizationEnabled(): bool
@@ -731,7 +755,7 @@ class ReportingService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If report creation fails
      *
-     * @psalm-return array<string, mixed>|null
+     * @psalm-return   array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
     public function createReport(\OCP\Files\Node $node): ?array
