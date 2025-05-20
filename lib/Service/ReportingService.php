@@ -31,6 +31,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use OCP\IConfig;
 use OCP\IAppConfig;
 use OCP\ILogger;
+use OCP\Files\Node;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 use OCA\DocuDesk\Service\AnonymizationService;
@@ -95,8 +96,8 @@ class ReportingService
         $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
         
-        $reportObjectType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
-        $this->objectService->setSchema($reportObjectType);
+        $reportSchemaType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $this->objectService->setSchema($reportSchemaType);
         
         // Initialize Guzzle HTTP client
         $this->client = new Client(
@@ -107,6 +108,13 @@ class ReportingService
         );
     }
 
+    
+    public function processFile(Node $node): ObjectEntity 
+    {
+        $report = $this->getReport($node);
+        return $this->processReport($report);
+    }
+
     /**
      * Process a report for a document
      *
@@ -114,148 +122,103 @@ class ReportingService
      * and stores the results as a report object. It can accept either a Node or an existing report array.
      * If anonymization is enabled, it will also anonymize the document.
      *
-     * @param \OCP\Files\Node|array<string,mixed> $input     Either a Node object or an existing report array
+     * @param report $input     Either a Node object or an existing report array
      * @param float                               $threshold Confidence threshold for entity detection (optional)
-     *
-     * @return array{
-     *     nodeId: int,
-     *     filePath: string,
-     *     fileName: string,
-     *     fileType: string,
-     *     fileExtension: string,
-     *     fileSize: int,
-     *     status: string,
-     *     errorMessage: string|null,
-     *     riskScore: float|null,
-     *     riskLevel: string,
-     *     anonymizationResults: array<string,mixed>|null,
-     *     entities: array<int,array<string,mixed>>,
-     *     wcagComplianceResults: array<string,mixed>|null,
-     *     languageLevelResults: array<string,mixed>|null,
-     *     retentionPeriod: int,
-     *     retentionExpiry: string|null,
-     *     legalBasis: string|null,
-     *     dataController: string|null,
-     *     fileHash: string,
-     *     text: string|null
-     * } The processed report
+     *    
      *
      * @throws \InvalidArgumentException If input is invalid or node cannot be found
      * @throws Exception If report processing fails
      */
     public function processReport(
-        \OCP\Files\Node|array $input,
+        array|ObjectEntity $report,
         float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD
     ): array {
-        try {
-            // Initialize variables
-            $node = null;
-            $report = null;
-            
-            // Determine input type and get node/report
-            if ($input instanceof \OCP\Files\Node) {
-                $node = $input;
-                $report = $this->getReport($node);
-            } else if (is_array($input)) {
-                $report = $input;
-                $nodeId = $report['nodeId'] ?? null;
-                
-                if ($nodeId === null) {
-                    throw new \InvalidArgumentException('Report array must contain nodeId');
-                }
-                
-                try {
-                    $node = $this->rootFolder->getById($nodeId)[0] ?? null;
-                } catch (Exception $e) {
-                    throw new \InvalidArgumentException('Could not find node with ID: ' . $nodeId);
-                }
-            } else {
-                throw new \InvalidArgumentException('Input must be either Node or report array');
-            }
-
-            if (!$node || !$report) {
-                throw new \InvalidArgumentException('Could not resolve both node and report from input');
-            }
-
-            // Get the report object type and set the status to processing
-            $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            $report['status'] = 'processing';
-            $report = $this->objectService->saveObject($reportObjectType, $report);
-
-            // Extract text from document
-            $filePath = $node->getPath();
-            try {
-                $extraction = $this->extractionService->extractText($node);
-                $report['text'] = $extraction['text'];
-                $report['errorMessage'] = $extraction['errorMessage'];
-            } catch (Exception $e) {
-                $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
-                $report['status'] = 'failed';
-                $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
-                return $this->objectService->saveObject($reportObjectType, $report);
-            }
-            
-            if (empty($report['text'])) {
-                $this->logger->warning('No text content found in document: ' . $filePath);
-                $report['status'] = 'completed';
-                //$report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
-                $report['entities'] = [];
-                
-                // Set appropriate values for non-text documents
-                $report['anonymizationResults'] = [
-                    'containsPersonalData' => false,
-                    'dataCategories' => [],
-                    'anonymizationStatus' => 'not_required'
-                ];
-                
-                $report['riskLevel'] = 'low';
-                
-                return $this->objectService->saveObject($reportObjectType, $report);
-            }
-            // Send text to Presidio for analysis and get entities
-            $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
-            
-            // Map entity_type to entityType in each entity
-            $report['entities'] = array_map(
-                function ($entity) {
-                    $entity['entityType'] = $entity['entity_type'];
-                    unset($entity['entity_type']);
-                    return $entity;
-                }, $presidioResults['entities_found']
-            );
-            
-            if (empty($report['entities'])) {
-                $this->logger->debug('No entities detected in document: ' . $filePath);
-            }
-            
-            // Update report with results
-            $report['status'] = 'completed';
-
-            // Lets calculate the risk score    
-            $report['riskScore'] = $this->calculateRiskScore($report['entities']);
-
-            // Lets calculate the risk level
-            $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
-            
-            // Save updated report
-            $report = $this->objectService->saveObject($reportObjectType, $report); 
-            
-            // Process anonymization if enabled
-            if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
-                $this->anonymizationService->processAnonymization($node, $report);
-            }
-            
-            return $report;
-            
-        } catch (Exception $e) {
-            $this->logger->error('Error processing report: ' . $e->getMessage(), ['exception' => $e]);
-            if (isset($report)) {
-                $report['status'] = 'failed';
-                $report['errorMessage'] = $e->getMessage();
-                return $this->objectService->saveObject($reportObjectType, $report);
-            }
-            throw $e;
+        
+        if(is_array($report) === false) {
+            $report = $report->jsonSerialize();
         }
+
+        $nodeId = $report['nodeId'] ?? null;
+
+        try {
+            $node = $this->rootFolder->getById($nodeId)[0] ?? null;
+        } catch (Exception $e) {
+            throw new \InvalidArgumentException('Could not find node with ID: ' . $nodeId);
+        }
+
+
+        // Get the report object type and set the status to processing
+        $this->logger->info('Processing report for node: ' . $node->getId());
+
+        $report['status'] = 'processing';
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
+
+        // Extract text from document
+        $filePath = $node->getPath();
+        try {
+            $extraction = $this->extractionService->extractText($node);
+            $report['text'] = $extraction['text'];
+            $report['errorMessage'] = $extraction['errorMessage'];
+        } catch (Exception $e) {
+            $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
+            $report['status'] = 'failed';
+            $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
+            $this->objectService->saveObject(object: $report, uuid: $report['id']); 
+            return  $report;
+        }
+        
+        if (empty($report['text'])) {
+            $this->logger->warning('No text content found in document: ' . $filePath);
+            $report['status'] = 'completed';
+            //$report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
+            $report['entities'] = [];
+            
+            // Set appropriate values for non-text documents
+            $report['anonymizationResults'] = [
+                'containsPersonalData' => false,
+                'dataCategories' => [],
+                'anonymizationStatus' => 'not_required'
+            ];
+            
+            $report['riskLevel'] = 'low';
+            $this->objectService->saveObject(object: $report, uuid: $report['id']);
+            return  $report;
+        }
+        // Send text to Presidio for analysis and get entities
+        $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
+        
+        // Map entity_type to entityType in each entity
+        $report['entities'] = array_map(
+            function ($entity) {
+                $entity['entityType'] = $entity['entity_type'];
+                unset($entity['entity_type']);
+                return $entity;
+            }, $presidioResults['entities_found']
+        );
+        
+        if (empty($report['entities'])) {
+            $this->logger->debug('No entities detected in document: ' . $filePath);
+        }
+        
+        // Update report with results
+        $report['status'] = 'completed';
+
+        // Lets calculate the risk score    
+        $report['riskScore'] = $this->calculateRiskScore($report['entities']);
+
+        // Lets calculate the risk level
+        $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
+        
+        // Save updated report
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
+        
+        // Process anonymization if enabled
+        // @todo the detecting of settings seems to be broken, we should fix this
+        //if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
+            $this->anonymizationService->processAnonymization($node, $report);
+        //}
+        
+        return $report;
     }
 
     /**
@@ -452,7 +415,7 @@ class ReportingService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws \RuntimeException If multiple reports are found for the node
      */
-    public function getReport(\OCP\Files\Node $node): ?array
+    public function getReport(\OCP\Files\Node $node): ?ObjectEntity
     {
         // Validate that the node is a file
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
@@ -463,7 +426,9 @@ class ReportingService
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             
             $config['filters'] = [
-                'nodeId' => $node->getId()
+                'nodeId' => $node->getId(),
+                'register' => $this->reportRegisterType,
+                'schema' => $this->reportSchemaType
             ];
 
             $reports = $this->objectService->findAll($config);
@@ -473,7 +438,7 @@ class ReportingService
                 throw new \RuntimeException('Multiple reports found for node ' . $node->getId() . '. There should only be one report per node.');
             }
             
-            return !empty($reports) ? $reports[0] : null;
+            return !empty($reports) ? $reports[0]->jsonSerialize() : null;
         } catch (Exception $e) {
             $this->logger->error(
                 'Failed to retrieve report: ' . $e->getMessage(), [
@@ -592,13 +557,12 @@ class ReportingService
         }
 
         // Save the updated report
-        $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-        $report = $this->objectService->saveObject($reportObjectType, $report);              
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Process the report now if synchronous processing is enabled
-        if ($this->isSynchronousProcessingEnabled()) {
+        //if ($this->isSynchronousProcessingEnabled()) { @todo
             return $this->processReport($report);
-        }
+        //}
 
         return $report;
     }  
@@ -738,7 +702,7 @@ class ReportingService
                         
                         $report['status'] = 'failed';
                         $report['errorMessage'] = 'Missing nodeId';
-                        $this->objectService->saveObject($reportObjectType, $report);
+                        $this->objectService->saveObject(object: $report, uuid: $report['id']);
                         continue;
                     }
                     
@@ -837,7 +801,7 @@ class ReportingService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If report creation fails
      */
-    public function createReport(\OCP\Files\Node $node): ObjectEntity|null
+    public function createReport(\OCP\Files\Node $node): array|null
     {
         // Validate that the node is a file
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
@@ -856,6 +820,8 @@ class ReportingService
             return $this->updateReport($node);
         }
         
+        $this->logger->debug('lets create a report for node: ' . $node->getId());
+
         // Lets setup the report object with all fields from the documentation
         $report = [
             'nodeId' => $node->getId(),
@@ -888,13 +854,17 @@ class ReportingService
         }
         
         // Save the report
-        $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-        $report = $this->objectService->saveObject($report);        
+        $reportEntity = $this->objectService->saveObject(object: $report);    
+        $report = $reportEntity->jsonSerialize();
+        
+        
+        $this->logger->debug('lets save the report: ' . $report['id']);
 
         // Process the report now if synchronous processing is enabled
-        if ($this->isSynchronousProcessingEnabled()) {
+        // @todo $this->isSynchronousProcessingEnabled() fals;y returns false
+        //if ($this->isSynchronousProcessingEnabled()) {
             return $this->processReport($report);
-        }
+        //}
 
         return $report;
     }    
