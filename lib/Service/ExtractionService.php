@@ -212,11 +212,29 @@ class ExtractionService
             // Get the file content as a stream
             $stream = $node->fopen('r');
             
+            // Create a temporary file
+            $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_pdf_');
+            if ($tempFile === false) {
+                throw new Exception('Failed to create temporary file');
+            }
+            
+            // Write the stream content to the temporary file
+            $tempStream = fopen($tempFile, 'w');
+            if ($tempStream === false) {
+                unlink($tempFile);
+                throw new Exception('Failed to open temporary file for writing');
+            }
+            
+            // Copy the content from the source stream to the temporary file
+            stream_copy_to_stream($stream, $tempStream);
+            fclose($tempStream);
+            fclose($stream);
+            
             // Create PDF parser instance
             $parser = new PdfParser();
             
-            // Parse PDF file from stream
-            $pdf = $parser->parseStream($stream);
+            // Parse PDF file from temporary file
+            $pdf = $parser->parseFile($tempFile);
             
             // Extract text from all pages
             $text = $pdf->getText();
@@ -225,8 +243,16 @@ class ExtractionService
             $text = preg_replace('/\s+/', ' ', $text);
             $text = trim($text);
             
+            // Clean up temporary file
+            unlink($tempFile);
+            
             return $text;
         } catch (Exception $e) {
+            // Clean up temporary file if it exists
+            if (isset($tempFile) && file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+            
             $this->logger->error('Error extracting text from PDF: ' . $e->getMessage(), ['exception' => $e]);
             throw new Exception('Failed to extract text from PDF: ' . $e->getMessage(), 0, $e);
         }
