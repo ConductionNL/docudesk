@@ -109,7 +109,8 @@ class ReportingService
     }
 
     
-    public function processFile(Node $node): ObjectEntity {
+    public function processFile(Node $node): ObjectEntity 
+    {
         $report = $this->getReport($node);
         return $this->processReport($report);
     }
@@ -209,7 +210,7 @@ class ReportingService
         $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
         
         // Save updated report
-        $report = $this->objectService->saveObject($report); 
+        $this->objectService->saveObject($report); 
         
         // Process anonymization if enabled
         if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
@@ -553,7 +554,7 @@ class ReportingService
         }
 
         // Save the updated report
-        $report = $this->objectService->saveObject($report);
+        $this->objectService->saveObject($report);
 
         // Process the report now if synchronous processing is enabled
         //if ($this->isSynchronousProcessingEnabled()) { @todo
@@ -850,10 +851,10 @@ class ReportingService
         }
         
         // Save the report
-        $report = $this->objectService->saveObject($report);        
+        $this->objectService->saveObject($report);        
 
         
-        $this->logger->debug('lets save the report: ' . $report->getId());
+        $this->logger->debug('lets save the report: ' . $report['id']);
 
         // Process the report now if synchronous processing is enabled
         // @todo $this->isSynchronousProcessingEnabled() fals;y returns false

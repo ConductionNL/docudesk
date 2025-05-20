@@ -52,24 +52,36 @@ class ExtractionService
     private readonly LoggerInterface $logger;
 
     /**
-     * Constructor for ExtractionService
-     *
-     * @param LoggerInterface $logger Logger for error reporting
-     *
-     * @return void
-     */
-
-    /**
      * App config for getting app config
      *
      * @var IAppConfig
      */
     private readonly IAppConfig $appConfig;
 
-    public function __construct(LoggerInterface $logger, IAppConfig $appConfig)
-    {
+    /**
+     * Root folder for file operations
+     *
+     * @var \OCP\Files\IRootFolder
+     */
+    private readonly \OCP\Files\IRootFolder $rootFolder;
+
+    /**
+     * Constructor for ExtractionService
+     *
+     * @param LoggerInterface $logger Logger for error reporting
+     * @param IAppConfig $appConfig App config for getting app config
+     * @param \OCP\Files\IRootFolder $rootFolder Root folder for file operations
+     *
+     * @return void
+     */
+    public function __construct(
+        LoggerInterface $logger,
+        IAppConfig $appConfig,
+        \OCP\Files\IRootFolder $rootFolder
+    ) {
         $this->logger = $logger;
         $this->appConfig = $appConfig;
+        $this->rootFolder = $rootFolder;
     }
 
     /**
@@ -193,20 +205,31 @@ class ExtractionService
      */
     private function extractFromPdf(string $filePath): string
     {
-        // Create PDF parser instance
-        $parser = new PdfParser();
-        
-        // Parse PDF file
-        $pdf = $parser->parseFile($filePath);
-        
-        // Extract text from all pages
-        $text = $pdf->getText();
-        
-        // Clean up text (remove excessive whitespace)
-        $text = preg_replace('/\s+/', ' ', $text);
-        $text = trim($text);
-        
-        return $text;
+        try {
+            // Get the file node from the path
+            $node = $this->rootFolder->get($filePath);
+            
+            // Get the file content as a stream
+            $stream = $node->fopen('r');
+            
+            // Create PDF parser instance
+            $parser = new PdfParser();
+            
+            // Parse PDF file from stream
+            $pdf = $parser->parseStream($stream);
+            
+            // Extract text from all pages
+            $text = $pdf->getText();
+            
+            // Clean up text (remove excessive whitespace)
+            $text = preg_replace('/\s+/', ' ', $text);
+            $text = trim($text);
+            
+            return $text;
+        } catch (Exception $e) {
+            $this->logger->error('Error extracting text from PDF: ' . $e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from PDF: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**
@@ -224,8 +247,32 @@ class ExtractionService
     private function extractFromWord(string $filePath): string
     {
         try {
-            // Load the document
-            $phpWord = WordIOFactory::load($filePath);
+            // Get the file node from the path
+            $node = $this->rootFolder->get($filePath);
+            
+            // Get the file content as a stream
+            $stream = $node->fopen('r');
+            
+            // Create a temporary file
+            $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_');
+            if ($tempFile === false) {
+                throw new Exception('Failed to create temporary file');
+            }
+            
+            // Write the stream content to the temporary file
+            $tempStream = fopen($tempFile, 'w');
+            if ($tempStream === false) {
+                unlink($tempFile);
+                throw new Exception('Failed to open temporary file for writing');
+            }
+            
+            // Copy the content from the source stream to the temporary file
+            stream_copy_to_stream($stream, $tempStream);
+            fclose($tempStream);
+            fclose($stream);
+            
+            // Load the document from the temporary file
+            $phpWord = WordIOFactory::load($tempFile);
             
             $text = '';
             
@@ -259,8 +306,16 @@ class ExtractionService
             $text = preg_replace('/\s+/', ' ', $text);
             $text = trim($text);
             
+            // Clean up temporary file
+            unlink($tempFile);
+            
             return $text;
         } catch (Exception $e) {
+            // Clean up temporary file if it exists
+            if (isset($tempFile) && file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+            
             $this->logger->error('Error extracting text from Word document: ' . $e->getMessage(), ['exception' => $e]);
             throw new Exception('Failed to extract text from Word document: ' . $e->getMessage(), 0, $e);
         }
@@ -327,8 +382,14 @@ class ExtractionService
     private function extractFromSpreadsheet(string $filePath): string
     {
         try {
-            // Load the spreadsheet
-            $spreadsheet = SpreadsheetIOFactory::load($filePath);
+            // Get the file node from the path
+            $node = $this->rootFolder->get($filePath);
+            
+            // Get the file content as a stream
+            $stream = $node->fopen('r');
+            
+            // Load the spreadsheet from stream
+            $spreadsheet = SpreadsheetIOFactory::load($stream);
             
             $text = '';
             
@@ -427,45 +488,56 @@ class ExtractionService
      */
     private function extractFromPresentation(string $filePath): string
     {
-        // Load the presentation
-        $presentation = PresentationIOFactory::load($filePath);
-        
-        $text = '';
-        
-        // Iterate through all slides
-        $slideCount = $presentation->getSlideCount();
-        for ($i = 0; $i < $slideCount; $i++) {
-            $slide = $presentation->getSlide($i);
+        try {
+            // Get the file node from the path
+            $node = $this->rootFolder->get($filePath);
             
-            // Add slide number
-            $text .= 'Slide ' . ($i + 1) . ":\n";
+            // Get the file content as a stream
+            $stream = $node->fopen('r');
             
-            // Extract text from shapes
-            foreach ($slide->getShapeCollection() as $shape) {
-                if (method_exists($shape, 'getText')) {
-                    $shapeText = $shape->getText();
-                    if (!empty($shapeText)) {
-                        $text .= $shapeText . "\n";
-                    }
-                }
+            // Load the presentation from stream
+            $presentation = PresentationIOFactory::load($stream);
+            
+            $text = '';
+            
+            // Iterate through all slides
+            $slideCount = $presentation->getSlideCount();
+            for ($i = 0; $i < $slideCount; $i++) {
+                $slide = $presentation->getSlide($i);
                 
-                // Extract text from rich text elements
-                if (method_exists($shape, 'getRichTextElements')) {
-                    foreach ($shape->getRichTextElements() as $richText) {
-                        if (method_exists($richText, 'getText')) {
-                            $richTextContent = $richText->getText();
-                            if (!empty($richTextContent)) {
-                                $text .= $richTextContent . "\n";
+                // Add slide number
+                $text .= 'Slide ' . ($i + 1) . ":\n";
+                
+                // Extract text from shapes
+                foreach ($slide->getShapeCollection() as $shape) {
+                    if (method_exists($shape, 'getText')) {
+                        $shapeText = $shape->getText();
+                        if (!empty($shapeText)) {
+                            $text .= $shapeText . "\n";
+                        }
+                    }
+                    
+                    // Extract text from rich text elements
+                    if (method_exists($shape, 'getRichTextElements')) {
+                        foreach ($shape->getRichTextElements() as $richText) {
+                            if (method_exists($richText, 'getText')) {
+                                $richTextContent = $richText->getText();
+                                if (!empty($richTextContent)) {
+                                    $text .= $richTextContent . "\n";
+                                }
                             }
                         }
                     }
                 }
+                
+                $text .= "\n";
             }
             
-            $text .= "\n";
+            return trim($text);
+        } catch (Exception $e) {
+            $this->logger->error('Error extracting text from presentation: ' . $e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from presentation: ' . $e->getMessage(), 0, $e);
         }
-        
-        return trim($text);
     }
 
     /**
