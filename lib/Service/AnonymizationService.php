@@ -206,6 +206,120 @@ class AnonymizationService
     }
 
     /**
+     * Anonymize a Word document by replacing detected entities in the document structure
+     *
+     * @param \OCP\Files\Node $node The file node to anonymize
+     * @param array $processedEntities The processed entities with replacement info
+     * @param string $anonymizedFileName The name for the anonymized file
+     * @return \OCP\Files\File The new anonymized file node
+     *
+     * @throws Exception If anonymization fails
+     *
+     * @psalm-return   \OCP\Files\File
+     * @phpstan-return \OCP\Files\File
+     */
+    private function anonymizeWordDocument(
+        \OCP\Files\Node $node,
+        array $processedEntities,
+        string $anonymizedFileName
+    ): \OCP\Files\File {
+        // Get the file content as a stream and save to a temp file
+        $stream = $node->fopen('r');
+        $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_');
+        if ($tempFile === false) {
+            throw new Exception('Failed to create temporary file');
+        }
+        $tempStream = fopen($tempFile, 'w');
+        if ($tempStream === false) {
+            unlink($tempFile);
+            throw new Exception('Failed to open temporary file for writing');
+        }
+        stream_copy_to_stream($stream, $tempStream);
+        fclose($tempStream);
+        fclose($stream);
+
+        // Load the document
+        $phpWord = \PhpOffice\PhpWord\IOFactory::load($tempFile);
+
+        // Helper: Replace text in all elements recursively
+        $replaceInElements = function(array $elements, array $replacements) use (&$replaceInElements) {
+            foreach ($elements as $element) {
+                // Replace in text runs
+                if (method_exists($element, 'getText') && method_exists($element, 'setText')) {
+                    $text = $element->getText();
+                    foreach ($replacements as $replacement) {
+                        $text = str_ireplace($replacement['originalText'], $replacement['replacementText'], $text);
+                    }
+                    $element->setText($text);
+                }
+                // Replace in tables
+                if (method_exists($element, 'getRows')) {
+                    foreach ($element->getRows() as $row) {
+                        foreach ($row->getCells() as $cell) {
+                            $replaceInElements($cell->getElements(), $replacements);
+                        }
+                    }
+                }
+                // Replace in lists
+                if (method_exists($element, 'getItems')) {
+                    foreach ($element->getItems() as $item) {
+                        $replaceInElements($item->getElements(), $replacements);
+                    }
+                }
+                // Replace in nested elements
+                if (method_exists($element, 'getElements')) {
+                    $replaceInElements($element->getElements(), $replacements);
+                }
+            }
+        };
+
+        // Build replacements array
+        $replacements = [];
+        foreach ($processedEntities as $entity) {
+            $replacements[] = [
+                'originalText' => $entity['text'],
+                'replacementText' => '[' . $entity['entityType'] . ': ' . $entity['key'] . ']'
+            ];
+        }
+
+        // Replace in headers
+        foreach ($phpWord->getSections() as $section) {
+            foreach ($section->getHeaders() as $header) {
+                $replaceInElements($header->getElements(), $replacements);
+            }
+        }
+        // Replace in main content
+        foreach ($phpWord->getSections() as $section) {
+            $replaceInElements($section->getElements(), $replacements);
+        }
+        // Replace in footers
+        foreach ($phpWord->getSections() as $section) {
+            foreach ($section->getFooters() as $footer) {
+                $replaceInElements($footer->getElements(), $replacements);
+            }
+        }
+
+        // Save the anonymized document to a new temp file
+        $anonymizedTempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_anon_');
+        \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007')->save($anonymizedTempFile);
+
+        // Get the parent folder and create the new file
+        $parentFolder = $node->getParent();
+        if ($parentFolder->nodeExists($anonymizedFileName)) {
+            $parentFolder->get($anonymizedFileName)->delete();
+        }
+        $anonymizedStream = fopen($anonymizedTempFile, 'r');
+        $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedStream);
+        // Do NOT call fclose($anonymizedStream) here; Nextcloud handles the stream lifecycle internally.
+
+        // Clean up temp files
+        unlink($tempFile);
+        unlink($anonymizedTempFile);
+
+        return $newFile;
+    }
+
+    /**
      * Process anonymization for a document based on a report
      *
      * This method checks if anonymization is needed based on the file hash/etag,
@@ -354,120 +468,48 @@ class AnonymizationService
         // Save the updated log
         $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
 
-        // Get the file content
-        $content = $node->getContent();
-        if (empty($content)) {
-            throw new Exception('Failed to get content from file: ' . $node->getPath());
-        }
-
-        // Get the parent folder
-        $parentFolder = $node->getParent();
-                    
-        // Check if anonymized file already exists and delete it
-        try {
-            if ($parentFolder->nodeExists($anonymizedFileName)) {
-                $parentFolder->get($anonymizedFileName)->delete();
-                $this->logger->debug('Deleted existing anonymized file: ' . $anonymizedFileName);
-            }
-        } catch (Exception $e) {
-            $this->logger->error('Failed to delete existing anonymized file: ' . $e->getMessage(), ['exception' => $e]);
-        }
-
-        
-        $this->logger->error('the file should now be made anonymized');
-
-        // Anonymize the content by replacing entities with [entityType: key]
-        $anonymizedContent = $content;
-        $replacements = [];
-        
         // Process entities and find their positions in the content if not provided
         $processedEntities = [];
         foreach ($report['entities'] as $entity) {
             $entityType = $entity['entityType'] ?? 'UNKNOWN';
             $entityText = $entity['text'] ?? '';
             $score = $entity['score'] ?? 0;
-            
-            // Skip if we don't have text
             if (empty($entityText)) {
                 continue;
             }
-            
-            // If start and end positions are not provided, find them in the content
-            if (!isset($entity['start']) || !isset($entity['end'])) {
-                // Find all occurrences of the entity text in the content
-                $offset = 0;
-                while (($pos = mb_stripos($content, $entityText, $offset)) !== false) {
-                    $processedEntities[] = [
-                        'entityType' => $entityType,
-                        'text' => $entityText,
-                        'score' => $score,
-                        'start' => $pos,
-                        'end' => $pos + mb_strlen($entityText),
-                        'key' => substr(Uuid::v4()->toRfc4122(), 0, 8)
-                    ];
-                    $offset = $pos + mb_strlen($entityText);
-                }
-            } else {
-                // Use the provided positions
-                $processedEntities[] = [
-                    'entityType' => $entityType,
-                    'text' => $entityText,
-                    'score' => $score,
-                    'start' => $entity['start'],
-                    'end' => $entity['end'],
-                    'key' => substr(Uuid::v4()->toRfc4122(), 0, 8)
-                ];
-            }
-        }
-        
-        // Sort entities by start position in descending order to avoid position shifts
-        usort(
-            $processedEntities, function ($a, $b) {
-                return ($b['start'] ?? 0) - ($a['start'] ?? 0);
-            }
-        );
-        
-        // Log the processed entities for debugging
-        $this->logger->debug(
-            'Processed entities for anonymization:', [
-            'processedEntities' => $processedEntities,
-            'originalEntities' => $report['entities']
-            ]
-        );
-        
-        // Replace entities in the content
-        foreach ($processedEntities as $entity) {
-            $entityType = $entity['entityType'];
-            $entityText = $entity['text'];
-            $start = $entity['start'];
-            $end = $entity['end'];
-            $key = $entity['key'];
-            
-            // Create replacement text
-            $replacementText = '[' . $entityType . ': ' . $key . ']';
-            
-            // Replace the entity in the content
-            $anonymizedContent = substr_replace($anonymizedContent, $replacementText, $start, $end - $start);
-            
-            // Record the replacement
-            $replacements[] = [
+            $processedEntities[] = [
                 'entityType' => $entityType,
-                'originalText' => $entityText,
-                'replacementText' => $replacementText,
-                'key' => $key,
-                'start' => $start,
-                'end' => $end
+                'text' => $entityText,
+                'score' => $score,
+                'key' => substr(\Symfony\Component\Uid\Uuid::v4()->toRfc4122(), 0, 8)
             ];
         }
-        
-        // Create the anonymized file
-        $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedContent);
-        
+
+        // If the file is a Word document, anonymize using PhpWord
+        if (in_array(strtolower($fileExtension), ['doc', 'docx'])) {
+            $newFile = $this->anonymizeWordDocument($node, $processedEntities, $anonymizedFileName);
+        } else {
+            // For other file types, use the old logic
+            $content = $node->getContent();
+            if (empty($content)) {
+                throw new Exception('Failed to get content from file: ' . $node->getPath());
+            }
+            $anonymizedContent = $content;
+            foreach ($processedEntities as $entity) {
+                $anonymizedContent = str_ireplace($entity['text'], '[' . $entity['entityType'] . ': ' . $entity['key'] . ']', $anonymizedContent);
+            }
+            $parentFolder = $node->getParent();
+            if ($parentFolder->nodeExists($anonymizedFileName)) {
+                $parentFolder->get($anonymizedFileName)->delete();
+            }
+            $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedContent);
+        }
+
         // Update anonymization object
         $endTime = microtime(true);
         $anonymization['status'] = 'completed';
         $anonymization['message'] = 'Anonymization completed successfully';
-        $anonymization['replacements'] = $replacements;
+        $anonymization['replacements'] = $processedEntities;
         $anonymization['anonymizedFileName'] = $anonymizedFileName;
         $anonymization['anonymizedFilePath'] = $newFile->getPath();
         $anonymization['endTime'] = $endTime;
