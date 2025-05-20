@@ -223,42 +223,97 @@ class ExtractionService
      */
     private function extractFromWord(string $filePath): string
     {
-        // Load the document
-        $phpWord = WordIOFactory::load($filePath);
-        
-        $text = '';
-        
-        // Iterate through all sections
-        $sections = $phpWord->getSections();
-        foreach ($sections as $section) {
-            // Get all elements in the section
-            $elements = $section->getElements();
-            foreach ($elements as $element) {
-                // Extract text from text elements
-                if (method_exists($element, 'getText')) {
-                    $text .= $element->getText() . ' ';
-                } elseif (method_exists($element, 'getElements')) {
-                    // Handle tables and other container elements
-                    $childElements = $element->getElements();
-                    foreach ($childElements as $childElement) {
-                        if (method_exists($childElement, 'getText')) {
-                            $text .= $childElement->getText() . ' ';
-                        }
-                    }
+        try {
+            // Load the document
+            $phpWord = WordIOFactory::load($filePath);
+            
+            $text = '';
+            
+            // Extract text from headers
+            foreach ($phpWord->getSections() as $section) {
+                $headers = $section->getHeaders();
+                foreach ($headers as $header) {
+                    $text .= $this->_extractTextFromElements($header->getElements()) . "\n";
                 }
             }
-            $text .= "\n";
+            
+            // Extract text from main content
+            foreach ($phpWord->getSections() as $section) {
+                // Get all elements in the section
+                $elements = $section->getElements();
+                $text .= $this->_extractTextFromElements($elements);
+                
+                // Add section break
+                $text .= "\n\n";
+            }
+            
+            // Extract text from footers
+            foreach ($phpWord->getSections() as $section) {
+                $footers = $section->getFooters();
+                foreach ($footers as $footer) {
+                    $text .= $this->_extractTextFromElements($footer->getElements()) . "\n";
+                }
+            }
+            
+            // Clean up text
+            $text = preg_replace('/\s+/', ' ', $text);
+            $text = trim($text);
+            
+            return $text;
+        } catch (Exception $e) {
+            $this->logger->error('Error extracting text from Word document: ' . $e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from Word document: ' . $e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Extract text from document elements
+     *
+     * @param array $elements Array of document elements
+     *
+     * @return string Extracted text
+     *
+     * @psalm-return   string
+     * @phpstan-return string
+     */
+    private function _extractTextFromElements(array $elements): string
+    {
+        $text = '';
         
-        // Clean up text
-        $text = preg_replace('/\s+/', ' ', $text);
-        $text = trim($text);
+        foreach ($elements as $element) {
+            // Handle text runs
+            if (method_exists($element, 'getText')) {
+                $text .= $element->getText() . ' ';
+            }
+            
+            // Handle tables
+            if (method_exists($element, 'getRows')) {
+                foreach ($element->getRows() as $row) {
+                    foreach ($row->getCells() as $cell) {
+                        $text .= $this->_extractTextFromElements($cell->getElements()) . "\t";
+                    }
+                    $text .= "\n";
+                }
+            }
+            
+            // Handle lists
+            if (method_exists($element, 'getItems')) {
+                foreach ($element->getItems() as $item) {
+                    $text .= "• " . $this->_extractTextFromElements($item->getElements()) . "\n";
+                }
+            }
+            
+            // Handle nested elements
+            if (method_exists($element, 'getElements')) {
+                $text .= $this->_extractTextFromElements($element->getElements());
+            }
+        }
         
         return $text;
     }
 
     /**
-     * Extract text from a spreadsheet (Excel, CSV)
+     * Extract text from a spreadsheet (Excel, ODS)
      *
      * @param string $filePath Path to the spreadsheet file
      *
@@ -271,38 +326,91 @@ class ExtractionService
      */
     private function extractFromSpreadsheet(string $filePath): string
     {
-        // Load the spreadsheet
-        $spreadsheet = SpreadsheetIOFactory::load($filePath);
-        
-        $text = '';
-        
-        // Iterate through all worksheets
-        foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-            // Add worksheet title
-            $text .= 'Sheet: ' . $worksheet->getTitle() . "\n";
+        try {
+            // Load the spreadsheet
+            $spreadsheet = SpreadsheetIOFactory::load($filePath);
             
-            // Iterate through all rows and columns
-            foreach ($worksheet->getRowIterator() as $row) {
-                $cellIterator = $row->getCellIterator();
-                $cellIterator->setIterateOnlyExistingCells(false);
+            $text = '';
+            
+            // Get document properties
+            $properties = $spreadsheet->getProperties();
+            if ($properties->getTitle()) {
+                $text .= "Title: " . $properties->getTitle() . "\n";
+            }
+            if ($properties->getDescription()) {
+                $text .= "Description: " . $properties->getDescription() . "\n";
+            }
+            $text .= "\n";
+            
+            // Iterate through all worksheets
+            foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
+                // Add worksheet title
+                $text .= "Sheet: " . $worksheet->getTitle() . "\n";
                 
-                $rowText = '';
-                foreach ($cellIterator as $cell) {
-                    $value = $cell->getValue();
-                    if (!empty($value)) {
-                        $rowText .= $value . "\t";
+                // Get the highest row and column
+                $highestRow = $worksheet->getHighestRow();
+                $highestColumn = $worksheet->getHighestColumn();
+                $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+                
+                // Extract column headers if they exist
+                $hasHeaders = false;
+                $headers = [];
+                for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                    $cellValue = $worksheet->getCellByColumnAndRow($col, 1)->getValue();
+                    if (!empty($cellValue)) {
+                        $hasHeaders = true;
+                        $headers[$col] = $cellValue;
                     }
                 }
                 
-                if (!empty(trim($rowText))) {
-                    $text .= trim($rowText) . "\n";
+                // If headers exist, add them to the text
+                if ($hasHeaders) {
+                    $text .= implode("\t", $headers) . "\n";
+                    $startRow = 2;
+                } else {
+                    $startRow = 1;
                 }
+                
+                // Extract data rows
+                for ($row = $startRow; $row <= $highestRow; $row++) {
+                    $rowData = [];
+                    for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                        $cell = $worksheet->getCellByColumnAndRow($col, $row);
+                        
+                        // Get cell value
+                        $value = $cell->getValue();
+                        
+                        // Handle formulas
+                        if ($cell->getDataType() === \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA) {
+                            $value = $cell->getCalculatedValue();
+                        }
+                        
+                        // Format the value
+                        if (is_numeric($value)) {
+                            // Format numbers according to cell format
+                            $value = $cell->getFormattedValue();
+                        } elseif ($value instanceof \DateTime) {
+                            // Format dates
+                            $value = $value->format('Y-m-d H:i:s');
+                        }
+                        
+                        $rowData[] = $value ?? '';
+                    }
+                    
+                    // Only add non-empty rows
+                    if (!empty(array_filter($rowData))) {
+                        $text .= implode("\t", $rowData) . "\n";
+                    }
+                }
+                
+                $text .= "\n";
             }
             
-            $text .= "\n";
+            return trim($text);
+        } catch (Exception $e) {
+            $this->logger->error('Error extracting text from spreadsheet: ' . $e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from spreadsheet: ' . $e->getMessage(), 0, $e);
         }
-        
-        return trim($text);
     }
 
     /**

@@ -46,11 +46,16 @@ class Application extends App implements IBootstrap
             \OCA\DocuDesk\EventListener\FileEventListener::class
         );
 
+        
+        include_once __DIR__.'/../../vendor/autoload.php';
+
         // Register background jobs
         // $server = $context->getServerContainer();
         //$jobList = $server->getJobList();
         // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);
     }
+
+
 
     public function boot(IBootContext $context): void
     {
