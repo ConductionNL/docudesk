@@ -96,8 +96,8 @@ class ReportingService
         $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
         
-        $reportObjectType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
-        $this->objectService->setSchema($reportObjectType);
+        $reportSchemaType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $this->objectService->setSchema($reportSchemaType);
         
         // Initialize Guzzle HTTP client
         $this->client = new Client(
@@ -213,9 +213,10 @@ class ReportingService
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
         
         // Process anonymization if enabled
-        if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
+        // @todo the detecting of settings seems to be broken, we should fix this
+        //if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
             $this->anonymizationService->processAnonymization($node, $report);
-        }
+        //}
         
         return $report;
     }
@@ -425,7 +426,9 @@ class ReportingService
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             
             $config['filters'] = [
-                'nodeId' => $node->getId()
+                'nodeId' => $node->getId(),
+                'register' => $this->reportRegisterType,
+                'schema' => $this->reportSchemaType
             ];
 
             $reports = $this->objectService->findAll($config);

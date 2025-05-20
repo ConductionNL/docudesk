@@ -67,6 +67,20 @@ class AnonymizationService
     private const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 
     /**
+     * Schema type for anonymization objects
+     *
+     * @var string
+     */
+    private readonly string $anonymizationSchemaType;
+
+    /**
+     * Register type for anonymization objects
+     *
+     * @var string
+     */
+    private readonly string $anonymizationRegisterType;
+
+    /**
      * Logger instance for error reporting
      *
      * @var LoggerInterface
@@ -147,23 +161,22 @@ class AnonymizationService
         $this->extractionService = $extractionService;
         $this->userSession = $userSession;
         $this->appConfig = $appConfig;
-
         
-
-        // Set the object service to use the reporting service
-        $reportRegisterType = $this->appConfig->getValueString(
-            'DocuDesk', 
-            'anonymization_register', 
-            'document'
-        );
-        $this->objectService->setRegister($reportRegisterType);
-        
-        $reportObjectType = $this->appConfig->getValueString(
+        $this->anonymizationSchemaType = $this->appConfig->getValueString(
             'DocuDesk', 
             'anonymization_schema', 
             'anonymization'
         );
-        $this->objectService->setSchema($reportObjectType);
+
+        $this->anonymizationRegisterType = $this->appConfig->getValueString(
+            'DocuDesk', 
+            'anonymization_register', 
+            'document'
+        );
+        
+        $this->objectService->setRegister($this->anonymizationRegisterType);
+        $this->objectService->setSchema($this->anonymizationSchemaType);
+     
 
         // Initialize Guzzle HTTP client
         $this->client = new Client(
@@ -212,6 +225,7 @@ class AnonymizationService
     public function processAnonymization(\OCP\Files\Node $node, ?array $report = null)
     {
         $startTime = microtime(true);
+        
 
         // If no report is provided, try to get one
         if ($report === null) {
@@ -233,7 +247,6 @@ class AnonymizationService
             }
         }
 
-        // If the file name end in _anonymized, we can return the anonymization result @todo we should solve this with taging or something else, this is touch and go it should also be handled in the porccesReport function or something else
         // Create a new file name with "_anonymized" suffix
         $fileName = $node->getName();
         $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
@@ -243,11 +256,17 @@ class AnonymizationService
             $anonymizedFileName .= '.' . $fileExtension;
         }
 
+        // If the file is already anonymized, get the existing anonymization
         if (str_ends_with($fileNameWithoutExtension, '_anonymized')) {
-            $this->logger->debug('File name ends with _anonymized, returning anonymization result');
-            return;
+            $this->logger->debug('File is already anonymized, getting existing anonymization');
+            $anonymization = $this->getAnonymization($node);
+            if ($anonymization !== null) {
+                return $anonymization;
+            }
         }
         
+        $this->logger->error('we found the file');
+
         // Use ETag as file hash if available, otherwise calculate hash
         $fileHash = null;
         if (method_exists($node, 'getEtag')) {
@@ -276,8 +295,18 @@ class AnonymizationService
                 'status' => 'pending',
                 'message' => ''
             ];
+            $anonymizationEntity = $this->objectService->saveObject(
+                object: $anonymization, 
+                register: $this->anonymizationRegisterType,
+                schema: $this->anonymizationSchemaType
+            );
+            $anonymization = $anonymizationEntity->jsonSerialize();
+            $this->logger->error('Made the anonymization object under id: ' . $anonymization['id']);
         }
 
+        $this->logger->error('Made the anonymization object under register: ' . $this->anonymizationRegisterType);
+        $this->logger->error('Made the anonymization object under schema: ' . $this->anonymizationSchemaType);
+       
         // Lets return the anonymization if the hash is the same
         if ($anonymization['fileHash'] === $fileHash && $anonymization['status'] === 'completed') {
             $this->logger->debug(
@@ -288,7 +317,7 @@ class AnonymizationService
             );
             // Save the anonymization result before returning
             $anonymization['message'] = 'File hash matches existing anonymization, returning cached result';
-            $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
+            $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
             return $anonymization;
         }
 
@@ -303,7 +332,7 @@ class AnonymizationService
             $anonymization['processingTime'] = $anonymization['endTime'] - $startTime;
             
             // Save the anonymization result before returning
-            $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
+            $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
             
             return $anonymization;
         }
@@ -313,7 +342,7 @@ class AnonymizationService
         $anonymization['status'] = 'processing';
         
         // Save the updated log
-        // $anonymization = $this->objectService->saveObject('anonymization', $anonymization);
+        $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
 
         // Get the file content
         $content = $node->getContent();
@@ -331,8 +360,11 @@ class AnonymizationService
                 $this->logger->debug('Deleted existing anonymized file: ' . $anonymizedFileName);
             }
         } catch (Exception $e) {
-            $this->logger->warning('Failed to delete existing anonymized file: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Failed to delete existing anonymized file: ' . $e->getMessage(), ['exception' => $e]);
         }
+
+        
+        $this->logger->error('the file should now be made anonymized');
 
         // Anonymize the content by replacing entities with [entityType: key]
         $anonymizedContent = $content;
@@ -432,7 +464,8 @@ class AnonymizationService
         $anonymization['processingTime'] = $endTime - $startTime;
         
         // Save the updated log
-        return $this->objectService->saveObject('anonymization', $anonymization);
+        $anonymizationEntity = $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
+        return $anonymizationEntity->jsonSerialize();
     }
 
     /**
@@ -460,18 +493,20 @@ class AnonymizationService
         try {
             $anonymizationObjectType = 'anonymization';
             
-            $filters = [
-                'nodeId' => $node->getId()
+            $config['filters'] = [
+                'nodeId' => $node->getId(),
+                'register' => $this->anonymizationRegisterType,
+                'schema' => $this->anonymizationSchemaType
             ];
 
-            $anonymizations = $this->objectService->getObjects($anonymizationObjectType, null, 0, $filters);
+            $anonymizations = $this->objectService->findAll($config);
             
             // Throw error if multiple anonymizations found
             if (count($anonymizations) > 1) {
                 throw new \RuntimeException('Multiple anonymizations found for node ' . $node->getId() . '. There should only be one anonymization per node.');
             }
             
-            return !empty($anonymizations) ? $anonymizations[0] : null;
+            return !empty($anonymizations) ? $anonymizations[0]->jsonSerialize() : null;
         } catch (Exception $e) {
             $this->logger->error(
                 'Failed to retrieve anonymization: ' . $e->getMessage(), [
