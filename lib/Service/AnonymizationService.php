@@ -226,6 +226,16 @@ class AnonymizationService
     {
         $startTime = microtime(true);
         
+        // Create a new file name with "_anonymized" suffix
+        $fileName = $node->getName();
+        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+
+        // If the file is already anonymized, skip processing and return
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized')) {
+            $this->logger->info('Skipping anonymization for file already ending with _anonymized: ' . $fileName);
+            return;
+        }
 
         // If no report is provided, try to get one
         if ($report === null) {
