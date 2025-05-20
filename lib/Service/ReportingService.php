@@ -151,7 +151,7 @@ class ReportingService
         $this->logger->info('Processing report for node: ' . $node->getId());
 
         $report['status'] = 'processing';
-        $this->objectService->saveObject($report);           
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Extract text from document
         $filePath = $node->getPath();
@@ -163,7 +163,7 @@ class ReportingService
             $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
             $report['status'] = 'failed';
             $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
-            $this->objectService->saveObject($report);
+            $this->objectService->saveObject(object: $report, uuid: $report['id']); 
             return  $report;
         }
         
@@ -181,7 +181,7 @@ class ReportingService
             ];
             
             $report['riskLevel'] = 'low';
-            $this->objectService->saveObject($report);            
+            $this->objectService->saveObject(object: $report, uuid: $report['id']);
             return  $report;
         }
         // Send text to Presidio for analysis and get entities
@@ -210,7 +210,7 @@ class ReportingService
         $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
         
         // Save updated report
-        $this->objectService->saveObject($report); 
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
         
         // Process anonymization if enabled
         if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
@@ -554,7 +554,7 @@ class ReportingService
         }
 
         // Save the updated report
-        $this->objectService->saveObject($report);
+        $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Process the report now if synchronous processing is enabled
         //if ($this->isSynchronousProcessingEnabled()) { @todo
@@ -699,7 +699,7 @@ class ReportingService
                         
                         $report['status'] = 'failed';
                         $report['errorMessage'] = 'Missing nodeId';
-                        $this->objectService->saveObject($report);
+                        $this->objectService->saveObject(object: $report, uuid: $report['id']);
                         continue;
                     }
                     
@@ -851,8 +851,9 @@ class ReportingService
         }
         
         // Save the report
-        $this->objectService->saveObject($report);        
-
+        $reportEntity = $this->objectService->saveObject(object: $report);    
+        $report = $reportEntity->jsonSerialize();
+        
         
         $this->logger->debug('lets save the report: ' . $report['id']);
 
