@@ -1,27 +1,43 @@
 <script setup>
-import { reportStore, navigationStore } from '../../store/store.js'
+import { objectStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
 	<NcAppContentList>
 		<ul>
 			<div class="listHeader">
+				<NcTextField
+					:value="objectStore.getSearchTerm('report')"
+					:show-trailing-button="objectStore.getSearchTerm('report') !== ''"
+					label="Search"
+					class="searchField"
+					trailing-button-icon="close"
+					@update:value="(value) => objectStore.setSearchTerm('report', value)"
+					@trailing-button-click="objectStore.clearSearch('report')">
+					<Magnify :size="20" />
+				</NcTextField>
 				<NcActions>
-					<NcActionButton @click="reportStore.refreshReportList()">
+					<NcActionButton @click="objectStore.fetchCollection('report')">
 						<template #icon>
 							<Refresh :size="20" />
 						</template>
 						Refresh
 					</NcActionButton>
+					<NcActionButton @click="objectStore.clearActiveObject('report'); navigationStore.setModal('editReport')">
+						<template #icon>
+							<Plus :size="20" />
+						</template>
+						Add Report
+					</NcActionButton>
 				</NcActions>
 			</div>
 
-			<div v-if="reportStore.reportList && reportStore.reportList.length > 0 && !reportStore.isLoadingReportList">
-				<NcListItem v-for="(report, i) in reportStore.reportList"
+			<div v-if="!objectStore.isLoading('report')">
+				<NcListItem v-for="(report, i) in objectStore.getCollection('report').results"
 					:key="`${report.id}${i}`"
 					:name="report.fileName || 'Unnamed file'"
 					:force-display-actions="true"
-					:active="reportStore.reportItem?.id === report?.id"
+					:active="objectStore.getActiveObject('report')?.id === report?.id"
 					@click="handleReportSelect(report)">
 					<template #icon>
 						<div class="file-icon-container">
@@ -42,19 +58,33 @@ import { reportStore, navigationStore } from '../../store/store.js'
 							</span>
 						</div>
 					</template>
+					<template #actions>
+						<NcActionButton @click="objectStore.setActiveObject('report', report); navigationStore.setModal('editReport')">
+							<template #icon>
+								<Pencil :size="20" />
+							</template>
+							Edit
+						</NcActionButton>
+						<NcActionButton @click="objectStore.setActiveObject('report', report); navigationStore.setDialog('deleteObject', { objectType: 'report', dialogTitle: 'Report' })">
+							<template #icon>
+								<TrashCanOutline :size="20" />
+							</template>
+							Delete
+						</NcActionButton>
+					</template>
 				</NcListItem>
 			</div>
 		</ul>
 
-		<NcLoadingIcon v-if="reportStore.isLoadingReportList"
+		<NcLoadingIcon v-if="objectStore.isLoading('report')"
 			class="loadingIcon"
 			:size="64"
 			appearance="dark"
 			name="Loading reports" />
 
-		<div v-if="reportStore.reportList.length === 0 && !reportStore.isLoadingReportList" class="empty-state">
+		<div v-if="!objectStore.getCollection('report').results.length" class="empty-state">
 			<p>No reports have been added yet.</p>
-			<NcButton type="primary" @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
+			<NcButton type="primary" @click="objectStore.clearActiveObject('report'); navigationStore.setModal('editReport')">
 				Add Report
 			</NcButton>
 		</div>
@@ -107,7 +137,7 @@ export default {
 		FileOutline,
 	},
 	mounted() {
-		reportStore.refreshReportList()
+		objectStore.fetchCollection('report')
 	},
 	methods: {
 		/**
@@ -116,7 +146,7 @@ export default {
 		 */
 		async handleReportSelect(report) {
 			// Set the selected report in the store
-			reportStore.setReportItem(report)
+			objectStore.setActiveObject('report', report)
 			// Ensure we're in the files view
 			navigationStore.setSelected('files')
 		},
@@ -190,7 +220,9 @@ export default {
     z-index: 1000;
     background-color: var(--color-main-background);
     border-bottom: 1px solid var(--color-border);
-    padding-bottom: 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 .searchField {

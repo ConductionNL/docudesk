@@ -1,185 +1,203 @@
 <script setup>
-import { reportStore, navigationStore } from '../../store/store.js'
+import { objectStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
 	<div class="detailContainer">
-		<div id="app-content">
-			<div>
-				<div class="head">
-					<h1 class="h1">
-						{{ reportStore.reportItem.fileName }}
-					</h1>
-					<NcActions :primary="true" menu-name="Actions">
-						<template #icon>
-							<DotsHorizontal :size="20" />
-						</template>
-						<NcActionButton @click="navigationStore.setModal('editReport')">
-							<template #icon>
-								<Pencil :size="20" />
-							</template>
-							Edit Report
-						</NcActionButton>
-					</NcActions>
-				</div>
+		<div class="head">
+			<h1 class="h1">
+				{{ report.fileName }}
+			</h1>
 
-				<!-- Status Badge -->
-				<div class="status-badge-container">
-					<NcBadge 
-						:type="getStatusBadgeType(reportStore.reportItem.status)" 
-						class="status-badge">
-						{{ reportStore.reportItem.status }}
-					</NcBadge>
-					<NcBadge 
-						v-if="reportStore.reportItem.riskLevel" 
-						:type="getRiskLevelBadgeType(reportStore.reportItem.riskLevel)" 
-						class="risk-badge">
-						Risk: {{ reportStore.reportItem.riskLevel }}
-					</NcBadge>
-				</div>
+			<NcActions :disabled="objectStore.isLoading('report')"
+				:primary="true"
+				:inline="1"
+				:menu-name="objectStore.isLoading('report') ? 'Loading...' : 'Actions'">
+				<template #icon>
+					<span>
+						<NcLoadingIcon v-if="objectStore.isLoading('report')"
+							:size="20"
+							appearance="dark" />
+						<DotsHorizontal v-if="!objectStore.isLoading('report')" :size="20" />
+					</span>
+				</template>
+				<NcActionButton @click="navigationStore.setModal('editReport')">
+					<template #icon>
+						<Pencil :size="20" />
+					</template>
+					Edit Report
+				</NcActionButton>
+				<NcActionButton @click="downloadReport()">
+					<template #icon>
+						<Download :size="20" />
+					</template>
+					Download Report
+				</NcActionButton>
+				<NcActionButton @click="navigationStore.setDialog('deleteObject', { objectType: 'report', dialogTitle: 'Report' })">
+					<template #icon>
+						<Delete :size="20" />
+					</template>
+					Delete
+				</NcActionButton>
+			</NcActions>
+		</div>
 
-				<!-- Error Message -->
-				<NcNoteCard v-if="reportStore.reportItem.errorMessage" type="error">
-					{{ reportStore.reportItem.errorMessage }}
-				</NcNoteCard>
+		<div class="container">
+			<!-- Status Badge -->
+			<div class="status-badge-container">
+				<NcBadge 
+					:type="getStatusBadgeType(report.status)" 
+					class="status-badge">
+					{{ report.status }}
+				</NcBadge>
+				<NcBadge 
+					v-if="report.riskLevel" 
+					:type="getRiskLevelBadgeType(report.riskLevel)" 
+					class="risk-badge">
+					Risk: {{ report.riskLevel }}
+				</NcBadge>
+			</div>
 
-				<!-- Risk Assessment Section -->
-				<div class="section-container">
-					<h2>Risk Assessment</h2>
-					<div class="risk-score-container">
-						<div class="risk-score-circle" :class="getRiskScoreClass(reportStore.reportItem.riskScore)">
-							<span class="risk-score-value">{{ formatRiskScore(reportStore.reportItem.riskScore) }}</span>
-						</div>
-						<div class="risk-score-details">
-							<h3>Risk Level: <span class="risk-level-badge" :class="getRiskLevelClass(reportStore.reportItem.riskLevel)">{{ reportStore.reportItem.riskLevel }}</span></h3>
-							<p class="risk-explanation">
-								{{ getRiskExplanation(reportStore.reportItem.riskLevel) }}
-							</p>
-						</div>
+			<!-- Error Message -->
+			<NcNoteCard v-if="report.errorMessage" type="error">
+				{{ report.errorMessage }}
+			</NcNoteCard>
+
+			<!-- Risk Assessment Section -->
+			<div class="section-container">
+				<h2>Risk Assessment</h2>
+				<div class="risk-score-container">
+					<div class="risk-score-circle" :class="getRiskScoreClass(report.riskScore)">
+						<span class="risk-score-value">{{ formatRiskScore(report.riskScore) }}</span>
 					</div>
-					
-					<div v-if="reportStore.reportItem.entities && reportStore.reportItem.entities.length > 0" class="risk-factors">
-						<h3>Risk Factors</h3>
-						<p>The risk assessment is based on {{ reportStore.reportItem.entities.length }} detected entities:</p>
-						<ul class="risk-factors-list">
-							<li v-for="(entityType, index) in getEntityTypes(reportStore.reportItem.entities)" :key="index">
-								<strong>{{ formatEntityType(entityType.type) }}:</strong> {{ entityType.count }} occurrences
-								<span class="entity-weight">(Weight: {{ getEntityWeight(entityType.type) }})</span>
-							</li>
-						</ul>
-						<p class="risk-calculation-note">
-							Risk score is calculated based on entity types, their confidence scores, and the total number of entities found.
-							Higher weights are assigned to more sensitive data types like credit card numbers and personal identifiers.
+					<div class="risk-score-details">
+						<h3>Risk Level: <span class="risk-level-badge" :class="getRiskLevelClass(report.riskLevel)">{{ report.riskLevel }}</span></h3>
+						<p class="risk-explanation">
+							{{ getRiskExplanation(report.riskLevel) }}
 						</p>
 					</div>
-					<div v-else class="empty-state">
-						<p>No risk factors detected in this document.</p>
-					</div>
 				</div>
-
-				<!-- Tabs for different analysis results -->
-				<div class="tabContainer">
-					<BTabs content-class="mt-3" justified>
-						<!-- File Information Tab (Default) -->
-						<BTab title="File Information" active>
-							<div class="detail-grid">
-								<div class="detail-item">
-									<span class="detail-label">File Path:</span>
-									<span class="detail-value">{{ reportStore.reportItem.filePath }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">File Type:</span>
-									<span class="detail-value">{{ reportStore.reportItem.fileType }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">File Extension:</span>
-									<span class="detail-value">{{ reportStore.reportItem.fileExtension }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">File Size:</span>
-									<span class="detail-value">{{ formatFileSize(reportStore.reportItem.fileSize) }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">File Hash:</span>
-									<span class="detail-value">{{ reportStore.reportItem.fileHash }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">Node ID:</span>
-									<span class="detail-value">{{ reportStore.reportItem.nodeId }}</span>
-								</div>
-							</div>
-						</BTab>
-						
-						<!-- Entities Tab -->
-						<BTab title="Entities">
-							<div v-if="reportStore.reportItem.entities && reportStore.reportItem.entities.length > 0">
-								<div class="entity-list">
-									<div v-for="(entity, index) in reportStore.reportItem.entities" :key="index" class="entity-item">
-										<div class="entity-type">{{ entity.entityType }}</div>
-										<div class="entity-text">{{ entity.text }}</div>
-										<div class="entity-score">Score: {{ (entity.score * 100).toFixed(1) }}%</div>
-									</div>
-								</div>
-							</div>
-							<div v-else class="empty-state">
-								<p>No entities detected in this document.</p>
-							</div>
-						</BTab>
-
-						<!-- WCAG Compliance Tab -->
-						<BTab title="WCAG Compliance">
-							<div v-if="reportStore.reportItem.wcagComplianceResults && Object.keys(reportStore.reportItem.wcagComplianceResults).length > 0">
-								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.wcagComplianceResults" :key="key" class="detail-item">
-										<span class="detail-label">{{ formatKey(key) }}:</span>
-										<span class="detail-value">{{ formatValue(value) }}</span>
-									</div>
-								</div>
-							</div>
-							<div v-else class="empty-state">
-								<p>No WCAG compliance results available.</p>
-							</div>
-						</BTab>
-
-						<!-- Language Level Tab -->
-						<BTab title="Language Level">
-							<div v-if="reportStore.reportItem.languageLevelResults && Object.keys(reportStore.reportItem.languageLevelResults).length > 0">
-								<div class="detail-grid">
-									<div v-for="(value, key) in reportStore.reportItem.languageLevelResults" :key="key" class="detail-item">
-										<span class="detail-label">{{ formatKey(key) }}:</span>
-										<span class="detail-value">{{ formatValue(value) }}</span>
-									</div>
-								</div>
-							</div>
-							<div v-else class="empty-state">
-								<p>No language level results available.</p>
-							</div>
-						</BTab>
-
-						<!-- Retention Tab -->
-						<BTab title="Retention">
-							<div class="detail-grid">
-								<div class="detail-item">
-									<span class="detail-label">Retention Period:</span>
-									<span class="detail-value">{{ reportStore.reportItem.retentionPeriod || 'Indefinite' }} {{ reportStore.reportItem.retentionPeriod ? 'days' : '' }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">Retention Expiry:</span>
-									<span class="detail-value">{{ reportStore.reportItem.retentionExpiry || 'Not set' }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">Legal Basis:</span>
-									<span class="detail-value">{{ reportStore.reportItem.legalBasis || 'Not specified' }}</span>
-								</div>
-								<div class="detail-item">
-									<span class="detail-label">Data Controller:</span>
-									<span class="detail-value">{{ reportStore.reportItem.dataController || 'Not specified' }}</span>
-								</div>
-							</div>
-						</BTab>
-					</BTabs>
+				
+				<div v-if="report.entities && report.entities.length > 0" class="risk-factors">
+					<h3>Risk Factors</h3>
+					<p>The risk assessment is based on {{ report.entities.length }} detected entities:</p>
+					<ul class="risk-factors-list">
+						<li v-for="(entityType, index) in getEntityTypes(report.entities)" :key="index">
+							<strong>{{ formatEntityType(entityType.type) }}:</strong> {{ entityType.count }} occurrences
+							<span class="entity-weight">(Weight: {{ getEntityWeight(entityType.type) }})</span>
+						</li>
+					</ul>
+					<p class="risk-calculation-note">
+						Risk score is calculated based on entity types, their confidence scores, and the total number of entities found.
+						Higher weights are assigned to more sensitive data types like credit card numbers and personal identifiers.
+					</p>
+				</div>
+				<div v-else class="empty-state">
+					<p>No risk factors detected in this document.</p>
 				</div>
 			</div>
+		</div>
+
+		<div class="tabContainer">
+			<BTabs content-class="mt-3" justified>
+				<!-- File Information Tab (Default) -->
+				<BTab title="File Information" active>
+					<div class="detail-grid">
+						<div class="detail-item">
+							<span class="detail-label">File Path:</span>
+							<span class="detail-value">{{ report.filePath }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">File Type:</span>
+							<span class="detail-value">{{ report.fileType }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">File Extension:</span>
+							<span class="detail-value">{{ report.fileExtension }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">File Size:</span>
+							<span class="detail-value">{{ formatFileSize(report.fileSize) }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">File Hash:</span>
+							<span class="detail-value">{{ report.fileHash }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Node ID:</span>
+							<span class="detail-value">{{ report.nodeId }}</span>
+						</div>
+					</div>
+				</BTab>
+				
+				<!-- Entities Tab -->
+				<BTab title="Entities">
+					<div v-if="report.entities && report.entities.length > 0">
+						<div class="entity-list">
+							<div v-for="(entity, index) in report.entities" :key="index" class="entity-item">
+								<div class="entity-type">{{ entity.entityType }}</div>
+								<div class="entity-text">{{ entity.text }}</div>
+								<div class="entity-score">Score: {{ (entity.score * 100).toFixed(1) }}%</div>
+							</div>
+						</div>
+					</div>
+					<div v-else class="empty-state">
+						<p>No entities detected in this document.</p>
+					</div>
+				</BTab>
+
+				<!-- WCAG Compliance Tab -->
+				<BTab title="WCAG Compliance">
+					<div v-if="report.wcagComplianceResults && Object.keys(report.wcagComplianceResults).length > 0">
+						<div class="detail-grid">
+							<div v-for="(value, key) in report.wcagComplianceResults" :key="key" class="detail-item">
+								<span class="detail-label">{{ formatKey(key) }}:</span>
+								<span class="detail-value">{{ formatValue(value) }}</span>
+							</div>
+						</div>
+					</div>
+					<div v-else class="empty-state">
+						<p>No WCAG compliance results available.</p>
+					</div>
+				</BTab>
+
+				<!-- Language Level Tab -->
+				<BTab title="Language Level">
+					<div v-if="report.languageLevelResults && Object.keys(report.languageLevelResults).length > 0">
+						<div class="detail-grid">
+							<div v-for="(value, key) in report.languageLevelResults" :key="key" class="detail-item">
+								<span class="detail-label">{{ formatKey(key) }}:</span>
+								<span class="detail-value">{{ formatValue(value) }}</span>
+							</div>
+						</div>
+					</div>
+					<div v-else class="empty-state">
+						<p>No language level results available.</p>
+					</div>
+				</BTab>
+
+				<!-- Retention Tab -->
+				<BTab title="Retention">
+					<div class="detail-grid">
+						<div class="detail-item">
+							<span class="detail-label">Retention Period:</span>
+							<span class="detail-value">{{ report.retentionPeriod || 'Indefinite' }} {{ report.retentionPeriod ? 'days' : '' }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Retention Expiry:</span>
+							<span class="detail-value">{{ report.retentionExpiry || 'Not set' }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Legal Basis:</span>
+							<span class="detail-value">{{ report.legalBasis || 'Not specified' }}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">Data Controller:</span>
+							<span class="detail-value">{{ report.dataController || 'Not specified' }}</span>
+						</div>
+					</div>
+				</BTab>
+			</BTabs>
 		</div>
 	</div>
 </template>
@@ -197,8 +215,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
  * @version 1.0.0
  */
 import { BTabs, BTab } from 'bootstrap-vue'
-import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble, NcBadge } from '@nextcloud/vue'
-
+import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble, NcBadge, NcLoadingIcon } from '@nextcloud/vue'
 
 // Icons
 import DotsHorizontal from 'vue-material-design-icons/DotsHorizontal.vue'
@@ -217,6 +234,7 @@ export default {
 		NcNoteCard,
 		NcCounterBubble,
 		NcBadge,
+		NcLoadingIcon,
 		BTabs,
 		BTab,
 		// Icons
@@ -226,12 +244,17 @@ export default {
 		Delete,
 		Download,
 	},
+	computed: {
+		report() {
+			return objectStore.getActiveObject('report')
+		},
+	},
 	methods: {
 		/**
 		 * Download the report
 		 */
 		downloadReport() {
-			const reportId = reportStore.reportItem.id
+			const reportId = this.report.id
 			fetch(`reports/${reportId}/download`)
 				.then(response => {
 					if (!response.ok) {
@@ -242,7 +265,7 @@ export default {
 				.then(blob => {
 					const link = document.createElement('a')
 					link.href = window.URL.createObjectURL(blob)
-					link.download = `${reportStore.reportItem.fileName}`
+					link.download = `${this.report.fileName}`
 					link.click()
 					window.URL.revokeObjectURL(link.href)
 				})
@@ -333,7 +356,7 @@ export default {
 		 * @returns {string} Badge type
 		 */
 		getRiskLevelBadgeType(riskLevel) {
-			switch (riskLevel.toLowerCase()) {
+			switch (riskLevel?.toLowerCase()) {
 				case 'low':
 					return 'success'
 				case 'medium':
@@ -376,9 +399,9 @@ export default {
 		 */
 		formatRiskScore(score) {
 			if (score === null || score === undefined) {
-				return 'N/A';
+				return 'N/A'
 			}
-			return Math.round(score).toString();
+			return Math.round(score).toString()
 		},
 		
 		/**
@@ -389,17 +412,17 @@ export default {
 		 */
 		getRiskScoreClass(score) {
 			if (score === null || score === undefined) {
-				return 'risk-unknown';
+				return 'risk-unknown'
 			}
 			
 			if (score < 20) {
-				return 'risk-low';
+				return 'risk-low'
 			} else if (score < 50) {
-				return 'risk-medium';
+				return 'risk-medium'
 			} else if (score < 80) {
-				return 'risk-high';
+				return 'risk-high'
 			} else {
-				return 'risk-critical';
+				return 'risk-critical'
 			}
 		},
 		
@@ -412,15 +435,15 @@ export default {
 		getRiskExplanation(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
 				case 'low':
-					return 'This document contains minimal sensitive information and poses little privacy risk.';
+					return 'This document contains minimal sensitive information and poses little privacy risk.'
 				case 'medium':
-					return 'This document contains some sensitive information that may require attention.';
+					return 'This document contains some sensitive information that may require attention.'
 				case 'high':
-					return 'This document contains significant sensitive information and should be handled with care.';
+					return 'This document contains significant sensitive information and should be handled with care.'
 				case 'critical':
-					return 'This document contains highly sensitive information and requires immediate attention.';
+					return 'This document contains highly sensitive information and requires immediate attention.'
 				default:
-					return 'Risk level could not be determined for this document.';
+					return 'Risk level could not be determined for this document.'
 			}
 		},
 		
@@ -432,20 +455,20 @@ export default {
 		 */
 		getEntityTypes(entities) {
 			if (!entities || !Array.isArray(entities)) {
-				return [];
+				return []
 			}
 			
-			const typeCounts = {};
+			const typeCounts = {}
 			
 			entities.forEach(entity => {
-				const type = entity.entityType || 'UNKNOWN';
-				typeCounts[type] = (typeCounts[type] || 0) + 1;
-			});
+				const type = entity.entityType || 'UNKNOWN'
+				typeCounts[type] = (typeCounts[type] || 0) + 1
+			})
 			
 			return Object.keys(typeCounts).map(type => ({
 				type,
 				count: typeCounts[type]
-			})).sort((a, b) => this.getEntityWeight(b.type) - this.getEntityWeight(a.type));
+			})).sort((a, b) => this.getEntityWeight(b.type) - this.getEntityWeight(a.type))
 		},
 		
 		/**
@@ -457,7 +480,7 @@ export default {
 		formatEntityType(entityType) {
 			return entityType
 				.replace(/_/g, ' ')
-				.replace(/\b\w/g, l => l.toUpperCase());
+				.replace(/\b\w/g, l => l.toUpperCase())
 		},
 		
 		/**
@@ -484,9 +507,9 @@ export default {
 				'US_ITIN': 9.0,
 				'MEDICAL_LICENSE': 7.0,
 				'URL': 2.0
-			};
+			}
 			
-			return weights[entityType] || 4.0; // Default weight
+			return weights[entityType] || 4.0 // Default weight
 		},
 	},
 }
@@ -497,14 +520,14 @@ h4 {
   font-weight: bold;
 }
 
-.head{
+.head {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 16px;
 }
 
-.button{
+.button {
 	max-height: 10px;
 }
 
@@ -519,9 +542,8 @@ h4 {
   unicode-bidi: isolate !important;
 }
 
-.dataContent {
-  display: flex;
-  flex-direction: column;
+.container {
+	padding: 20px;
 }
 
 .section-container {
