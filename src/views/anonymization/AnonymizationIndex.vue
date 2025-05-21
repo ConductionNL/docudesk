@@ -8,7 +8,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 			<AnonymizationList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!objectStore.activeObject || navigationStore.selected != 'anonymization'"
+			<NcEmptyContent v-if="!objectStore.getActiveObject('anonymization') || navigationStore.selected !== 'anonymization'"
 				class="detailContainer" 
 				name="No Documents"
 				description="No documents selected for anonymization">
@@ -21,7 +21,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 					</NcButton>
 				</template>
 			</NcEmptyContent>
-			<AnonymizationDetails v-if="objectStore.activeObject && navigationStore.selected === 'anonymization'" />
+			<AnonymizationDetails v-if="objectStore.getActiveObject('anonymization') && navigationStore.selected === 'anonymization'" />
 		</template>
 	</NcAppContent>
 </template>

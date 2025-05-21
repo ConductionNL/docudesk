@@ -8,7 +8,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 			<FileList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!objectStore.activeObject || navigationStore.selected !== 'files'"
+			<NcEmptyContent v-if="!objectStore.getActiveObject('report') || navigationStore.selected !== 'files'"
 				class="detailContainer" 
 				name="No Report Selected"
 				description="Select a report from the list or create a new one">
@@ -21,7 +21,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 					</NcButton>
 				</template>
 			</NcEmptyContent>
-			<FileDetails v-if="objectStore.activeObject && navigationStore.selected === 'files'" />
+			<FileDetails v-if="objectStore.getActiveObject('report') && navigationStore.selected === 'files'" />
 		</template>
 	</NcAppContent>
 </template>
