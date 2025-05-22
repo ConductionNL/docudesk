@@ -25,6 +25,7 @@ use OCP\App\IAppManager;
 use Psr\Container\ContainerInterface;
 use OCP\AppFramework\Http\JSONResponse;
 use OC_App;
+use OCP\ILogger;
 
 /**
  * Service for handling settings-related operations.
@@ -43,19 +44,11 @@ class SettingsService
     private string $appName;
 
     /**
-     * This constant represents the unique identifier for the OpenRegister application, used to check its installation and status.
+     * This constant represents the unique identifier for the OpenCatalogi application.
      *
-     * @var string $openRegisterAppId The ID of the OpenRegister app.
+     * @var string $openCatalogiAppId The ID of the OpenCatalogi app.
      */
-    private const OPENREGISTER_APP_ID = 'docudesk';
-
-    /**
-     * This constant defines the minimum version of the OpenRegister application that is required for compatibility and functionality.
-     *
-     * @var string $minOpenRegisterVersion The minimum required version of OpenRegister.
-     */
-    private const MIN_OPENREGISTER_VERSION = '0.1.7';
-
+    private const OPENCATALOGI_APP_ID = 'opencatalogi';
 
     /**
      * SettingsService constructor.
@@ -64,89 +57,105 @@ class SettingsService
      * @param IRequest           $request    Request interface.
      * @param ContainerInterface $container  Container for dependency injection.
      * @param IAppManager        $appManager App manager interface.
+     * @param ILogger            $logger     Logger interface.
      */
-    public function __construct(private readonly IAppConfig $config, private readonly IRequest $request, private readonly ContainerInterface $container, private readonly IAppManager $appManager)
-    {
-        // Indulge in setting the application name for identification and configuration purposes.
+    public function __construct(
+        private readonly IAppConfig $config,
+        private readonly IRequest $request,
+        private readonly ContainerInterface $container,
+        private readonly IAppManager $appManager,
+        private readonly ILogger $logger
+    ) {
         $this->appName = 'docudesk';
-
-    }//end __construct()
-
+    }
 
     /**
-     * Checks if OpenRegister is installed and meets version requirements.
+     * Initializes the app with all required components.
      *
-     * @param string|null $minVersion Minimum required version (e.g. '1.0.0').
-     *
-     * @return bool True if OpenRegister is installed and meets version requirements.
+     * @return array The initialization results.
+     * @throws \RuntimeException If initialization fails.
      */
-    public function isOpenRegisterInstalled(?string $minVersion=self::MIN_OPENREGISTER_VERSION): bool
+    public function initialize(): array
     {
-        if ($this->appManager->isInstalled(self::OPENREGISTER_APP_ID) === false) {
-            return false;
-        }
+        $results = [
+            'configuration' => false,
+            'errors' => [],
+            'info' => [],
+        ];
 
-        if ($minVersion === null) {
-            return true;
-        }
-
-        $currentVersion = $this->appManager->getAppVersion(self::OPENREGISTER_APP_ID);
-        return version_compare($currentVersion, $minVersion, '>=');
-
-    }//end isOpenRegisterInstalled()
-
-
-    /**
-     * Checks if OpenRegister is enabled.
-     *
-     * @return bool True if OpenRegister is enabled.
-     */
-    public function isOpenRegisterEnabled(): bool
-    {
-        return $this->appManager->isEnabled(self::OPENREGISTER_APP_ID) === true;
-
-    }//end isOpenRegisterEnabled()
-
-
-    /**
-     * Attempts to install or update OpenRegister.
-     *
-     * @param string|null $minVersion Minimum required version.
-     *
-     * @return bool True if installation/update was successful.
-     * @throws \RuntimeException If installation/update fails.
-     */
-    public function installOrUpdateOpenRegister(?string $minVersion=self::MIN_OPENREGISTER_VERSION): bool
-    {
         try {
-            if ($this->isOpenRegisterInstalled($minVersion) === false) {
-                throw new \RuntimeException(
-                    'OpenRegister is not installed. Please install it from the Nextcloud App Store.'
-                );
+
+            // Try to get the OpenCatalogi configuration service
+            try {
+                $configurationService = $this->getConfigurationService();
+            } catch (\Exception $e) {
+                throw new \RuntimeException('OpenCatalogi configuration service is not available: ' . $e->getMessage());
             }
 
-            // Check if update is needed
-            if ($minVersion !== null) {
-                $currentVersion = $this->appManager->getAppVersion(self::OPENREGISTER_APP_ID);
-                if (version_compare($currentVersion, $minVersion, '<') === true) {
-                    throw new \RuntimeException(
-                        'OpenRegister version '.$minVersion.' or higher is required. Please update it from the Nextcloud App Store.'
-                    );
-                }
+            // Get current configuration version from app config
+            $currentVersion = $this->config->getValueString($this->appName, 'configuration_version', '0.0.0');
+
+            // Load settings from file
+            $settings = $this->loadSettings();
+            
+            // Check if new configuration version is higher than current
+            if (version_compare($settings['info']['version'], $currentVersion, '<=')) {
+                $results['info'][] = 'Current configuration version (' . $currentVersion . ') is up to date or newer than available version (' . $settings['info']['version'] . ')';
+                return $results;
             }
 
-            // Ensure the app is enabled
-            if ($this->isOpenRegisterEnabled() === false) {
-                if ($this->appManager->enableApp(self::OPENREGISTER_APP_ID) === false) {
-                    throw new \RuntimeException('Failed to enable OpenRegister');
-                }
-            }
+            // Import the new configuration
+            $configurationService->importFromJson($settings, false);
+            
+            // Update the configuration version in app config
+            $this->config->setValueString($this->appName, 'configuration_version', $settings['info']['version']);
+            
+            $results['configuration'] = true;
+            $results['info'][] = 'Configuration updated to version ' . $settings['info']['version'];
 
-            return true;
         } catch (\Exception $e) {
-            throw new \RuntimeException('Failed to setup OpenRegister: '.$e->getMessage());
+            $results['errors'][] = $e->getMessage();
+            $this->logger->error('Failed to initialize DocuDesk: ' . $e->getMessage(), ['app' => $this->appName]);
         }
-    }//end installOrUpdateOpenRegister()
+
+        return $results;
+    }
+
+    /**
+     * Load settings from the document_register.json file.
+     *
+     * @return array The loaded settings configuration.
+     * @throws \RuntimeException If settings loading fails.
+     */
+    public function loadSettings(): array
+    {
+        $settingsFilePath = __DIR__.'/../Settings/document_register.json';
+
+        try {
+            if (!file_exists($settingsFilePath)) {
+                throw new \RuntimeException('Settings file not found at: ' . $settingsFilePath);
+            }
+
+            $jsonContent = file_get_contents($settingsFilePath);
+            if ($jsonContent === false) {
+                throw new \RuntimeException('Failed to read settings file');
+            }
+
+            $settings = json_decode($jsonContent, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \RuntimeException('Error decoding JSON: ' . json_last_error_msg());
+            }
+
+            if (!isset($settings['info']['version'])) {
+                throw new \RuntimeException('Settings file does not contain version information');
+            }
+
+            return $settings;
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Failed to load settings: ' . $e->getMessage());
+        }
+    }
+
 
 
     /**
@@ -197,49 +206,6 @@ class SettingsService
         }//end try
 
     }//end autoConfigure()
-
-
-    /**
-     * Initializes the app with all required components.
-     *
-     * @param string|null $minOpenRegisterVersion Minimum required OpenRegister version.
-     *
-     * @return array The initialization results.
-     */
-    public function initialize(?string $minOpenRegisterVersion=self::MIN_OPENREGISTER_VERSION): array
-    {
-        $results = [
-            'openRegister'   => false,
-            'autoConfigured' => false,
-            'settingsLoaded' => false,
-            'errors'         => [],
-        ];
-
-        try {
-            // Check and install/update OpenRegister.
-            if ($this->isOpenRegisterInstalled($minOpenRegisterVersion) === false) {
-                $this->installOrUpdateOpenRegister($minOpenRegisterVersion);
-            }
-
-            $results['openRegister'] = true;
-
-            // Auto-configure registers and schemas.
-            $configuration = $this->autoConfigure();
-            if (empty($configuration) === false) {
-                $this->updateSettings($configuration);
-                $results['autoConfigured'] = true;
-            }
-
-            // Load settings from file.
-            $this->loadSettings();
-            $results['settingsLoaded'] = true;
-        } catch (\Exception $e) {
-            $results['errors'][] = $e->getMessage();
-        }//end try
-
-        return $results;
-
-    }//end initialize()
 
 
     /**
@@ -352,47 +318,5 @@ class SettingsService
         }//end try
 
     }//end updateSettings()
-
-
-    /**
-     * Load settings from the publication_register.json file.
-     *
-     * @return array The loaded settings configuration.
-     * @throws \RuntimeException If settings loading fails.
-     */
-    public function loadSettings(): array
-    {
-        // Read the settings from the document_register.json file.
-        $settingsFilePath = __DIR__.'/../Settings/document_register.json';
-        $settings         = [];
-
-        try {
-            // Check if the file exists.
-            if (file_exists($settingsFilePath) === false) {
-                throw new \Exception('Settings file not found.');
-            }
-
-            // Get the contents of the file.
-            $jsonContent = file_get_contents($settingsFilePath);
-
-            // Decode the JSON content into an associative array.
-            $settings = json_decode($jsonContent, true);
-
-            // Check for JSON decoding errors.
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Error decoding JSON: '.json_last_error_msg());
-            }
-
-            $includeObjects = false;
-
-            // Get the configuration service and import the settings.
-            $configurationService = $this->getConfigurationService();
-            return $configurationService->importFromJson($settings, $includeObjects);
-        } catch (\Exception $e) {
-            throw new \RuntimeException('Failed to load settings: '.$e->getMessage());
-        }//end try
-
-    }//end loadSettings()
-
 
 }//end class
