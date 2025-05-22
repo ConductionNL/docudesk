@@ -1,5 +1,5 @@
 <script setup>
-import { anonymizationStore, navigationStore } from '../../store/store.js'
+import { objectStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -8,7 +8,7 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 			<AnonymizationList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!anonymizationStore.anonymizationItem || navigationStore.selected != 'anonymization'"
+			<NcEmptyContent v-if="!objectStore.getActiveObject('anonymization') || navigationStore.selected !== 'anonymization'"
 				class="detailContainer" 
 				name="No Documents"
 				description="No documents selected for anonymization">
@@ -16,12 +16,12 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 					<Incognito />
 				</template>
 				<template #action>
-					<NcButton type="primary" @click="anonymizationStore.setAnonymizationItem(null); navigationStore.setModal('editAnonymization')">
+					<NcButton type="primary" @click="objectStore.setActiveObject('anonymization', null); navigationStore.setModal('editAnonymization')">
 						Add Document
 					</NcButton>
 				</template>
 			</NcEmptyContent>
-			<AnonymizationDetails v-if="anonymizationStore.anonymizationItem && navigationStore.selected === 'anonymization'" />
+			<AnonymizationDetails v-if="objectStore.getActiveObject('anonymization') && navigationStore.selected === 'anonymization'" />
 		</template>
 	</NcAppContent>
 </template>
@@ -30,6 +30,12 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 /**
  * Main component for the anonymization view that handles displaying the list of documents
  * and their anonymization details
+ * 
+ * @package DocuDesk
+ * @author Conduction B.V. <info@conduction.nl>
+ * @copyright Copyright (c) 2024 Conduction B.V.
+ * @license EUPL-1.2
+ * @version 1.0.0
  */
 import { NcAppContent, NcEmptyContent, NcButton } from '@nextcloud/vue'
 import AnonymizationList from './AnonymizationList.vue'

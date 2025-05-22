@@ -1,4 +1,21 @@
 <?php
+/**
+ * DocuDesk is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * DocuDesk is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * EUPL-1.2 License for more details.
+ *
+ * @category Service
+ * @package  OCA\DocuDesk\Service
+ * @author   Conduction B.V. <info@conduction.nl>
+ * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @link     https://www.DocuDesk.nl
+ */
 
 namespace OCA\DocuDesk\Service;
 
@@ -11,7 +28,17 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
 /**
- * Service class for handling document templates
+ * Service for managing document templates
+ *
+ * This service provides functionality to create, retrieve, and manage document templates.
+ * It utilizes Twig for template rendering and supports various output formats such as PDF and DOCX.
+ * The service interacts with the database through the TemplateMapper to persist template data.
+ *
+ * @category Service
+ * @package  OCA\DocuDesk\Service
+ * @author   Conduction B.V. <info@conduction.nl>
+ * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @link     https://www.DocuDesk.nl
  */
 class TemplateService
 {

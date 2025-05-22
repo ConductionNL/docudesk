@@ -1,5 +1,5 @@
 <script setup>
-import { anonymizationStore, navigationStore } from '../../store/store.js'
+import { objectStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -7,23 +7,23 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 		<ul>
 			<div class="listHeader">
 				<NcTextField
-					:value="anonymizationStore.searchTerm"
-					:show-trailing-button="anonymizationStore.searchTerm !== ''"
+					:value="objectStore.getSearchTerm('anonymization')"
+					:show-trailing-button="objectStore.getSearchTerm('anonymization') !== ''"
 					label="Search"
 					class="searchField"
 					trailing-button-icon="close"
-					@input="anonymizationStore.setSearchTerm($event.target.value)"
-					@trailing-button-click="anonymizationStore.clearSearch()">
+					@update:value="(value) => objectStore.setSearchTerm('anonymization', value)"
+					@trailing-button-click="objectStore.clearSearch('anonymization')">
 					<Magnify :size="20" />
 				</NcTextField>
 				<NcActions>
-					<NcActionButton @click="anonymizationStore.refreshAnonymizationList()">
+					<NcActionButton @click="objectStore.fetchCollection('anonymization')">
 						<template #icon>
 							<Refresh :size="20" />
 						</template>
 						Refresh
 					</NcActionButton>
-					<NcActionButton @click="anonymizationStore.setAnonymizationItem(null); navigationStore.setModal('editAnonymization')">
+					<NcActionButton @click="objectStore.clearActiveObject('anonymization'); navigationStore.setModal('editAnonymization')">
 						<template #icon>
 							<Plus :size="20" />
 						</template>
@@ -32,16 +32,16 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 				</NcActions>
 			</div>
 
-			<div v-if="anonymizationStore.anonymizationList && anonymizationStore.anonymizationList.length > 0 && !anonymizationStore.isLoadingAnonymizationList">
-				<NcListItem v-for="(document, i) in anonymizationStore.anonymizationList"
+			<div v-if="!objectStore.isLoading('anonymization')">
+				<NcListItem v-for="(document, i) in objectStore.getCollection('anonymization').results"
 					:key="`${document}${i}`"
 					:name="document?.originalFileName || 'Unnamed Document'"
 					:force-display-actions="true"
-					:active="anonymizationStore.anonymizationItem?.id === document?.id"
+					:active="objectStore.getActiveObject('anonymization')?.id === document?.id"
 					:counter-number="document?.entities?.length || 0"
 					@click="handleAnonymizationSelect(document)">
 					<template #icon>
-						<Incognito :class="anonymizationStore.anonymizationItem?.id === document?.id && 'selectedIcon'"
+						<Incognito :class="objectStore.getActiveObject('anonymization')?.id === document?.id && 'selectedIcon'"
 							disable-menu
 							:size="44" />
 					</template>
@@ -52,15 +52,15 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 						</div>
 					</template>
 					<template #actions>
-						<NcActionButton @click="anonymizationStore.setAnonymizationItem(document); navigationStore.setModal('editAnonymization')">
+						<NcActionButton @click="objectStore.setActiveObject('anonymization', document); navigationStore.setModal('editAnonymization')">
 							<template #icon>
-								<Pencil />
+								<Pencil :size="20" />
 							</template>
 							Edit
 						</NcActionButton>
-						<NcActionButton @click="anonymizationStore.setAnonymizationItem(document); navigationStore.setDialog('deleteAnonymization')">
+						<NcActionButton @click="objectStore.setActiveObject('anonymization', document); navigationStore.setDialog('deleteObject', { objectType: 'anonymization', dialogTitle: 'Document' })">
 							<template #icon>
-								<TrashCanOutline />
+								<TrashCanOutline :size="20" />
 							</template>
 							Delete
 						</NcActionButton>
@@ -69,14 +69,17 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 			</div>
 		</ul>
 
-		<NcLoadingIcon v-if="anonymizationStore.isLoadingAnonymizationList"
+		<NcLoadingIcon v-if="objectStore.isLoading('anonymization')"
 			class="loadingIcon"
 			:size="64"
 			appearance="dark"
 			name="Loading documents" />
 
-		<div v-if="anonymizationStore.anonymizationList.length === 0 && !anonymizationStore.isLoadingAnonymizationList">
-			No documents have been added for anonymization yet.
+		<div v-if="!objectStore.getCollection('anonymization').results.length" class="empty-state">
+			<p>No documents have been added for anonymization yet.</p>
+			<NcButton type="primary" @click="objectStore.clearActiveObject('anonymization'); navigationStore.setModal('editAnonymization')">
+				Add Document
+			</NcButton>
 		</div>
 	</NcAppContentList>
 </template>
@@ -84,9 +87,15 @@ import { anonymizationStore, navigationStore } from '../../store/store.js'
 <script>
 /**
  * Component for displaying and managing the list of documents for anonymization
+ * 
+ * @package DocuDesk
+ * @author Conduction B.V. <info@conduction.nl>
+ * @copyright Copyright (c) 2024 Conduction B.V.
+ * @license EUPL-1.2
+ * @version 1.0.0
  */
 // Components
-import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon } from '@nextcloud/vue'
+import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon, NcButton } from '@nextcloud/vue'
 
 // Icons
 import Magnify from 'vue-material-design-icons/Magnify.vue'
@@ -106,6 +115,7 @@ export default {
 		NcAppContentList,
 		NcTextField,
 		NcLoadingIcon,
+		NcButton,
 		// Icons
 		Incognito,
 		Magnify,
@@ -115,7 +125,7 @@ export default {
 		TrashCanOutline,
 	},
 	mounted() {
-		anonymizationStore.refreshAnonymizationList()
+		objectStore.fetchCollection('anonymization')
 	},
 	methods: {
 		/**
@@ -124,7 +134,7 @@ export default {
 		 */
 		async handleAnonymizationSelect(document) {
 			// Set the selected document in the store
-			anonymizationStore.setAnonymizationItem(document)
+			objectStore.setActiveObject('anonymization', document)
 		},
 	},
 }
@@ -137,6 +147,9 @@ export default {
     z-index: 1000;
     background-color: var(--color-main-background);
     border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
 .searchField {
@@ -157,5 +170,16 @@ export default {
     display: flex;
     gap: 8px;
     color: var(--color-text-maxcontrast);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: var(--color-text-maxcontrast);
+    gap: 16px;
 }
 </style>

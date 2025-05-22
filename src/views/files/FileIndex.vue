@@ -1,5 +1,5 @@
 <script setup>
-import { reportStore, navigationStore } from '../../store/store.js'
+import { objectStore, navigationStore } from '../../store/store.js'
 </script>
 
 <template>
@@ -8,7 +8,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			<FileList />
 		</template>
 		<template #default>
-			<NcEmptyContent v-if="!reportStore.reportItem || navigationStore.selected !== 'files'"
+			<NcEmptyContent v-if="!objectStore.getActiveObject('report') || navigationStore.selected !== 'files'"
 				class="detailContainer" 
 				name="No Report Selected"
 				description="Select a report from the list or create a new one">
@@ -16,12 +16,12 @@ import { reportStore, navigationStore } from '../../store/store.js'
 					<FileOutline :size="64" />
 				</template>
 				<template #action>
-					<NcButton type="primary" @click="reportStore.setReportItem(null); navigationStore.setModal('editReport')">
+					<NcButton type="primary" @click="objectStore.setActiveObject('report', null); navigationStore.setModal('editReport')">
 						Add Report
 					</NcButton>
 				</template>
 			</NcEmptyContent>
-			<FileDetails v-if="reportStore.reportItem && navigationStore.selected === 'files'" />
+			<FileDetails v-if="objectStore.getActiveObject('report') && navigationStore.selected === 'files'" />
 		</template>
 	</NcAppContent>
 </template>

@@ -154,6 +154,15 @@ class SettingsController extends Controller
 			foreach ($defaults as $key => $defaultValue) {
 				$data[$key] = $this->appConfig->getValueString($this->appName, $key, $defaultValue);
 			}
+
+			// Add configuration object for object type mappings
+			$data['configuration'] = [];
+			foreach ($data['objectTypes'] as $type) {
+				$data['configuration']["{$type}_source"] = $data["{$type}_source"] ?? 'openregister';
+				$data['configuration']["{$type}_schema"] = $data["{$type}_schema"] ?? '';
+				$data['configuration']["{$type}_register"] = $data["{$type}_register"] ?? '';
+			}
+
 			return new JSONResponse($data);
 		} catch (\Exception $e) {
 			return new JSONResponse(['error' => $e->getMessage()], 500);

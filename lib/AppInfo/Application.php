@@ -1,12 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace OCA\DocuDesk\AppInfo;
 
 use OCP\AppFramework\App;
-use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
-
+use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCA\OpenCatalogi\Dashboard\CatalogWidget;
+use OCA\OpenCatalogi\Dashboard\UnpublishedPublicationsWidget;
+use OCA\OpenCatalogi\Dashboard\UnpublishedAttachmentsWidget;
+use OCP\IConfig;
+use OCP\App\AppManager;
+use OCA\DocuDesk\Service\SettingsService;
 /**
  * Class Application
  *
@@ -28,6 +35,7 @@ class Application extends App implements IBootstrap
 
     public function register(IRegistrationContext $context): void
     {
+        include_once __DIR__.'/../../vendor/autoload.php';
         // Register event listeners for file operations
         $context->registerEventListener(
             \OCP\Files\Events\Node\NodeCreatedEvent::class,
@@ -47,7 +55,6 @@ class Application extends App implements IBootstrap
         );
 
         
-        include_once __DIR__.'/../../vendor/autoload.php';
 
         // Register background jobs
         // $server = $context->getServerContainer();
@@ -59,5 +66,17 @@ class Application extends App implements IBootstrap
 
     public function boot(IBootContext $context): void
     {
+		$container = $context->getServerContainer();
+
+		// @TODO: We should look into performance here, since its acalled on every call to the app and right now i can so a compte update goind on. Perhaps we should see if our app version is higher that the config version or something (Tis adds 15ms ot every call)
+		// Install and enable OpenRegister
+		try {
+			// Install and enable OpenRegister
+			$settingsService = $container->get(\OCA\DocuDesk\Service\SettingsService::class);
+			$settingsService->initialize();
+			\OC::$server->getLogger()->info('DocuDesk has been installed, enabled and configured successfully');
+		} catch (\Exception $e) {
+			\OC::$server->getLogger()->warning('Failed to install/enable/configrue DocuDesk: ' . $e->getMessage());
+		}
     }
 }
