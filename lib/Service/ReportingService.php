@@ -56,6 +56,20 @@ class ReportingService
     private const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 
     /**
+     * Default report register type
+     *
+     * @var string
+     */
+    public $reportRegisterType;
+
+    /**
+     * Default report schema type
+     *
+     * @var string
+     */
+    public $reportSchemaType;
+
+    /**
      * Constructor for ReportingService
      *
      * @param LoggerInterface        $logger               Logger for error reporting
@@ -64,7 +78,8 @@ class ReportingService
      * @param ExtractionService      $extractionService    Service for extracting text from documents
      * @param \OCP\Files\IRootFolder $rootFolder           Root folder service for accessing files
      * @param AnonymizationService   $anonymizationService Service for anonymizing documents
-     *
+     * @param IAppConfig             $appConfig            App configuration service
+     * 
      * @return void
      */
     public function __construct(
@@ -93,6 +108,9 @@ class ReportingService
         
         $reportSchemaType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
         $this->objectService->setSchema($reportSchemaType);
+        
+        $this->reportRegisterType = $reportRegisterType;
+        $this->reportSchemaType = $reportSchemaType;
         
         // Initialize Guzzle HTTP client
         $this->client = new Client(
