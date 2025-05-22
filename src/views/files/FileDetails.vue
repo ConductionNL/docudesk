@@ -45,17 +45,19 @@ import { objectStore, navigationStore } from '../../store/store.js'
 		<div class="container">
 			<!-- Status Badge -->
 			<div class="status-badge-container">
-				<NcBadge 
-					:type="getStatusBadgeType(report.status)" 
-					class="status-badge">
+				<NcCounterBubble
+					:type="getStatusBadgeType(report.status)"
+					:class="{ 'status-badge': true }"
+				>
 					{{ report.status }}
-				</NcBadge>
-				<NcBadge 
-					v-if="report.riskLevel" 
-					:type="getRiskLevelBadgeType(report.riskLevel)" 
-					class="risk-badge">
+				</NcCounterBubble>
+				<NcCounterBubble
+					v-if="report.riskLevel"
+					:type="getRiskLevelBadgeType(report.riskLevel)"
+					:class="{ 'risk-badge': true }"
+				>
 					Risk: {{ report.riskLevel }}
-				</NcBadge>
+				</NcCounterBubble>
 			</div>
 
 			<!-- Error Message -->
@@ -215,7 +217,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
  * @version 1.0.0
  */
 import { BTabs, BTab } from 'bootstrap-vue'
-import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble, NcBadge, NcLoadingIcon } from '@nextcloud/vue'
+import { NcActions, NcActionButton, NcListItem, NcNoteCard, NcCounterBubble, NcLoadingIcon } from '@nextcloud/vue'
 
 // Icons
 import DotsHorizontal from 'vue-material-design-icons/DotsHorizontal.vue'
@@ -233,7 +235,6 @@ export default {
 		NcListItem,
 		NcNoteCard,
 		NcCounterBubble,
-		NcBadge,
 		NcLoadingIcon,
 		BTabs,
 		BTab,

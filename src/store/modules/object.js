@@ -732,7 +732,7 @@ export const useObjectStore = defineStore('object', {
 					body: JSON.stringify(objectItem),
 				})
 
-				const data = new ObjectEntity(await response.json())
+				const data = await response.json()
 				this.setObjectItem(data)
 				await this.refreshObjectList({ register, schema })
 				return { response, data }

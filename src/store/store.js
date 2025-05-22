@@ -3,7 +3,7 @@
 import pinia from '../pinia.js'
 import { useAnonymizationStore } from './modules/anonymization.js'
 import { useNavigationStore } from './modules/navigation.ts'
-import { useObjectStore } from './modules/object.js'
+import { useObjectStore } from './modules/object'
 import { useReportStore } from './modules/report.js'
 import { useTemplateStore } from './modules/template.js'
 
