@@ -42,11 +42,12 @@ import { objectStore, navigationStore } from '../../store/store.js'
 					<template #icon>
 						<div class="file-icon-container">
 							<FileOutline :size="44" />
-							<NcBadge v-if="report.status" 
-								:type="getStatusBadgeType(report.status)" 
-								class="status-badge">
+							<NcCounterBubble v-if="report.status"
+								:type="report.status === 'active' ? 'success' : 'error'"
+								:class="{ 'status-badge': true }"
+							>
 								{{ report.status }}
-							</NcBadge>
+							</NcCounterBubble>
 						</div>
 					</template>
 					<template #subname>
@@ -102,7 +103,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
  * @version 1.0.0
  */
 // Components
-import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon, NcButton, NcBadge } from '@nextcloud/vue'
+import { NcListItem, NcActions, NcActionButton, NcAppContentList, NcTextField, NcLoadingIcon, NcButton, NcCounterBubble } from '@nextcloud/vue'
 import FileIcon from '../../components/FileIcon.vue'
 
 // Icons
@@ -125,7 +126,7 @@ export default {
 		NcTextField,
 		NcLoadingIcon,
 		NcButton,
-		NcBadge,
+		NcCounterBubble,
 		FileIcon,
 		// Icons
 		Magnify,
