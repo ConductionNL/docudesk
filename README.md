@@ -2,7 +2,7 @@
 
 DocuDesk provides services for generating and anonymizing PDF, Word, HTML or Excel documents in a GDPR and WCAG compliant manner.
 
-## The Power of Local Processing
+## The Power of Local Processing 
 
 Imagine a world where your sensitive documents never have to leave your premises, yet you still have all the power of modern cloud collaboration. That's DocuDesk. Running on your local Nextcloud instance, it's like having a secure document fortress with a sophisticated diplomatic corps.
 
