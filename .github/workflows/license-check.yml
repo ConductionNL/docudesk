@@ -1,0 +1,71 @@
+name: License Compliance Check
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday
+
+jobs:
+  license-check:
+    name: Check License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install license-checker
+        run: |
+          npm install -g license-checker
+          gem install licensee
+
+      - name: Check PHP dependencies licenses
+        run: |
+          # Create a temporary file to store license information
+          echo "PHP Dependencies License Report" > license-report.txt
+          echo "=============================" >> license-report.txt
+          echo "" >> license-report.txt
+          
+          # Check composer dependencies
+          composer show --format=json | jq -r '.installed[] | "\(.name) - \(.license)"' >> license-report.txt
+          
+          # Check for GPL dependencies
+          if grep -i "GPL" license-report.txt; then
+            echo "WARNING: GPL licensed dependencies found!" >> license-report.txt
+          fi
+          
+          # Check for unknown licenses
+          if grep -i "unknown" license-report.txt; then
+            echo "WARNING: Dependencies with unknown licenses found!" >> license-report.txt
+          fi
+          
+          # Display the report
+          cat license-report.txt
+
+      - name: Check repository license
+        run: |
+          echo "Repository License Information" >> license-report.txt
+          echo "============================" >> license-report.txt
+          echo "" >> license-report.txt
+          licensee detect >> license-report.txt
+          
+          # Display the complete report
+          cat license-report.txt
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-report
+          path: license-report.txt 
