@@ -10,6 +10,36 @@ The entity management system consists of:
 - **Entity Statistics**: Tracking occurrence counts and confidence scores
 - **Anonymization Control**: Per-entity anonymization settings stored on reports
 - **Robust Error Handling**: Comprehensive error handling and fallback mechanisms
+- **Performance Optimization**: Automatic skipping of anonymized files to prevent unnecessary processing
+
+## Performance Optimizations
+
+### Anonymized File Handling
+
+To optimize performance and prevent unnecessary processing overhead, DocuDesk automatically skips report generation for files that end with '_anonymized'. This prevents:
+
+- **Duplicate Processing**: Anonymized files are already processed results and don't need entity detection
+- **Performance Drain**: Avoiding unnecessary text extraction and Presidio API calls
+- **Resource Usage**: Reducing database operations and storage requirements
+- **Report Clutter**: Preventing duplicate reports in the system
+
+The system implements this optimization at multiple levels:
+
+1. **FileEventListener**: Primary check when files are created/uploaded
+2. **ReportingService**: Safeguard check in createReport method
+3. **Logging**: Debug information when files are skipped
+
+```php
+// Example: Files that are automatically skipped
+- document_anonymized.docx
+- report_2024_anonymized.pdf  
+- sensitive_data_anonymized.txt
+
+// Files that are processed normally
+- document.docx
+- report_2024.pdf
+- sensitive_data.txt
+```
 
 ## Entity Objects
 

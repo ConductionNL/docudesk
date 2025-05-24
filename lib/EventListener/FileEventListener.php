@@ -126,8 +126,24 @@ class FileEventListener implements IEventListener
     private function handleNodeCreated(NodeCreatedEvent $event): void
     {
         $node = $event->getNode();
+        
+        // Skip reporting for anonymized files (ending with _anonymized)
+        $fileName = $node->getName();
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+        
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized') === true) {
+            $this->logger->debug(
+                'Skipping report creation for anonymized file: '.$fileName,
+                [
+                    'node_id' => $node->getId(),
+                    'path'    => $node->getPath(),
+                ]
+            );
+            return;
+        }
+        
         $this->logger->debug(
-            'File created: '.$node->getName(),
+            'File created: '.$fileName,
             [
                 'node_id' => $node->getId(),
                 'path'    => $node->getPath(),

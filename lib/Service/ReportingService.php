@@ -1063,6 +1063,18 @@ class ReportingService
             throw new \InvalidArgumentException('Node must be a file to create a report');
         }
 
+        // Skip reporting for anonymized files (safeguard)
+        $fileName = $node->getName();
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+        
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized') === true) {
+            $this->logger->info(
+                'Skipping report creation for anonymized file: '.$fileName.' (safeguard check)',
+                ['nodeId' => $node->getId(), 'path' => $node->getPath()]
+            );
+            return null;
+        }
+
         // Check if reporting is enabled.
         if ($this->isReportingEnabled() === false) {
             $this->logger->debug('Reporting is disabled, skipping report creation for node: '.$node->getId());
