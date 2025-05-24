@@ -102,7 +102,8 @@ class SettingsController extends Controller
 	 *
 	 * @return JSONResponse JSON response containing the current settings
 	 *
-	 * @NoCSRFRequired
+     * @NoAdminRequired
+     * @NoCSRFRequired
 	 *
 	 * @psalm-return JSONResponse
 	 * @phpstan-return JSONResponse

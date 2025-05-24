@@ -1,0 +1,291 @@
+name: Code Quality Checks
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '30 8 * * 5'  # Run every Friday at 08:30 Dutch time (CET/CEST)
+  workflow_dispatch:
+    inputs:
+      report_only:
+        description: 'Only generate report without running checks'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  repo-status:
+    name: Repository Status Check
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.report_only }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get stale branches
+        id: stale-branches
+        run: |
+          echo "Repository Status Report" > repo-status.txt
+          echo "======================" >> repo-status.txt
+          echo "" >> repo-status.txt
+          
+          echo "Stale Branches (older than 30 days):" >> repo-status.txt
+          echo "--------------------------------" >> repo-status.txt
+          git for-each-ref --sort=-committerdate refs/remotes/origin/ --format='%(committerdate:iso8601) %(refname:short)' | \
+          while read date branch; do
+            if [ $(date -d "$date" +%s) -lt $(date -d "30 days ago" +%s) ]; then
+              echo "$date - $branch" >> repo-status.txt
+            fi
+          done
+          echo "" >> repo-status.txt
+
+      - name: Get open PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'updated',
+              direction: 'desc'
+            });
+            
+            const fs = require('fs');
+            fs.appendFileSync('repo-status.txt', '\nOpen Pull Requests:\n');
+            fs.appendFileSync('repo-status.txt', '-----------------\n');
+            
+            for (const pr of prs) {
+              const days = Math.floor((new Date() - new Date(pr.updated_at)) / (1000 * 60 * 60 * 24));
+              fs.appendFileSync('repo-status.txt', 
+                `#${pr.number} - ${pr.title}\n` +
+                `  Updated: ${days} days ago\n` +
+                `  Author: ${pr.user.login}\n` +
+                `  URL: ${pr.html_url}\n\n`
+              );
+            }
+
+      - name: Upload repository status report
+        uses: actions/upload-artifact@v3
+        with:
+          name: repo-status
+          path: repo-status.txt
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.report_only }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Check PHP dependencies licenses
+        run: |
+          echo "PHP Dependencies License Report" > license-report.txt
+          echo "=============================" >> license-report.txt
+          echo "" >> license-report.txt
+          
+          composer show --format=json | jq -r '.installed[] | "\(.name) - \(.license)"' >> license-report.txt
+          
+          if grep -i "GPL" license-report.txt; then
+            echo "WARNING: GPL licensed dependencies found!" >> license-report.txt
+          fi
+          
+          if grep -i "unknown" license-report.txt; then
+            echo "WARNING: Dependencies with unknown licenses found!" >> license-report.txt
+          fi
+
+      - name: Check JavaScript dependencies licenses
+        run: |
+          echo "JavaScript Dependencies License Report" >> license-report.txt
+          echo "===================================" >> license-report.txt
+          echo "" >> license-report.txt
+          
+          npx license-checker --production --json | jq -r 'to_entries[] | "\(.key) - \(.value.licenses)"' >> license-report.txt
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-report
+          path: license-report.txt
+
+  security-check:
+    name: Security Vulnerability Check
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.report_only }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Check PHP dependencies security
+        run: |
+          echo "PHP Dependencies Security Report" > security-report.txt
+          echo "==============================" >> security-report.txt
+          echo "" >> security-report.txt
+          
+          composer audit --format=json | jq -r '.advisories[] | "\(.packageName) - \(.title) - Severity: \(.severity)"' >> security-report.txt
+
+      - name: Check JavaScript dependencies security
+        run: |
+          echo "JavaScript Dependencies Security Report" >> security-report.txt
+          echo "=====================================" >> security-report.txt
+          echo "" >> security-report.txt
+          
+          npm audit --json | jq -r '.advisories | to_entries[] | "\(.value.name) - \(.value.title) - Severity: \(.value.severity)"' >> security-report.txt
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report.txt
+
+  lint-check:
+    name: Code Linting Check
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.report_only }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Run PHP linting
+        run: |
+          echo "PHP Linting Report" > lint-report.txt
+          echo "================" >> lint-report.txt
+          echo "" >> lint-report.txt
+          
+          composer run lint >> lint-report.txt 2>&1 || true
+          composer run cs:check >> lint-report.txt 2>&1 || true
+          composer run psalm >> lint-report.txt 2>&1 || true
+
+      - name: Run JavaScript linting
+        run: |
+          echo "JavaScript Linting Report" >> lint-report.txt
+          echo "=======================" >> lint-report.txt
+          echo "" >> lint-report.txt
+          
+          npm run lint >> lint-report.txt 2>&1 || true
+          npm run stylelint >> lint-report.txt 2>&1 || true
+
+      - name: Upload linting report
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-report
+          path: lint-report.txt
+
+  report:
+    name: Generate and Send Report
+    needs: [repo-status, license-check, security-check, lint-check]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v3
+        with:
+          path: reports
+
+      - name: Combine reports
+        id: combine-reports
+        run: |
+          echo "Code Quality Report" > combined-report.txt
+          echo "==================" >> combined-report.txt
+          echo "" >> combined-report.txt
+          
+          echo "Repository Status:" >> combined-report.txt
+          echo "----------------" >> combined-report.txt
+          cat reports/repo-status >> combined-report.txt
+          echo "" >> combined-report.txt
+          
+          if [ -f reports/license-report ]; then
+            echo "License Check Results:" >> combined-report.txt
+            echo "---------------------" >> combined-report.txt
+            cat reports/license-report >> combined-report.txt
+            echo "" >> combined-report.txt
+          fi
+          
+          if [ -f reports/security-report ]; then
+            echo "Security Check Results:" >> combined-report.txt
+            echo "---------------------" >> combined-report.txt
+            cat reports/security-report >> combined-report.txt
+            echo "" >> combined-report.txt
+          fi
+          
+          if [ -f reports/lint-report ]; then
+            echo "Linting Check Results:" >> combined-report.txt
+            echo "---------------------" >> combined-report.txt
+            cat reports/lint-report >> combined-report.txt
+          fi
+
+      - name: Send to Slack
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          channel-id: 'your-channel-id'
+          slack-message: |
+            Code Quality Report for ${{ github.repository }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            ```${{ steps.combine-reports.outputs.report }}```
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }} 
