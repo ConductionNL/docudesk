@@ -61,56 +61,56 @@ class AnonymizationService
      *
      * @var string
      */
-    private readonly string $anonymizationSchemaType;
+    private string $anonymizationSchemaType;
 
     /**
      * Register type for anonymization objects
      *
      * @var string
      */
-    private readonly string $anonymizationRegisterType;
+    private string $anonymizationRegisterType;
 
     /**
      * Logger instance for error reporting
      *
      * @var LoggerInterface
      */
-    private readonly LoggerInterface $logger;
+    private LoggerInterface $logger;
 
     /**
      * HTTP client for API requests
      *
      * @var Client
      */
-    private readonly Client $client;
+    private Client $client;
 
     /**
      * Configuration service
      *
      * @var IConfig
      */
-    private readonly IConfig $config;
+    private IConfig $config;
 
     /**
      * Object service for storing anonymization data
      *
      * @var ObjectService
      */
-    private readonly ObjectService $objectService;
+    private ObjectService $objectService;
 
     /**
      * Extraction service for getting text from documents
      *
      * @var ExtractionService
      */
-    private readonly ExtractionService $extractionService;
+    private ExtractionService $extractionService;
 
     /**
      * User session for getting current user
      *
      * @var IUserSession
      */
-    private readonly IUserSession $userSession;
+    private IUserSession $userSession;
 
     /**
      * Reporting service for getting reports
@@ -124,7 +124,7 @@ class AnonymizationService
      *
      * @var IAppConfig
      */
-    private readonly IAppConfig $appConfig;
+    private IAppConfig $appConfig;
 
 
     /**
@@ -560,9 +560,10 @@ class AnonymizationService
 
             // Throw error if multiple anonymizations found.
             if (count($anonymizations) > 1) {
-                throw new \RuntimeException(
-                    'Multiple anonymizations found for node '.$node->getId().'. There should only be one anonymization per node.'
-                );
+                $errorMessage = 'Multiple anonymizations found for node '.
+                    $node->getId().
+                    '. There should only be one anonymization per node.';
+                throw new \RuntimeException($errorMessage);
             }
 
             if (empty($anonymizations) === false) {

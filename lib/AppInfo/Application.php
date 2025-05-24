@@ -77,10 +77,6 @@ class Application extends App implements IBootstrap
             \OCA\DocuDesk\EventListener\FileEventListener::class
         );
 
-        // Register background jobs.
-        // $server = $context->getServerContainer();
-        // $jobList = $server->getJobList();
-        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class).
     }//end register()
 
 
@@ -109,5 +105,6 @@ class Application extends App implements IBootstrap
         }
 
     }//end boot()
+
 
 }//end class

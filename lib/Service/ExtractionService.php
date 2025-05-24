@@ -24,6 +24,7 @@ use Smalot\PdfParser\Parser as PdfParser;
 use Psr\Log\LoggerInterface;
 use OCA\OpenRegister\Service\ObjectService;
 use OCP\IAppConfig;
+use OCP\Files\IRootFolder;
 
 /**
  * Service for extracting text content from various file types
@@ -40,36 +41,36 @@ class ExtractionService
      *
      * @var LoggerInterface
      */
-    private readonly LoggerInterface $logger;
+    private LoggerInterface $logger;
 
     /**
      * App config for getting app config
      *
      * @var IAppConfig
      */
-    private readonly IAppConfig $appConfig;
+    private IAppConfig $appConfig;
 
     /**
      * Root folder for file operations
      *
-     * @var \OCP\Files\IRootFolder
+     * @var IRootFolder
      */
-    private readonly \OCP\Files\IRootFolder $rootFolder;
+    private IRootFolder $rootFolder;
 
 
     /**
      * Constructor for ExtractionService
      *
-     * @param LoggerInterface        $logger     Logger for error reporting
-     * @param IAppConfig             $appConfig  App config for getting app config
-     * @param \OCP\Files\IRootFolder $rootFolder Root folder for file operations
+     * @param LoggerInterface $logger     Logger for error reporting
+     * @param IAppConfig      $appConfig  App config for getting app config
+     * @param IRootFolder     $rootFolder Root folder for file operations
      *
      * @return void
      */
     public function __construct(
         LoggerInterface $logger,
         IAppConfig $appConfig,
-        \OCP\Files\IRootFolder $rootFolder
+        IRootFolder $rootFolder
     ) {
         $this->logger     = $logger;
         $this->appConfig  = $appConfig;

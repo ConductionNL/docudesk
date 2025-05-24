@@ -65,14 +65,14 @@ class DocuDeskAdmin implements ISettings
      *
      * @var IL10N $l
      */
-    private readonly IL10N $l;
+    private IL10N $l;
 
     /**
      * Configuration service
      *
      * @var IConfig $config
      */
-    private readonly IConfig $config;
+    private IConfig $config;
 
 
     /**

@@ -41,11 +41,15 @@ class TemplateService
 {
 
     /**
+     * Database mapper for templates
+     *
      * @var TemplateMapper
      */
     private $mapper;
 
     /**
+     * Twig environment for template rendering
+     *
      * @var Environment
      */
     private $twig;
