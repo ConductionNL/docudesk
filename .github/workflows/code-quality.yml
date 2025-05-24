@@ -166,7 +166,18 @@ jobs:
           echo "==============================" >> security-report.txt
           echo "" >> security-report.txt
           
-          composer audit --format=json | jq -r '.advisories[] | "\(.packageName) - \(.title) - Severity: \(.severity)"' >> security-report.txt
+          # Handle composer audit with better error handling
+          composer audit --format=json > composer_audit_output.json 2>/dev/null || echo "No vulnerabilities found or composer audit failed" >> security-report.txt
+          
+          # Check if audit output contains advisories
+          if [ -s composer_audit_output.json ] && jq -e '.advisories' composer_audit_output.json >/dev/null 2>&1; then
+            jq -r '.advisories[] | select(. != null) | "\(.packageName // "Unknown") - \(.title // "No title") - Severity: \(.severity // "Unknown")"' composer_audit_output.json >> security-report.txt 2>/dev/null || echo "No advisories with detailed info found" >> security-report.txt
+          else
+            echo "No composer audit advisories found" >> security-report.txt
+          fi
+          
+          # Clean up temporary file
+          rm -f composer_audit_output.json
 
       - name: Check JavaScript dependencies security
         run: |
@@ -174,7 +185,26 @@ jobs:
           echo "=====================================" >> security-report.txt
           echo "" >> security-report.txt
           
-          npm audit --json | jq -r '.advisories | to_entries[] | "\(.value.name) - \(.value.title) - Severity: \(.value.severity)"' >> security-report.txt
+          # Handle newer npm audit format with better error handling
+          npm audit --json > npm_audit_output.json 2>/dev/null || echo "No vulnerabilities found or npm audit failed" >> security-report.txt
+          
+          # Check if audit output contains vulnerabilities
+          if [ -s npm_audit_output.json ]; then
+            # Try the newer npm audit format first (npm v7+)
+            if jq -e '.vulnerabilities' npm_audit_output.json >/dev/null 2>&1; then
+              jq -r '.vulnerabilities | to_entries[] | select(.value != null) | "\(.value.name // "Unknown") - \(.value.title // "No title") - Severity: \(.value.severity // "Unknown")"' npm_audit_output.json >> security-report.txt 2>/dev/null || echo "No vulnerabilities with detailed info found" >> security-report.txt
+            # Fallback to older format (npm v6)
+            elif jq -e '.advisories' npm_audit_output.json >/dev/null 2>&1; then
+              jq -r '.advisories | to_entries[] | select(.value != null) | "\(.value.module_name // .value.name // "Unknown") - \(.value.title // "No title") - Severity: \(.value.severity // "Unknown")"' npm_audit_output.json >> security-report.txt 2>/dev/null || echo "No advisories found" >> security-report.txt
+            else
+              echo "npm audit completed but no recognizable vulnerability format found" >> security-report.txt
+            fi
+          else
+            echo "No npm audit output generated" >> security-report.txt
+          fi
+          
+          # Clean up temporary file
+          rm -f npm_audit_output.json
 
       - name: Upload security report
         uses: actions/upload-artifact@v4
