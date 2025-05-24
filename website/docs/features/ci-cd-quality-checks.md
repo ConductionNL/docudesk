@@ -112,14 +112,37 @@ The workflow can optionally send notifications to Slack when quality checks comp
 
 ## Configuration Files
 
-The quality checks use several configuration files:
-- `phpcs.xml` - PHP CodeSniffer rules and standards
-- `phpmd.xml` - PHP Mess Detector rules
-- `psalm.xml` - Psalm static analysis configuration
-- `.php-cs-fixer.dist.php` - PHP CS Fixer formatting rules
-- `phpunit.xml` - PHPUnit testing configuration
-- `.eslintrc.js` - ESLint configuration
-- `stylelint.config.js` - Stylelint configuration
+The quality checks use several configuration files in the project root, all explicitly referenced to ensure proper usage:
+
+- **`phpcs.xml`** - PHP CodeSniffer rules and standards (comprehensive PEAR-based ruleset)
+- **`phpmd.xml`** - PHP Mess Detector rules for code quality analysis
+- **`psalm.xml`** - Psalm static analysis configuration with strict error level
+- **`.php-cs-fixer.dist.php`** - PHP CS Fixer formatting rules (PSR-12 + additional rules)
+- **`phpunit.xml`** - PHPUnit testing configuration for unit tests
+- **`.eslintrc.js`** - ESLint configuration for JavaScript quality
+- **`stylelint.config.js`** - Stylelint configuration for CSS quality
+
+### Composer Scripts Configuration
+
+All composer scripts explicitly reference the configuration files to ensure they're found:
+
+```json
+{
+  "phpcs": "phpcs --standard=./phpcs.xml",
+  "phpmd": "phpmd lib text ./phpmd.xml", 
+  "psalm": "psalm --config=./psalm.xml --threads=1 --no-cache",
+  "cs:check": "php-cs-fixer fix --dry-run --diff --config=.php-cs-fixer.dist.php"
+}
+```
+
+### Workflow Validation
+
+The workflow includes validation steps to ensure all configuration files are present and accessible:
+
+- ✅ **Working Directory Check**: Verifies the correct project root
+- ✅ **Config File Detection**: Confirms all config files are found
+- ✅ **Tool Availability**: Checks that all static analysis tools are installed
+- ✅ **Explicit Paths**: Uses absolute paths to prevent config file lookup issues
 
 ## Unit Testing Setup
 
@@ -229,14 +252,33 @@ npm audit
 
 ### Dependencies
 
-The following development dependencies are automatically installed:
-- **squizlabs/php_codesniffer**: PHP CodeSniffer for style checking
-- **friendsofphp/php-cs-fixer**: PHP CS Fixer for code formatting
-- **phpmd/phpmd**: PHP Mess Detector for code quality analysis
-- **vimeo/psalm**: Psalm for static type analysis
-- **phpunit/phpunit**: PHPUnit for unit testing
+The following development dependencies are automatically installed with specific versions for compatibility:
+- **squizlabs/php_codesniffer**: ^3.10 - PHP CodeSniffer for style checking
+- **friendsofphp/php-cs-fixer**: ^3.64 - PHP CS Fixer for code formatting
+- **phpmd/phpmd**: ^2.15 - PHP Mess Detector for code quality analysis
+- **vimeo/psalm**: ^5.26 - Psalm for static type analysis
+- **phpunit/phpunit**: ^9.6 - PHPUnit for unit testing
 
 All tools are available in `vendor/bin/` after running `composer install --dev`.
+
+### Composer Configuration
+
+The project uses specific platform and configuration settings to ensure compatibility:
+```json
+{
+  "platform": { "php": "8.1.0" },
+  "preferred-install": "dist",
+  "process-timeout": 600
+}
+```
+
+### Installation Troubleshooting
+
+If composer installation fails, the workflow includes fallback strategies:
+1. **Cache clearing**: Clears composer cache to resolve stale dependency data
+2. **Individual installation**: Installs each tool separately if bulk install fails
+3. **Conflict resolution**: Uses `--with-all-dependencies` to resolve version conflicts
+4. **Graceful degradation**: Continues workflow even if some tools fail to install
 
 ### Recent Fixes
 
