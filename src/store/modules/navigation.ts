@@ -2,11 +2,15 @@
 import { defineStore } from 'pinia'
 
 interface NavigationStoreState {
-    selected: 'dashboard' | 'publication' | 'catalogi' | 'publicationType' | 'organizations' | 'themes' | 'search' | 'directory' | 'pages' | 'menus' | 'files' | 'anonymization' | 'templates';
+    selected: 'dashboard' | 'publication' | 'catalogi' | 'publicationType' | 'organizations' | 'themes' | 'search' | 'directory' | 'pages' | 'files' | 'reports' | 'anonymization' | 'templates';
     selectedCatalogus: string;
     modal: string;
     dialog: string;
     transferData: string;
+    sidebarState: {
+        reports: boolean;
+        report: boolean;
+    };
 }
 
 export const useNavigationStore = defineStore('ui', {
@@ -21,6 +25,11 @@ export const useNavigationStore = defineStore('ui', {
 		dialog: null,
 		// Any data needed in various models, dialogs, views which cannot be transferred through normal means or without writing crappy/excessive code
 		transferData: null,
+		// State for managing sidebars
+		sidebarState: {
+			reports: false,
+			report: false,
+		},
 	} as NavigationStoreState),
 	actions: {
 		setSelected(selected: NavigationStoreState['selected']) {
@@ -46,6 +55,24 @@ export const useNavigationStore = defineStore('ui', {
 			const tempData = this.transferData
 			this.transferData = null
 			return tempData
+		},
+		setSidebar(sidebarName: keyof NavigationStoreState['sidebarState'], isOpen: boolean) {
+			this.sidebarState[sidebarName] = isOpen
+			console.log(`Sidebar ${sidebarName} set to ${isOpen}`)
+		},
+		closeSidebar(sidebarName: keyof NavigationStoreState['sidebarState']) {
+			this.sidebarState[sidebarName] = false
+			console.log(`Sidebar ${sidebarName} closed`)
+		},
+		openSidebar(sidebarName: keyof NavigationStoreState['sidebarState']) {
+			this.sidebarState[sidebarName] = true
+			console.log(`Sidebar ${sidebarName} opened`)
+		},
+		closeAllSidebars() {
+			Object.keys(this.sidebarState).forEach(key => {
+				this.sidebarState[key as keyof NavigationStoreState['sidebarState']] = false
+			})
+			console.log('All sidebars closed')
 		},
 	},
 })
