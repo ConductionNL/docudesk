@@ -9,7 +9,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 		</template>
 		<template #default>
 			<NcEmptyContent v-if="!objectStore.getActiveObject('report') || navigationStore.selected !== 'files'"
-				class="detailContainer" 
+				class="detailContainer"
 				name="No Report Selected"
 				description="Select a report from the list or create a new one">
 				<template #icon>
@@ -30,8 +30,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
 /**
  * Main component for the reports view that handles displaying the list of reports
  * and their details
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
@@ -46,7 +46,7 @@ export default {
 	name: 'FileIndex',
 	components: {
 		NcAppContent,
-		NcEmptyContent, 
+		NcEmptyContent,
 		NcButton,
 		FileList,
 		FileDetails,

@@ -106,33 +106,32 @@
 		<NcSettingsSection
 			:name="t('docudesk', 'API Connections')"
 			:description="t('docudesk', 'Configure connections to external services')">
-			
 			<!-- Presidio Configuration -->
 			<div class="api-connection">
 				<h3>{{ t('docudesk', 'Presidio API') }}</h3>
 				<div class="input-field">
 					<label for="presidio-analyzer-url">{{ t('docudesk', 'Analyzer API URL') }}</label>
-					<input 
+					<input
 						id="presidio-analyzer-url"
-						v-model="apiConfig.presidio.analyzerUrl" 
+						v-model="apiConfig.presidio.analyzerUrl"
 						type="text"
-						:placeholder="t('docudesk', 'Enter Presidio Analyzer API URL (e.g., http://presidio-api:8080/analyze)')" />
+						:placeholder="t('docudesk', 'Enter Presidio Analyzer API URL (e.g., http://presidio-api:8080/analyze)')">
 				</div>
 				<div class="input-field">
 					<label for="presidio-anonymizer-url">{{ t('docudesk', 'Anonymizer API URL') }}</label>
-					<input 
+					<input
 						id="presidio-anonymizer-url"
-						v-model="apiConfig.presidio.anonymizerUrl" 
+						v-model="apiConfig.presidio.anonymizerUrl"
 						type="text"
-						:placeholder="t('docudesk', 'Enter Presidio Anonymizer API URL (e.g., http://presidio-api:8080/anonymize)')" />
+						:placeholder="t('docudesk', 'Enter Presidio Anonymizer API URL (e.g., http://presidio-api:8080/anonymize)')">
 				</div>
 				<div class="input-field">
 					<label for="presidio-key">{{ t('docudesk', 'API Key') }}</label>
-					<input 
+					<input
 						id="presidio-key"
-						v-model="apiConfig.presidio.key" 
+						v-model="apiConfig.presidio.key"
 						type="password"
-						:placeholder="t('docudesk', 'Enter Presidio API Key')" />
+						:placeholder="t('docudesk', 'Enter Presidio API Key')">
 				</div>
 			</div>
 
@@ -141,19 +140,19 @@
 				<h3>{{ t('docudesk', 'ChatGPT API') }}</h3>
 				<div class="input-field">
 					<label for="chatgpt-url">{{ t('docudesk', 'API URL') }}</label>
-					<input 
+					<input
 						id="chatgpt-url"
-						v-model="apiConfig.chatgpt.url" 
+						v-model="apiConfig.chatgpt.url"
 						type="text"
-						:placeholder="t('docudesk', 'Enter ChatGPT API URL')" />
+						:placeholder="t('docudesk', 'Enter ChatGPT API URL')">
 				</div>
 				<div class="input-field">
 					<label for="chatgpt-key">{{ t('docudesk', 'API Key') }}</label>
-					<input 
+					<input
 						id="chatgpt-key"
-						v-model="apiConfig.chatgpt.key" 
+						v-model="apiConfig.chatgpt.key"
 						type="password"
-						:placeholder="t('docudesk', 'Enter ChatGPT API Key')" />
+						:placeholder="t('docudesk', 'Enter ChatGPT API Key')">
 				</div>
 			</div>
 
@@ -162,19 +161,19 @@
 				<h3>{{ t('docudesk', 'NLDocs API') }}</h3>
 				<div class="input-field">
 					<label for="nldocs-url">{{ t('docudesk', 'API URL') }}</label>
-					<input 
+					<input
 						id="nldocs-url"
-						v-model="apiConfig.nldocs.url" 
+						v-model="apiConfig.nldocs.url"
 						type="text"
-						:placeholder="t('docudesk', 'Enter NLDocs API URL')" />
+						:placeholder="t('docudesk', 'Enter NLDocs API URL')">
 				</div>
 				<div class="input-field">
 					<label for="nldocs-key">{{ t('docudesk', 'API Key') }}</label>
-					<input 
+					<input
 						id="nldocs-key"
-						v-model="apiConfig.nldocs.key" 
+						v-model="apiConfig.nldocs.key"
 						type="password"
-						:placeholder="t('docudesk', 'Enter NLDocs API Key')" />
+						:placeholder="t('docudesk', 'Enter NLDocs API Key')">
 				</div>
 			</div>
 
@@ -191,72 +190,82 @@
 
 		<!-- Report Configuration Section -->
 		<NcSettingsSection
-			:name="t('docudesk', 'Report Configuration')" 
+			:name="t('docudesk', 'Report Configuration')"
 			:description="t('docudesk', 'Configure document report generation settings')">
 			<div class="report-config-section">
 				<div class="setting-item">
-					<div class="setting-label">{{ t('docudesk', 'Enable Reporting') }}</div>
+					<div class="setting-label">
+						{{ t('docudesk', 'Enable Reporting') }}
+					</div>
 					<NcCheckboxRadioSwitch
 						:checked="reportConfig.enable_reporting"
-						@update:checked="reportConfig.enable_reporting = $event"
 						type="switch"
-					/>
-					<div class="setting-description">{{ t('docudesk', 'Enable automatic report generation for documents') }}</div>
+						@update:checked="reportConfig.enable_reporting = $event" />
+					<div class="setting-description">
+						{{ t('docudesk', 'Enable automatic report generation for documents') }}
+					</div>
 				</div>
-				
+
 				<div class="setting-item">
-					<div class="setting-label">{{ t('docudesk', 'Enable Anonymization') }}</div>
+					<div class="setting-label">
+						{{ t('docudesk', 'Enable Anonymization') }}
+					</div>
 					<NcCheckboxRadioSwitch
 						:checked="reportConfig.enable_anonymization"
-						@update:checked="reportConfig.enable_anonymization = $event"
 						type="switch"
-					/>
-					<div class="setting-description">{{ t('docudesk', 'Enable automatic anonymization of sensitive data in documents') }}</div>
+						@update:checked="reportConfig.enable_anonymization = $event" />
+					<div class="setting-description">
+						{{ t('docudesk', 'Enable automatic anonymization of sensitive data in documents') }}
+					</div>
 				</div>
-				
+
 				<div class="setting-item">
-					<div class="setting-label">{{ t('docudesk', 'Synchronous Processing') }}</div>
+					<div class="setting-label">
+						{{ t('docudesk', 'Synchronous Processing') }}
+					</div>
 					<NcCheckboxRadioSwitch
 						:checked="reportConfig.synchronous_processing"
-						@update:checked="reportConfig.synchronous_processing = $event"
 						type="switch"
-					/>
-					<div class="setting-description">{{ t('docudesk', 'Process reports immediately instead of using background jobs') }}</div>
+						@update:checked="reportConfig.synchronous_processing = $event" />
+					<div class="setting-description">
+						{{ t('docudesk', 'Process reports immediately instead of using background jobs') }}
+					</div>
 				</div>
-				
+
 				<div class="confidence-threshold-container">
 					<label for="confidence-threshold">{{ t('docudesk', 'Confidence Threshold') }}</label>
 					<div class="slider-container">
-						<input 
-							type="range" 
-							id="confidence-threshold" 
-							v-model.number="reportConfig.confidence_threshold" 
-							min="0" 
-							max="1" 
-							step="0.05" 
-							class="slider"
-						/>
+						<input
+							id="confidence-threshold"
+							v-model.number="reportConfig.confidence_threshold"
+							type="range"
+							min="0"
+							max="1"
+							step="0.05"
+							class="slider">
 						<span class="threshold-value">{{ (reportConfig.confidence_threshold * 100).toFixed(0) }}%</span>
 					</div>
 					<span class="report-config-description">{{ t('docudesk', 'Minimum confidence level for entity detection') }}</span>
 				</div>
-				
+
 				<div class="setting-item">
-					<div class="setting-label">{{ t('docudesk', 'Store Original Text') }}</div>
+					<div class="setting-label">
+						{{ t('docudesk', 'Store Original Text') }}
+					</div>
 					<NcCheckboxRadioSwitch
 						:checked="reportConfig.store_original_text"
-						@update:checked="reportConfig.store_original_text = $event"
 						type="switch"
-					/>
-					<div class="setting-description">{{ t('docudesk', 'Store the original document text in reports') }}</div>
+						@update:checked="reportConfig.store_original_text = $event" />
+					<div class="setting-description">
+						{{ t('docudesk', 'Store the original document text in reports') }}
+					</div>
 				</div>
-				
+
 				<div class="button-container">
-					<NcButton 
-						type="primary" 
+					<NcButton
+						type="primary"
 						:disabled="isSavingReportConfig"
-						@click="saveReportConfig"
-					>
+						@click="saveReportConfig">
 						<template #icon>
 							<NcLoadingIcon v-if="isSavingReportConfig" :size="20" />
 						</template>
@@ -279,7 +288,7 @@ import { showSuccess, showError } from '@nextcloud/dialogs'
 
 /**
  * AdminSettings component for DocuDesk
- * 
+ *
  * @component
  */
 export default {
@@ -297,8 +306,8 @@ export default {
 	},
 	/**
 	 * Component data
-	 * 
-	 * @returns {Object} Component data
+	 *
+	 * @return {object} Component data
 	 */
 	data() {
 		return {
@@ -326,16 +335,16 @@ export default {
 				presidio: {
 					analyzerUrl: '',
 					anonymizerUrl: '',
-					key: ''
+					key: '',
 				},
 				chatgpt: {
 					url: '',
-					key: ''
+					key: '',
 				},
 				nldocs: {
 					url: '',
-					key: ''
-				}
+					key: '',
+				},
 			},
 			reportConfig: {
 				enable_reporting: true,
@@ -352,8 +361,8 @@ export default {
 	computed: {
 		/**
 		 * Check if any section uses "openregister" as source
-		 * 
-		 * @returns {boolean} True if any section uses "openregister" as source
+		 *
+		 * @return {boolean} True if any section uses "openregister" as source
 		 */
 		hasOpenRegisterSelected() {
 			return this.objectTypes.some(
@@ -363,8 +372,8 @@ export default {
 	},
 	/**
 	 * Component mounted lifecycle hook
-	 * 
-	 * @returns {void}
+	 *
+	 * @return {void}
 	 */
 	mounted() {
 		this.fetchAll()
@@ -374,9 +383,9 @@ export default {
 	methods: {
 		/**
 		 * Maps the title to any predefined titles, otherwise just capitalize the first letter and return
-		 * 
+		 *
 		 * @param {string} type - The type to map
-		 * @returns {string} The mapped title
+		 * @return {string} The mapped title
 		 */
 		titleMapping(type) {
 			const mapping = {
@@ -388,15 +397,15 @@ export default {
 				publication: 'Publicatie',
 				theme: 'Thema',
 				documentReport: 'Document Report',
-				documentLog: 'Document Log'
+				documentLog: 'Document Log',
 			}
 			return mapping[type] || type.charAt(0).toUpperCase() + type.slice(1)
 		},
 		/**
 		 * When the source is changed, reassign the entire section object to trigger re-render
-		 * 
+		 *
 		 * @param {string} type - The type to update
-		 * @returns {void}
+		 * @return {void}
 		 */
 		onSourceChange(type) {
 			if (this.sections[type].selectedSource?.value === 'internal') {
@@ -412,9 +421,9 @@ export default {
 		},
 		/**
 		 * When the register is changed, clear the schema by reassigning
-		 * 
+		 *
 		 * @param {string} type - The type to update
-		 * @returns {void}
+		 * @return {void}
 		 */
 		onRegisterChange(type) {
 			this.sections = {
@@ -427,15 +436,15 @@ export default {
 		},
 		/**
 		 * Fetch API configuration
-		 * 
-		 * @returns {void}
+		 *
+		 * @return {void}
 		 */
 		fetchApiConfig() {
 			fetch('/index.php/apps/docudesk/api/settings/api-config', { method: 'GET' })
 				.then(response => response.json())
 				.then(data => {
 					// Simple assignment without any validation or conversion
-					this.apiConfig = data;
+					this.apiConfig = data
 				})
 				.catch(err => {
 					console.error('Failed to fetch API config:', err)
@@ -443,16 +452,16 @@ export default {
 		},
 		/**
 		 * Save API configuration
-		 * 
-		 * @returns {void}
+		 *
+		 * @return {void}
 		 */
 		saveApiConfig() {
 			this.saving = true
-			
+
 			fetch('/index.php/apps/docudesk/api/settings/api-config', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(this.apiConfig)
+				body: JSON.stringify(this.apiConfig),
 			})
 				.then(response => response.json())
 				.then(() => {
@@ -469,8 +478,8 @@ export default {
 		},
 		/**
 		 * Fetch all settings and initialize the registers, schemas and sections
-		 * 
-		 * @returns {void}
+		 *
+		 * @return {void}
 		 */
 		fetchAll() {
 			this.loading = true
@@ -565,9 +574,9 @@ export default {
 		},
 		/**
 		 * Save the configuration for a single object type
-		 * 
+		 *
 		 * @param {string} type - The type to save
-		 * @returns {void}
+		 * @return {void}
 		 */
 		saveConfig(type) {
 			this.sections[type].loading = true
@@ -610,8 +619,8 @@ export default {
 		},
 		/**
 		 * Save all configurations at once
-		 * 
-		 * @returns {void}
+		 *
+		 * @return {void}
 		 */
 		saveAll() {
 			this.saving = true
@@ -655,8 +664,8 @@ export default {
 		},
 		/**
 		 * Reset all configurations
-		 * 
-		 * @returns {void}
+		 *
+		 * @return {void}
 		 */
 		resetConfig() {
 			this.saving = true
@@ -691,10 +700,10 @@ export default {
 		},
 		/**
 		 * Open a link in a new window or tab
-		 * 
+		 *
 		 * @param {string} url - The URL to open
 		 * @param {string} target - The target for the link
-		 * @returns {void}
+		 * @return {void}
 		 */
 		openLink(url, target = '') {
 			window.open(url, target)

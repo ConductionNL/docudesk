@@ -54,7 +54,7 @@ import { reportStore, navigationStore } from '../../store/store.js'
 			</div>
 
 			<div class="button-container">
-				<NcButton type="primary" 
+				<NcButton type="primary"
 					:disabled="!selectedFile"
 					@click="scanFile">
 					<template #icon>
@@ -89,7 +89,7 @@ export default {
 		NcModal,
 		NcButton,
 		Cancel,
-		Scan
+		Scan,
 	},
 	data() {
 		return {
@@ -116,7 +116,7 @@ export default {
 			try {
 				const response = await fetch('/reports/scan', {
 					method: 'POST',
-					body: formData
+					body: formData,
 				})
 
 				if (!response.ok) {
@@ -127,8 +127,8 @@ export default {
 			} catch (error) {
 				console.error('Error scanning file:', error)
 			}
-		}
-	}
+		},
+	},
 }
 </script>
 

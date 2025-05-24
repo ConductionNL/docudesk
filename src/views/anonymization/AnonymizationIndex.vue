@@ -9,7 +9,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 		</template>
 		<template #default>
 			<NcEmptyContent v-if="!objectStore.getActiveObject('anonymization') || navigationStore.selected !== 'anonymization'"
-				class="detailContainer" 
+				class="detailContainer"
 				name="No Documents"
 				description="No documents selected for anonymization">
 				<template #icon>
@@ -30,8 +30,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
 /**
  * Main component for the anonymization view that handles displaying the list of documents
  * and their anonymization details
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
@@ -46,7 +46,7 @@ export default {
 	name: 'AnonymizationIndex',
 	components: {
 		NcAppContent,
-		NcEmptyContent, 
+		NcEmptyContent,
 		NcButton,
 		AnonymizationList,
 		AnonymizationDetails,

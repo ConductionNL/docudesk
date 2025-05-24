@@ -3,7 +3,7 @@
 import pinia from '../pinia.js'
 import { useAnonymizationStore } from './modules/anonymization.js'
 import { useNavigationStore } from './modules/navigation.ts'
-import { useObjectStore } from './modules/object'
+import { useObjectStore } from './modules/object.js'
 import { useReportStore } from './modules/report.js'
 import { useTemplateStore } from './modules/template.js'
 
@@ -13,6 +13,9 @@ const objectStore = useObjectStore(pinia)
 const reportStore = useReportStore(pinia)
 const templateStore = useTemplateStore(pinia)
 
+// Create an alias for searchStore to objectStore for backward compatibility
+const searchStore = objectStore
+
 export {
 	// generic
 	anonymizationStore,
@@ -20,4 +23,5 @@ export {
 	objectStore,
 	reportStore,
 	templateStore,
+	searchStore,
 }

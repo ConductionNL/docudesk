@@ -1,5 +1,5 @@
 <script setup>
-import { templateStore, navigationStore, objectStore } from '../../store/store.js'
+import { navigationStore, objectStore } from '../../store/store.js'
 </script>
 
 <template>
