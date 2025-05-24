@@ -1,20 +1,17 @@
 <?php
 /**
- * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * DocuDesk is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * EUPL-1.2 License for more details.
+ * Service for handling settings-related operations
  *
  * @category Service
  * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
- * @link     https://www.DocuDesk.nl
+ *
+ * @author    Conduction Development Team <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * @version GIT: <git_id>
+ *
+ * @link https://www.DocuDesk.app
  */
 
 namespace OCA\DocuDesk\Service;
@@ -50,6 +47,7 @@ class SettingsService
      */
     private const OPENCATALOGI_APP_ID = 'opencatalogi';
 
+
     /**
      * SettingsService constructor.
      *
@@ -67,7 +65,9 @@ class SettingsService
         private readonly ILogger $logger
     ) {
         $this->appName = 'docudesk';
-    }
+
+    }//end __construct()
+
 
     /**
      * Initializes the app with all required components.
@@ -79,17 +79,16 @@ class SettingsService
     {
         $results = [
             'configuration' => false,
-            'errors' => [],
-            'info' => [],
+            'errors'        => [],
+            'info'          => [],
         ];
 
         try {
-
             // Try to get the OpenCatalogi configuration service
             try {
                 $configurationService = $this->getConfigurationService();
             } catch (\Exception $e) {
-                throw new \RuntimeException('OpenCatalogi configuration service is not available: ' . $e->getMessage());
+                throw new \RuntimeException('OpenCatalogi configuration service is not available: '.$e->getMessage());
             }
 
             // Get current configuration version from app config
@@ -97,29 +96,30 @@ class SettingsService
 
             // Load settings from file
             $settings = $this->loadSettings();
-            
+
             // Check if new configuration version is higher than current
             if (version_compare($settings['info']['version'], $currentVersion, '<=')) {
-                $results['info'][] = 'Current configuration version (' . $currentVersion . ') is up to date or newer than available version (' . $settings['info']['version'] . ')';
+                $results['info'][] = 'Current configuration version ('.$currentVersion.') is up to date or newer than available version ('.$settings['info']['version'].')';
                 return $results;
             }
 
             // Import the new configuration
             $configurationService->importFromJson($settings, false);
-            
+
             // Update the configuration version in app config
             $this->config->setValueString($this->appName, 'configuration_version', $settings['info']['version']);
-            
-            $results['configuration'] = true;
-            $results['info'][] = 'Configuration updated to version ' . $settings['info']['version'];
 
+            $results['configuration'] = true;
+            $results['info'][]        = 'Configuration updated to version '.$settings['info']['version'];
         } catch (\Exception $e) {
             $results['errors'][] = $e->getMessage();
-            $this->logger->error('Failed to initialize DocuDesk: ' . $e->getMessage(), ['app' => $this->appName]);
-        }
+            $this->logger->error('Failed to initialize DocuDesk: '.$e->getMessage(), ['app' => $this->appName]);
+        }//end try
 
         return $results;
-    }
+
+    }//end initialize()
+
 
     /**
      * Load settings from the document_register.json file.
@@ -133,7 +133,7 @@ class SettingsService
 
         try {
             if (!file_exists($settingsFilePath)) {
-                throw new \RuntimeException('Settings file not found at: ' . $settingsFilePath);
+                throw new \RuntimeException('Settings file not found at: '.$settingsFilePath);
             }
 
             $jsonContent = file_get_contents($settingsFilePath);
@@ -143,7 +143,7 @@ class SettingsService
 
             $settings = json_decode($jsonContent, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \RuntimeException('Error decoding JSON: ' . json_last_error_msg());
+                throw new \RuntimeException('Error decoding JSON: '.json_last_error_msg());
             }
 
             if (!isset($settings['info']['version'])) {
@@ -152,10 +152,10 @@ class SettingsService
 
             return $settings;
         } catch (\Exception $e) {
-            throw new \RuntimeException('Failed to load settings: ' . $e->getMessage());
-        }
-    }
+            throw new \RuntimeException('Failed to load settings: '.$e->getMessage());
+        }//end try
 
+    }//end loadSettings()
 
 
     /**
@@ -251,11 +251,11 @@ class SettingsService
     public function getSettings(): array
     {
         // Initialize the data array.
-        $data                       = [];
+        $data = [];
         $data['objectTypes']        = [
             "report",
             "anonymization",
-            "template"
+            "template",
         ];
         $data['openRegisters']      = false;
         $data['availableRegisters'] = [];
@@ -318,5 +318,6 @@ class SettingsService
         }//end try
 
     }//end updateSettings()
+
 
 }//end class

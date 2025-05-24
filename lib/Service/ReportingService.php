@@ -1,20 +1,17 @@
 <?php
 /**
- * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * DocuDesk is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * EUPL-1.2 License for more details.
+ * Service for generating and managing document reports
  *
  * @category Service
  * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
- * @link     https://www.DocuDesk.nl
+ *
+ * @author    Conduction Development Team <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * @version GIT: <git_id>
+ *
+ * @link https://www.DocuDesk.app
  */
 
 namespace OCA\DocuDesk\Service;
@@ -136,8 +133,7 @@ class ReportingService
      * If anonymization is enabled, it will also anonymize the document.
      *
      * @param report $input     Either a Node object or an existing report array
-     * @param float                               $threshold Confidence threshold for entity detection (optional)
-     *    
+     * @param float  $threshold Confidence threshold for entity detection (optional)
      *
      * @throws \InvalidArgumentException If input is invalid or node cannot be found
      * @throws Exception If report processing fails

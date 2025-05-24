@@ -23,15 +23,18 @@ class Application extends App implements IBootstrap
 {
     public const APP_ID = 'docudesk';
 
+
     /**
      * Constructor
      *
      * @param array $urlParams
      */
-    public function __construct(array $urlParams = [])
+    public function __construct(array $urlParams=[])
     {
         parent::__construct(appName: self::APP_ID, urlParams: $urlParams);
-    }
+
+    }//end __construct()
+
 
     public function register(IRegistrationContext $context): void
     {
@@ -54,29 +57,24 @@ class Application extends App implements IBootstrap
             \OCA\DocuDesk\EventListener\FileEventListener::class
         );
 
-        
-
         // Register background jobs
         // $server = $context->getServerContainer();
-        //$jobList = $server->getJobList();
-        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);
-    }
+        // $jobList = $server->getJobList();
+        // $jobList->add(\OCA\DocuDesk\BackgroundJob\ProcessPendingReports::class);    }//end register()    public function boot(IBootContext $context): void
+        {
+            $container = $context->getServerContainer();
 
+            // @TODO: We should look into performance here, since its acalled on every call to the app and right now i can so a compte update goind on. Perhaps we should see if our app version is higher that the config version or something (Tis adds 15ms ot every call)
+            // Install and enable OpenRegister
+        try {
+            // Install and enable OpenRegister
+            $settingsService = $container->get(\OCA\DocuDesk\Service\SettingsService::class);
+            $settingsService->initialize();
+            \OC::$server->getLogger()->info('DocuDesk has been installed, enabled and configured successfully');
+        } catch (\Exception $e) {
+            \OC::$server->getLogger()->warning('Failed to install/enable/configrue DocuDesk: '.$e->getMessage());
+        }
 
+        }//end boot()
 
-    public function boot(IBootContext $context): void
-    {
-		$container = $context->getServerContainer();
-
-		// @TODO: We should look into performance here, since its acalled on every call to the app and right now i can so a compte update goind on. Perhaps we should see if our app version is higher that the config version or something (Tis adds 15ms ot every call)
-		// Install and enable OpenRegister
-		try {
-			// Install and enable OpenRegister
-			$settingsService = $container->get(\OCA\DocuDesk\Service\SettingsService::class);
-			$settingsService->initialize();
-			\OC::$server->getLogger()->info('DocuDesk has been installed, enabled and configured successfully');
-		} catch (\Exception $e) {
-			\OC::$server->getLogger()->warning('Failed to install/enable/configrue DocuDesk: ' . $e->getMessage());
-		}
-    }
-}
+    }//end register()

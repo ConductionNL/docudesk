@@ -5,7 +5,7 @@
  * @license   EUPL-1.2
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -73,6 +73,7 @@ class DocuDeskAdmin implements ISettings
      */
     private readonly IConfig $config;
 
+
     /**
      * Constructor for DocuDeskAdmin
      *
@@ -84,8 +85,10 @@ class DocuDeskAdmin implements ISettings
     public function __construct(IConfig $config, IL10N $l)
     {
         $this->config = $config;
-        $this->l = $l;
-    }
+        $this->l      = $l;
+
+    }//end __construct()
+
 
     /**
      * Get the admin settings form
@@ -98,22 +101,24 @@ class DocuDeskAdmin implements ISettings
     public function getForm(): TemplateResponse
     {
         $parameters = [
-        'presidioAnalyzerUrl' => $this->config->getSystemValue(
+            'presidioAnalyzerUrl'   => $this->config->getSystemValue(
             'docudesk_presidio_analyzer_url',
             self::DEFAULT_PRESIDIO_ANALYZER_URL
         ),
-        'presidioAnonymizerUrl' => $this->config->getSystemValue(
+            'presidioAnonymizerUrl' => $this->config->getSystemValue(
             'docudesk_presidio_anonymizer_url',
             self::DEFAULT_PRESIDIO_ANONYMIZER_URL
         ),
-        'confidenceThreshold' => $this->config->getSystemValue('docudesk_confidence_threshold', 0.7),
-        'enableReporting' => $this->config->getSystemValue('docudesk_enable_reporting', true),
-        'enableAnonymization' => $this->config->getSystemValue('docudesk_enable_anonymization', true),
-        'storeOriginalText' => $this->config->getSystemValue('docudesk_store_original_text', true),
+            'confidenceThreshold'   => $this->config->getSystemValue('docudesk_confidence_threshold', 0.7),
+            'enableReporting'       => $this->config->getSystemValue('docudesk_enable_reporting', true),
+            'enableAnonymization'   => $this->config->getSystemValue('docudesk_enable_anonymization', true),
+            'storeOriginalText'     => $this->config->getSystemValue('docudesk_store_original_text', true),
         ];
 
         return new TemplateResponse('docudesk', 'settings/admin', $parameters, '');
-    }
+
+    }//end getForm()
+
 
     /**
      * Get the section ID for the admin settings
@@ -126,7 +131,9 @@ class DocuDeskAdmin implements ISettings
     public function getSection(): string
     {
         return 'docudesk';
-    }
+
+    }//end getSection()
+
 
     /**
      * Get the priority for the admin settings
@@ -139,5 +146,8 @@ class DocuDeskAdmin implements ISettings
     public function getPriority(): int
     {
         return 10;
-    }
-}
+
+    }//end getPriority()
+
+
+}//end class
