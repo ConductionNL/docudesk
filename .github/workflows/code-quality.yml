@@ -71,7 +71,7 @@ jobs:
             }
 
       - name: Upload repository status report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: repo-status
           path: repo-status.txt
@@ -128,7 +128,7 @@ jobs:
           npx license-checker --production --json | jq -r 'to_entries[] | "\(.key) - \(.value.licenses)"' >> license-report.txt
 
       - name: Upload license report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: license-report
           path: license-report.txt
@@ -177,7 +177,7 @@ jobs:
           npm audit --json | jq -r '.advisories | to_entries[] | "\(.value.name) - \(.value.title) - Severity: \(.value.severity)"' >> security-report.txt
 
       - name: Upload security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report.txt
@@ -229,7 +229,7 @@ jobs:
           npm run stylelint >> lint-report.txt 2>&1 || true
 
       - name: Upload linting report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lint-report
           path: lint-report.txt
@@ -242,7 +242,7 @@ jobs:
     
     steps:
       - name: Download all reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: reports
 
