@@ -285,27 +285,31 @@ jobs:
           
           echo "Repository Status:" >> combined-report.txt
           echo "----------------" >> combined-report.txt
-          cat reports/repo-status >> combined-report.txt
+          if [ -f reports/repo-status/repo-status.txt ]; then
+            cat reports/repo-status/repo-status.txt >> combined-report.txt
+          else
+            echo "Repository status report not available" >> combined-report.txt
+          fi
           echo "" >> combined-report.txt
           
-          if [ -f reports/license-report ]; then
+          if [ -f reports/license-report/license-report.txt ]; then
             echo "License Check Results:" >> combined-report.txt
             echo "---------------------" >> combined-report.txt
-            cat reports/license-report >> combined-report.txt
+            cat reports/license-report/license-report.txt >> combined-report.txt
             echo "" >> combined-report.txt
           fi
           
-          if [ -f reports/security-report ]; then
+          if [ -f reports/security-report/security-report.txt ]; then
             echo "Security Check Results:" >> combined-report.txt
             echo "---------------------" >> combined-report.txt
-            cat reports/security-report >> combined-report.txt
+            cat reports/security-report/security-report.txt >> combined-report.txt
             echo "" >> combined-report.txt
           fi
           
-          if [ -f reports/lint-report ]; then
+          if [ -f reports/lint-report/lint-report.txt ]; then
             echo "Linting Check Results:" >> combined-report.txt
             echo "---------------------" >> combined-report.txt
-            cat reports/lint-report >> combined-report.txt
+            cat reports/lint-report/lint-report.txt >> combined-report.txt
           fi
 
       - name: Send to Slack

@@ -113,6 +113,18 @@ npm audit
 1. **npm audit jq errors**: Fixed in the latest workflow version with better null handling
 2. **Missing dependencies**: Ensure all dev dependencies are installed with `composer install` and `npm ci`
 3. **Psalm not found**: Install development tools using the composer bin plugin
+4. **Artifact path errors**: Fixed in the latest version - artifacts are downloaded into directories, so file paths need to include the artifact directory name (e.g., `reports/repo-status/repo-status.txt` instead of `reports/repo-status`)
+
+### Recent Fixes
+
+#### Artifact Download Path Issue
+**Problem**: The combine reports step was failing with `cat: reports/repo-status: Is a directory` because `actions/download-artifact@v4` creates directories for each artifact.
+
+**Solution**: Updated file paths to reference the actual files inside the artifact directories:
+- `reports/repo-status` → `reports/repo-status/repo-status.txt`
+- `reports/license-report` → `reports/license-report/license-report.txt`
+- `reports/security-report` → `reports/security-report/security-report.txt`
+- `reports/lint-report` → `reports/lint-report/lint-report.txt`
 
 ### Manual Workflow Trigger
 
