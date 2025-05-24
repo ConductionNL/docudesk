@@ -24,7 +24,11 @@ The workflow `.github/workflows/code-quality.yml` performs the following checks:
 - Generates detailed security reports with severity levels
 
 ### 4. Code Linting Check
-- **PHP**: Runs syntax checking, code style validation, and static analysis with Psalm
+- **PHP Syntax**: Basic PHP syntax validation using `php -l`
+- **PHP CodeSniffer (PHPCS)**: Code style validation using project's phpcs.xml configuration
+- **PHP CS Fixer**: Code formatting validation and automatic fixing capabilities
+- **PHP Mess Detector (PHPMD)**: Detection of code smells and potential issues
+- **Psalm Static Analysis**: Advanced static type checking and bug detection
 - **JavaScript**: Executes ESLint and Stylelint for code quality
 
 ### 5. Unit Testing
@@ -109,12 +113,13 @@ The workflow can optionally send notifications to Slack when quality checks comp
 ## Configuration Files
 
 The quality checks use several configuration files:
+- `phpcs.xml` - PHP CodeSniffer rules and standards
 - `phpmd.xml` - PHP Mess Detector rules
-- `psalm.xml` - Psalm static analysis configuration  
-- `phpcs.xml` - PHP CodeSniffer rules
+- `psalm.xml` - Psalm static analysis configuration
+- `.php-cs-fixer.dist.php` - PHP CS Fixer formatting rules
+- `phpunit.xml` - PHPUnit testing configuration
 - `.eslintrc.js` - ESLint configuration
 - `stylelint.config.js` - Stylelint configuration
-- `phpunit.xml` - PHPUnit testing configuration
 
 ## Unit Testing Setup
 
@@ -180,10 +185,16 @@ class TemplateServiceTest extends TestCase
 You can run individual quality checks locally:
 
 ```bash
-# PHP linting
-composer run lint
-composer run cs:check
-composer run psalm
+# PHP syntax and linting
+composer run lint                    # Basic PHP syntax check
+composer run phpcs                   # PHP CodeSniffer style check
+composer run cs:check                # PHP CS Fixer validation
+composer run phpmd                   # PHP Mess Detector analysis
+composer run psalm                   # Psalm static analysis
+
+# PHP formatting (auto-fix)
+composer run phpcbf                  # Auto-fix PHPCS issues
+composer run cs:fix                  # Auto-fix PHP CS Fixer issues
 
 # JavaScript linting  
 npm run lint
@@ -212,6 +223,20 @@ npm audit
 7. **Test database issues**: Unit tests should use mocks instead of real database connections
 8. **Permission errors in tests**: Ensure test directories have proper read/write permissions
 9. **Slack notification failures**: The workflow gracefully handles missing Slack tokens - no configuration needed unless you want notifications
+10. **Static analysis tools not found**: Run `composer install --dev` to install all required development tools
+11. **PHPCS/PHPMD configuration errors**: Verify configuration files (phpcs.xml, phpmd.xml) are properly formatted
+12. **PHP CS Fixer permission issues**: Ensure the project directory is writable for auto-fixing
+
+### Dependencies
+
+The following development dependencies are automatically installed:
+- **squizlabs/php_codesniffer**: PHP CodeSniffer for style checking
+- **friendsofphp/php-cs-fixer**: PHP CS Fixer for code formatting
+- **phpmd/phpmd**: PHP Mess Detector for code quality analysis
+- **vimeo/psalm**: Psalm for static type analysis
+- **phpunit/phpunit**: PHPUnit for unit testing
+
+All tools are available in `vendor/bin/` after running `composer install --dev`.
 
 ### Recent Fixes
 

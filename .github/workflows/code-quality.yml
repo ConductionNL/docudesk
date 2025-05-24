@@ -103,6 +103,25 @@ jobs:
       - name: Install Node.js dependencies
         run: npm ci
 
+      - name: Install and verify static analysis tools
+        run: |
+          echo "Installing static analysis tools..."
+          
+          # Force install dev dependencies
+          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          
+          # Check if tools are available
+          echo "Checking tool availability:"
+          [ -f vendor/bin/phpcs ] && echo "✓ PHPCS available" || echo "✗ PHPCS not found"
+          [ -f vendor/bin/php-cs-fixer ] && echo "✓ PHP CS Fixer available" || echo "✗ PHP CS Fixer not found"
+          [ -f vendor/bin/phpmd ] && echo "✓ PHPMD available" || echo "✗ PHPMD not found"
+          [ -f vendor/bin/psalm ] && echo "✓ Psalm available" || echo "✗ Psalm not found"
+          [ -f vendor/bin/phpunit ] && echo "✓ PHPUnit available" || echo "✗ PHPUnit not found"
+          
+          # List vendor bin contents for debugging
+          echo "Vendor bin contents:"
+          ls -la vendor/bin/ | head -20
+
       - name: Check PHP dependencies licenses
         run: |
           echo "PHP Dependencies License Report" > license-report.txt
@@ -159,6 +178,25 @@ jobs:
 
       - name: Install Node.js dependencies
         run: npm ci
+
+      - name: Install and verify static analysis tools
+        run: |
+          echo "Installing static analysis tools..."
+          
+          # Force install dev dependencies
+          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          
+          # Check if tools are available
+          echo "Checking tool availability:"
+          [ -f vendor/bin/phpcs ] && echo "✓ PHPCS available" || echo "✗ PHPCS not found"
+          [ -f vendor/bin/php-cs-fixer ] && echo "✓ PHP CS Fixer available" || echo "✗ PHP CS Fixer not found"
+          [ -f vendor/bin/phpmd ] && echo "✓ PHPMD available" || echo "✗ PHPMD not found"
+          [ -f vendor/bin/psalm ] && echo "✓ Psalm available" || echo "✗ Psalm not found"
+          [ -f vendor/bin/phpunit ] && echo "✓ PHPUnit available" || echo "✗ PHPUnit not found"
+          
+          # List vendor bin contents for debugging
+          echo "Vendor bin contents:"
+          ls -la vendor/bin/ | head -20
 
       - name: Check PHP dependencies security
         run: |
@@ -317,15 +355,70 @@ jobs:
       - name: Install Node.js dependencies
         run: npm ci
 
+      - name: Install and verify static analysis tools
+        run: |
+          echo "Installing static analysis tools..."
+          
+          # Force install dev dependencies
+          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          
+          # Check if tools are available
+          echo "Checking tool availability:"
+          [ -f vendor/bin/phpcs ] && echo "✓ PHPCS available" || echo "✗ PHPCS not found"
+          [ -f vendor/bin/php-cs-fixer ] && echo "✓ PHP CS Fixer available" || echo "✗ PHP CS Fixer not found"
+          [ -f vendor/bin/phpmd ] && echo "✓ PHPMD available" || echo "✗ PHPMD not found"
+          [ -f vendor/bin/psalm ] && echo "✓ Psalm available" || echo "✗ Psalm not found"
+          [ -f vendor/bin/phpunit ] && echo "✓ PHPUnit available" || echo "✗ PHPUnit not found"
+          
+          # List vendor bin contents for debugging
+          echo "Vendor bin contents:"
+          ls -la vendor/bin/ | head -20
+
       - name: Run PHP linting
         run: |
           echo "PHP Linting Report" > lint-report.txt
           echo "================" >> lint-report.txt
           echo "" >> lint-report.txt
           
+          # Basic PHP syntax check
+          echo "=== PHP Syntax Check ===" >> lint-report.txt
           composer run lint >> lint-report.txt 2>&1 || true
-          composer run cs:check >> lint-report.txt 2>&1 || true
-          composer run psalm >> lint-report.txt 2>&1 || true
+          echo "" >> lint-report.txt
+          
+          # PHP CodeSniffer check
+          echo "=== PHP CodeSniffer (PHPCS) ===" >> lint-report.txt
+          if [ -f vendor/bin/phpcs ]; then
+            composer run phpcs >> lint-report.txt 2>&1 || echo "PHPCS found issues (see above)" >> lint-report.txt
+          else
+            echo "PHPCS not found, skipping" >> lint-report.txt
+          fi
+          echo "" >> lint-report.txt
+          
+          # PHP CS Fixer check
+          echo "=== PHP CS Fixer ===" >> lint-report.txt
+          if [ -f vendor/bin/php-cs-fixer ]; then
+            composer run cs:check >> lint-report.txt 2>&1 || echo "PHP CS Fixer found issues (see above)" >> lint-report.txt
+          else
+            echo "PHP CS Fixer not found, skipping" >> lint-report.txt
+          fi
+          echo "" >> lint-report.txt
+          
+          # PHP Mess Detector check
+          echo "=== PHP Mess Detector (PHPMD) ===" >> lint-report.txt
+          if [ -f vendor/bin/phpmd ]; then
+            composer run phpmd >> lint-report.txt 2>&1 || echo "PHPMD found issues (see above)" >> lint-report.txt
+          else
+            echo "PHPMD not found, skipping" >> lint-report.txt
+          fi
+          echo "" >> lint-report.txt
+          
+          # Psalm static analysis
+          echo "=== Psalm Static Analysis ===" >> lint-report.txt
+          if [ -f vendor/bin/psalm ]; then
+            composer run psalm >> lint-report.txt 2>&1 || echo "Psalm found issues (see above)" >> lint-report.txt
+          else
+            echo "Psalm not found, skipping" >> lint-report.txt
+          fi
 
       - name: Run JavaScript linting
         run: |
