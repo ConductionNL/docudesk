@@ -1,20 +1,17 @@
 <?php
 /**
- * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * DocuDesk is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * EUPL-1.2 License for more details.
+ * Service for generating and managing document reports
  *
  * @category Service
  * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
- * @link     https://www.DocuDesk.nl
+ *
+ * @author    Conduction Development Team <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * @version GIT: <git_id>
+ *
+ * @link https://www.DocuDesk.app
  */
 
 namespace OCA\DocuDesk\Service;
@@ -27,6 +24,7 @@ use OCP\IConfig;
 use OCP\IAppConfig;
 use OCP\ILogger;
 use OCP\Files\Node;
+use OCP\Files\IRootFolder;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 use OCA\DocuDesk\Service\AnonymizationService;
@@ -36,8 +34,15 @@ use OCA\OpenRegister\Db\ObjectEntity;
 /**
  * Service for generating and managing document reports
  *
- * This service handles the generation of reports based on document content,
- * including sending content to Presidio for analysis and storing the results. 
+ * This service provides functionality for creating, processing, and managing
+ * document reports including entity detection, risk assessment, and integration
+ * with external services like Presidio for privacy analysis.
+ *
+ * @category Service
+ * @package  OCA\DocuDesk\Service
+ * @author   Conduction B.V. <info@conduction.nl>
+ * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @link     https://www.DocuDesk.nl
  */
 class ReportingService
 {
@@ -69,17 +74,18 @@ class ReportingService
      */
     public $reportSchemaType;
 
+
     /**
      * Constructor for ReportingService
      *
-     * @param LoggerInterface        $logger               Logger for error reporting
-     * @param IConfig                $config               Configuration service
-     * @param ObjectService          $objectService        Service for storing objects
-     * @param ExtractionService      $extractionService    Service for extracting text from documents
-     * @param \OCP\Files\IRootFolder $rootFolder           Root folder service for accessing files
-     * @param AnonymizationService   $anonymizationService Service for anonymizing documents
-     * @param IAppConfig             $appConfig            App configuration service
-     * 
+     * @param LoggerInterface      $logger               Logger for error reporting
+     * @param IConfig              $config               Configuration service
+     * @param ObjectService        $objectService        Service for storing objects
+     * @param ExtractionService    $extractionService    Service for extracting text from documents
+     * @param IRootFolder          $rootFolder           Root folder service for accessing files
+     * @param AnonymizationService $anonymizationService Service for anonymizing documents
+     * @param IAppConfig           $appConfig            App configuration service
+     *
      * @return void
      */
     public function __construct(
@@ -87,46 +93,64 @@ class ReportingService
         IConfig $config,
         ObjectService $objectService,
         ExtractionService $extractionService,
-        \OCP\Files\IRootFolder $rootFolder,
+        IRootFolder $rootFolder,
         AnonymizationService $anonymizationService,
         IAppConfig $appConfig
     ) {
-        $this->logger = $logger;
-        $this->config = $config;
-        $this->objectService = $objectService;
+        $this->logger            = $logger;
+        $this->config            = $config;
+        $this->objectService     = $objectService;
         $this->extractionService = $extractionService;
-        $this->rootFolder = $rootFolder;
+        $this->rootFolder        = $rootFolder;
         $this->anonymizationService = $anonymizationService;
-        $this->appConfig = $appConfig;
+        $this->appConfig            = $appConfig;
 
-        // Set this service in the anonymization service to avoid circular dependency
+        // Set this service in the anonymization service to avoid circular dependency.
         $this->anonymizationService->setReportingService($this);
 
-        // Set the object service to use the reporting service
+        // Set the object service to use the reporting service.
         $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
-        
+
         $reportSchemaType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
         $this->objectService->setSchema($reportSchemaType);
-        
+
         $this->reportRegisterType = $reportRegisterType;
-        $this->reportSchemaType = $reportSchemaType;
-        
-        // Initialize Guzzle HTTP client
+        $this->reportSchemaType   = $reportSchemaType;
+
+        // Initialize Guzzle HTTP client.
         $this->client = new Client(
             [
-            'timeout' => 30,
-            'connect_timeout' => 5,
+                'timeout'         => 30,
+                'connect_timeout' => 5,
             ]
         );
-    }
 
-    
-    public function processFile(Node $node): ObjectEntity 
+    }//end __construct()
+
+
+    /**
+     * Process a file by creating and processing a report
+     *
+     * This method creates a report for the given node and processes it immediately.
+     *
+     * @param Node $node The file node to process
+     *
+     * @return ObjectEntity The processed report object
+     *
+     * @throws \InvalidArgumentException If the node is invalid
+     * @throws Exception If processing fails
+     *
+     * @psalm-return   ObjectEntity
+     * @phpstan-return ObjectEntity
+     */
+    public function processFile(Node $node): ObjectEntity
     {
         $report = $this->getReport($node);
         return $this->processReport($report);
-    }
+
+    }//end processFile()
+
 
     /**
      * Process a report for a document
@@ -135,19 +159,23 @@ class ReportingService
      * and stores the results as a report object. It can accept either a Node or an existing report array.
      * If anonymization is enabled, it will also anonymize the document.
      *
-     * @param report $input     Either a Node object or an existing report array
-     * @param float                               $threshold Confidence threshold for entity detection (optional)
-     *    
+     * @param array|ObjectEntity $report    Either a Node object or an existing report array
+     * @param float              $threshold Confidence threshold for entity detection (optional)
+     *
+     * @return array The processed report data
      *
      * @throws \InvalidArgumentException If input is invalid or node cannot be found
      * @throws Exception If report processing fails
+     *
+     * @psalm-return   array
+     * @phpstan-return array
      */
     public function processReport(
-        array|ObjectEntity $report,
-        float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD
+        array | ObjectEntity $report,
+        float $threshold=self::DEFAULT_CONFIDENCE_THRESHOLD
     ): array {
-        
-        if(is_array($report) === false) {
+
+        if (is_array($report) === false) {
             $report = $report->jsonSerialize();
         }
 
@@ -156,83 +184,93 @@ class ReportingService
         try {
             $node = $this->rootFolder->getById($nodeId)[0] ?? null;
         } catch (Exception $e) {
-            throw new \InvalidArgumentException('Could not find node with ID: ' . $nodeId);
+            throw new \InvalidArgumentException('Could not find node with ID: '.$nodeId);
         }
 
-
-        // Get the report object type and set the status to processing
-        $this->logger->info('Processing report for node: ' . $node->getId());
+        // Get the report object type and set the status to processing.
+        $this->logger->info('Processing report for node: '.$node->getId());
 
         $report['status'] = 'processing';
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
-        // Extract text from document
+        // Extract text from document.
         $filePath = $node->getPath();
         try {
-            $extraction = $this->extractionService->extractText($node);
+            $extraction     = $this->extractionService->extractText($node);
             $report['text'] = $extraction['text'];
             $report['errorMessage'] = $extraction['errorMessage'];
         } catch (Exception $e) {
-            $this->logger->error('Error extracting text from document: ' . $e->getMessage(), ['exception' => $e]);
-            $report['status'] = 'failed';
-            $report['errorMessage'] = 'Error extracting text from document: ' . $e->getMessage();
-            $this->objectService->saveObject(object: $report, uuid: $report['id']); 
+            $this->logger->error('Error extracting text from document: '.$e->getMessage(), ['exception' => $e]);
+            $report['status']       = 'failed';
+            $report['errorMessage'] = 'Error extracting text from document: '.$e->getMessage();
+            $this->objectService->saveObject(object: $report, uuid: $report['id']);
             return  $report;
         }
-        
-        if (empty($report['text'])) {
-            $this->logger->warning('No text content found in document: ' . $filePath);
+
+        if (empty($report['text']) === true) {
+            $this->logger->warning('No text content found in document: '.$filePath);
             $report['status'] = 'completed';
-            //$report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
+            // $report['errorMessage'] = 'Document appears to be empty or contains no extractable text';
             $report['entities'] = [];
-            
-            // Set appropriate values for non-text documents
+
+            // Set appropriate values for non-text documents.
             $report['anonymizationResults'] = [
                 'containsPersonalData' => false,
-                'dataCategories' => [],
-                'anonymizationStatus' => 'not_required'
+                'dataCategories'       => [],
+                'anonymizationStatus'  => 'not_required',
             ];
-            
+
             $report['riskLevel'] = 'low';
             $this->objectService->saveObject(object: $report, uuid: $report['id']);
             return  $report;
         }
-        // Send text to Presidio for analysis and get entities
+
+        // Send text to Presidio for analysis and get entities.
         $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
-        
-        // Map entity_type to entityType in each entity
+
+        // Map entity_type to entityType in each entity.
         $report['entities'] = array_map(
             function ($entity) {
                 $entity['entityType'] = $entity['entity_type'];
                 unset($entity['entity_type']);
                 return $entity;
-            }, $presidioResults['entities_found']
+            },
+                $presidioResults['entities_found']
         );
-        
-        if (empty($report['entities'])) {
-            $this->logger->debug('No entities detected in document: ' . $filePath);
+
+        if (empty($report['entities']) === true) {
+            $this->logger->debug('No entities detected in document: '.$filePath);
         }
-        
-        // Update report with results
+
+        // Update report with results.
         $report['status'] = 'completed';
 
-        // Lets calculate the risk score    
+        // Lets calculate the risk score .
         $report['riskScore'] = $this->calculateRiskScore($report['entities']);
 
-        // Lets calculate the risk level
+        // Lets calculate the risk level.
         $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
-        
-        // Save updated report
+
+        // Save updated report.
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
-        
-        // Process anonymization if enabled
-        // @todo the detecting of settings seems to be broken, we should fix this
-        //if ($this->isAnonymizationEnabled() && !empty($report['entities'])) {
+
+        // Process anonymization if enabled.
+        // @todo the detecting of settings seems to be broken, we should fix this.
+        if ($this->isAnonymizationEnabled() === true && empty($report['entities']) === false) {
             $this->anonymizationService->processAnonymization($node, $report);
-        //}
-        
-        return $report;
-    }
+        }
+
+        $this->anonymizationService->processAnonymization($node, $report);
+
+        // Process the report now if synchronous processing is enabled.
+        if ($this->isSynchronousProcessingEnabled() === true) {
+            return $this->processReport($report);
+        }
+
+        return $this->processReport($report);
+
+    }//end processReport()
+
 
     /**
      * Analyze text with Presidio
@@ -255,50 +293,53 @@ class ReportingService
      *
      * @throws Exception If the API request fails
      */
-    private function analyzeWithPresidio(string $text, float $threshold = self::DEFAULT_CONFIDENCE_THRESHOLD): array
+    private function analyzeWithPresidio(string $text, float $threshold=self::DEFAULT_CONFIDENCE_THRESHOLD): array
     {
-        // Get Presidio API URL from configuration or use default
+        // Get Presidio API URL from configuration or use default.
         $presidioUrl = $this->config->getSystemValue(
             'docudesk_presidio_analyzer_url',
             self::DEFAULT_PRESIDIO_URL
         );
 
-        $this->logger->debug('Analyzing text with Presidio(' . $presidioUrl . '): ' . $text);
-        
-        // Prepare request payload
+        $this->logger->debug('Analyzing text with Presidio('.$presidioUrl.'): '.$text);
+
+        // Prepare request payload.
         $payload = [
-            'text' => $text,
-            'language' => 'nl', // Default to   @todo this should be configuration
-            'score_threshold' => $threshold,
+            'text'                    => $text,
+            'language'                => 'nl',
+        // Default to   @todo this should be configuration.
+            'score_threshold'         => $threshold,
             'return_decision_process' => false,
         ];
-        
+
         try {
-            // Send request to Presidio
+            // Send request to Presidio.
             $response = $this->client->post(
-                $presidioUrl, [
-                'json' => $payload,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ],
-                ]
+                $presidioUrl,
+                    [
+                        'json'    => $payload,
+                        'headers' => [
+                            'Content-Type' => 'application/json',
+                            'Accept'       => 'application/json',
+                        ],
+                    ]
             );
-            
-            // Parse response
+
+            // Parse response.
             $responseBody = $response->getBody()->getContents();
-            $results = json_decode($responseBody, true);
-            
-            if (!is_array($results)) {
+            $results      = json_decode($responseBody, true);
+
+            if (is_array($results) === false) {
                 throw new Exception('Invalid response from Presidio API');
             }
-            
+
             return $results;
         } catch (GuzzleException $e) {
-            $this->logger->error('Presidio API request failed: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to communicate with Presidio API: ' . $e->getMessage(), 0, $e);
-        }
-    }
+            $this->logger->error('Presidio API request failed: '.$e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to communicate with Presidio API: '.$e->getMessage(), 0, $e);
+        }//end try
+
+    }//end analyzeWithPresidio()
 
 
     /**
@@ -313,66 +354,74 @@ class ReportingService
      */
     private function calculateRiskScore(array $entities): float
     {
-        if (empty($entities)) {
+        if (empty($entities) === true) {
             return 0.0;
         }
-        
-        // Define base scores for different entity types (out of 100)
+
+        // Define base scores for different entity types (out of 100).
         $entityBaseScores = [
-            'PERSON' => 50.0, // Finding a person is automatically medium risk
-            'EMAIL_ADDRESS' => 60.0,
-            'PHONE_NUMBER' => 55.0,
-            'CREDIT_CARD' => 90.0,
-            'IBAN_CODE' => 85.0,
-            'US_SSN' => 90.0,
-            'US_BANK_NUMBER' => 85.0,
-            'LOCATION' => 30.0,
-            'DATE_TIME' => 10.0,
-            'NRP' => 70.0,
-            'IP_ADDRESS' => 45.0,
+            'PERSON'            => 50.0,
+        // Finding a person is automatically medium risk.
+            'EMAIL_ADDRESS'     => 60.0,
+            'PHONE_NUMBER'      => 55.0,
+            'CREDIT_CARD'       => 90.0,
+            'IBAN_CODE'         => 85.0,
+            'US_SSN'            => 90.0,
+            'US_BANK_NUMBER'    => 85.0,
+            'LOCATION'          => 30.0,
+            'DATE_TIME'         => 10.0,
+            'NRP'               => 70.0,
+            'IP_ADDRESS'        => 45.0,
             'US_DRIVER_LICENSE' => 65.0,
-            'US_PASSPORT' => 85.0,
-            'US_ITIN' => 85.0,
-            'MEDICAL_LICENSE' => 60.0,
-            'URL' => 20.0,
-            'DEFAULT' => 40.0,
+            'US_PASSPORT'       => 85.0,
+            'US_ITIN'           => 85.0,
+            'MEDICAL_LICENSE'   => 60.0,
+            'URL'               => 20.0,
+            'DEFAULT'           => 40.0,
         ];
-        
-        // Calculate maximum risk score from entities
-        $maxRiskScore = 0.0;
+
+        // Calculate maximum risk score from entities.
+        $maxRiskScore   = 0.0;
         $totalRiskScore = 0.0;
-        $entityCount = count($entities);
-        
+        $entityCount    = count($entities);
+
         foreach ($entities as $entity) {
-            $type = $entity['entityType'] ?? 'DEFAULT';
+            $type       = $entity['entityType'] ?? 'DEFAULT';
             $confidence = $entity['score'] ?? 0.7;
-            
-            // Get base score for this entity type
+
+            // Get base score for this entity type.
             $baseScore = $entityBaseScores[$type] ?? $entityBaseScores['DEFAULT'];
-            
-            // Calculate risk score for this entity based on confidence
+
+            // Calculate risk score for this entity based on confidence.
             $entityRiskScore = $baseScore * $confidence;
-            
-            // Track highest individual risk score
+
+            // Track highest individual risk score.
             $maxRiskScore = max($maxRiskScore, $entityRiskScore);
-            
-            // Add to total risk score
+
+            // Add to total risk score.
             $totalRiskScore += $entityRiskScore;
         }
-        
+
         // Final score is weighted combination of:
-        // - Highest individual risk (70% weight)
-        // - Average risk across all entities (30% weight)
-        $averageRisk = $entityCount > 0 ? $totalRiskScore / $entityCount : 0;
+        // - Highest individual risk (70% weight).
+        // - Average risk across all entities (30% weight).
+        if ($entityCount > 0) {
+            $averageRisk = $totalRiskScore / $entityCount;
+        } else {
+            $averageRisk = 0;
+        }
+
         $finalScore = ($maxRiskScore * 0.7) + ($averageRisk * 0.3);
-        
-        // Apply multiplier based on number of entities
+
+        // Apply multiplier based on number of entities.
         $countMultiplier = min(1 + ($entityCount / 5), 2.0);
-        $finalScore *= $countMultiplier;
-        
-        // Cap at 100
+        $finalScore     *= $countMultiplier;
+
+        // Cap at 100.
         return min($finalScore, 100.0);
-    }
+
+    }//end calculateRiskScore()
+
 
     /**
      * Get a risk level label based on the risk score
@@ -388,14 +437,16 @@ class ReportingService
     {
         if ($riskScore < 30) {
             return 'Low';
-        } elseif ($riskScore < 60) {
+        } else if ($riskScore < 60) {
             return 'Medium';
-        } elseif ($riskScore < 85) {
+        } else if ($riskScore < 85) {
             return 'High';
         } else {
             return 'Critical';
         }
-    }
+
+    }//end getRiskLevel()
+
 
     /**
      * Get a report for a node
@@ -430,38 +481,47 @@ class ReportingService
      */
     public function getReport(\OCP\Files\Node $node): ?ObjectEntity
     {
-        // Validate that the node is a file
+        // Validate that the node is a file.
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
             throw new \InvalidArgumentException('Node must be a file to get a report');
         }
 
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            
+
             $config['filters'] = [
-                'nodeId' => $node->getId(),
+                'nodeId'   => $node->getId(),
                 'register' => $this->reportRegisterType,
-                'schema' => $this->reportSchemaType
+                'schema'   => $this->reportSchemaType,
             ];
 
             $reports = $this->objectService->findAll($config);
-            
-            // Throw error if multiple reports found
+
+            // Throw error if multiple reports found.
             if (count($reports) > 1) {
-                throw new \RuntimeException('Multiple reports found for node ' . $node->getId() . '. There should only be one report per node.');
+                throw new \RuntimeException(
+                    'Multiple reports found for node '.$node->getId().'. There should only be one report per node.'
+                );
             }
-            
-            return !empty($reports) ? $reports[0]->jsonSerialize() : null;
+
+            if (empty($reports) === false) {
+                return $reports[0]->jsonSerialize();
+            } else {
+                return null;
+            }
         } catch (Exception $e) {
             $this->logger->error(
-                'Failed to retrieve report: ' . $e->getMessage(), [
-                'nodeId' => $node->getId(),
-                'exception' => $e
-                ]
+                'Failed to retrieve report: '.$e->getMessage(),
+                    [
+                        'nodeId'    => $node->getId(),
+                        'exception' => $e,
+                    ]
             );
             return null;
-        }
-    }
+        }//end try
+
+    }//end getReport()
+
 
     /**
      * Delete a report by ID
@@ -478,10 +538,12 @@ class ReportingService
         try {
             return $this->objectService->deleteObject('report', $reportId);
         } catch (Exception $e) {
-            $this->logger->error('Failed to delete report: ' . $e->getMessage(), ['exception' => $e]);
+            $this->logger->error('Failed to delete report: '.$e->getMessage(), ['exception' => $e]);
             return false;
         }
-    }
+
+    }//end deleteReport()
+
 
      /**
       * Process an existing report
@@ -516,71 +578,74 @@ class ReportingService
       */
     public function updateReport(\OCP\Files\Node $node): ?array
     {
-        // Validate that the node is a file
+        // Validate that the node is a file.
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
             throw new \InvalidArgumentException('Node must be a file to process a report');
         }
 
-        // Get the existing report
+        // Get the existing report.
         $report = $this->getReport($node);
 
-        // If no report is found, create a new report
-        if (!$report) {
+        // If no report is found, create a new report.
+        if ($report === null) {
             return $this->createReport($node);
         }
 
-        // Use ETag as file hash if available
+        // Use ETag as file hash if available.
         $fileHash = null;
-        if (method_exists($node, 'getEtag')) {
+        if (method_exists($node, 'getEtag') === true) {
             $fileHash = $node->getEtag();
-            $this->logger->debug('Using ETag as file hash: ' . $fileHash);
+            $this->logger->debug('Using ETag as file hash: '.$fileHash);
         } else {
-            // Fall back to calculating hash
+            // Fall back to calculating hash.
             $fileHash = $this->calculateFileHash($node->getPath());
         }
 
-        // If the file hash has not changed, skip the report update
+        // If the file hash has not changed, skip the report update.
         if ($fileHash === $report['fileHash']) {
             $this->logger->debug('File hash has not changed, skipping report update');
             return $report;
         }
 
-         
-        // Update the report object with new values
-        $report['filePath'] = $node->getPath();
-        $report['fileName'] = $node->getName();
-        $report['fileType'] = $node->getMimetype();
+        // Update the report object with new values.
+        $report['filePath']      = $node->getPath();
+        $report['fileName']      = $node->getName();
+        $report['fileType']      = $node->getMimetype();
         $report['fileExtension'] = pathinfo($node->getName(), PATHINFO_EXTENSION);
-        $report['fileSize'] = $node->getSize();
-        $report['status'] = 'pending'; // Reset status to pending to trigger a new report
+        $report['fileSize']      = $node->getSize();
+        $report['status']        = 'pending';
+        // Reset status to pending to trigger a new report.
         $report['fileHash'] = $fileHash;
-        
-        // Reset analysis results since we're going to reprocess
+
+        // Reset analysis results since we're going to reprocess.
         $report['errorMessage'] = null;
-        
-        // Only reset these if they exist (they might be null in older reports)
-        if (isset($report['anonymizationResults'])) {
+
+        // Only reset these if they exist (they might be null in older reports).
+        if (isset($report['anonymizationResults']) === true) {
             $report['anonymizationResults'] = null;
         }
-        if (isset($report['wcagComplianceResults'])) {
+
+        if (isset($report['wcagComplianceResults']) === true) {
             $report['wcagComplianceResults'] = null;
         }
-        if (isset($report['languageLevelResults'])) {
+
+        if (isset($report['languageLevelResults']) === true) {
             $report['languageLevelResults'] = null;
         }
 
-        // Save the updated report
+        // Save the updated report.
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
-        // Process the report now if synchronous processing is enabled
-        //if ($this->isSynchronousProcessingEnabled()) { @todo
+        // Process the report now if synchronous processing is enabled.
+        if ($this->isSynchronousProcessingEnabled() === true) {
             return $this->processReport($report);
-        //}
+        }
 
-        return $report;
-    }  
-   
-    
+        return $this->processReport($report);
+
+    }//end updateReport()
+
+
     /**
      * Calculate a hash for a file
      *
@@ -594,72 +659,78 @@ class ReportingService
     public function calculateFileHash(string $filePath): string
     {
         try {
-            // For small files, use the content hash
+            // For small files, use the content hash.
             $fileSize = filesize($filePath);
-            if ($fileSize !== false && $fileSize < 10 * 1024 * 1024) { // 10 MB
+            if ($fileSize !== false && $fileSize < 10 * 1024 * 1024) {
+                // 10 MB
                 $content = file_get_contents($filePath);
                 if ($content !== false) {
                     $hash = md5($content);
                     $this->logger->debug(
-                        'Calculated content hash for file', [
-                        'filePath' => $filePath,
-                        'hash' => $hash,
-                        'method' => 'content'
-                        ]
+                        'Calculated content hash for file',
+                            [
+                                'filePath' => $filePath,
+                                'hash'     => $hash,
+                                'method'   => 'content',
+                            ]
                     );
                     return $hash;
                 }
             }
-            
-            // For larger files, use a combination of metadata
+
+            // For larger files, use a combination of metadata.
             $stats = stat($filePath);
             if ($stats !== false) {
                 $hash = md5(
-                    $filePath . 
-                    $stats['size'] . 
-                    $stats['mtime']
+                    $filePath.$stats['size'].$stats['mtime']
                 );
                 $this->logger->debug(
-                    'Calculated metadata hash for file', [
-                    'filePath' => $filePath,
-                    'hash' => $hash,
-                    'method' => 'metadata'
-                    ]
+                    'Calculated metadata hash for file',
+                        [
+                            'filePath' => $filePath,
+                            'hash'     => $hash,
+                            'method'   => 'metadata',
+                        ]
                 );
                 return $hash;
             }
-            
-            // Fallback to just the path
+
+            // Fallback to just the path.
             $hash = md5($filePath);
             $this->logger->debug(
-                'Calculated fallback hash for file', [
-                'filePath' => $filePath,
-                'hash' => $hash,
-                'method' => 'path'
-                ]
+                'Calculated fallback hash for file',
+                    [
+                        'filePath' => $filePath,
+                        'hash'     => $hash,
+                        'method'   => 'path',
+                    ]
             );
             return $hash;
         } catch (Exception $e) {
             $this->logger->warning(
-                'Failed to calculate file hash: ' . $e->getMessage(), [
-                'filePath' => $filePath,
-                'exception' => $e
-                ]
+                'Failed to calculate file hash: '.$e->getMessage(),
+                    [
+                        'filePath'  => $filePath,
+                        'exception' => $e,
+                    ]
             );
-            
-            // Fallback to just the path
+
+            // Fallback to just the path.
             $hash = md5($filePath);
             $this->logger->debug(
-                'Calculated fallback hash after error', [
-                'filePath' => $filePath,
-                'hash' => $hash,
-                'method' => 'path'
-                ]
+                'Calculated fallback hash after error',
+                    [
+                        'filePath' => $filePath,
+                        'hash'     => $hash,
+                        'method'   => 'path',
+                    ]
             );
             return $hash;
-        }
-    }
-    
+        }//end try
+
+    }//end calculateFileHash()
+
+
     /**
      * Process pending reports
      *
@@ -670,79 +741,84 @@ class ReportingService
      * @psalm-return   int
      * @phpstan-return int
      */
-    public function processPendingReports(int $limit = 10): int
+    public function processPendingReports(int $limit=10): int
     {
-        // Check if reporting is enabled
-        if (!$this->isReportingEnabled()) {
+        // Check if reporting is enabled.
+        if ($this->isReportingEnabled() === false) {
             $this->logger->debug('Reporting is disabled, skipping processing of pending reports');
             return 0;
         }
 
         try {
-            // Find pending reports
+            // Find pending reports.
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
-            $filters = [
+            $filters          = [
                 'status' => 'pending',
             ];
-            
+
             $pendingReports = $this->objectService->getObjects(
                 $reportObjectType,
                 $limit,
                 0,
                 $filters
             );
-            
-            if (empty($pendingReports)) {
+
+            if (empty($pendingReports) === true) {
                 $this->logger->debug('No pending reports found');
                 return 0;
             }
-            
-            $this->logger->info('Processing ' . count($pendingReports) . ' pending reports');
-            
+
+            $this->logger->info('Processing '.count($pendingReports).' pending reports');
+
             $processedCount = 0;
             foreach ($pendingReports as $report) {
                 try {
-                    $nodeId = $report['nodeId'] ?? null;
+                    $nodeId   = $report['nodeId'] ?? null;
                     $filePath = $report['filePath'] ?? null;
                     $fileName = $report['fileName'] ?? null;
-                    
+
                     if ($nodeId === null) {
                         $this->logger->warning(
-                            'Report has no nodeId, marking as failed', [
-                            'reportId' => $report['id'] ?? 'unknown'
-                            ]
+                            'Report has no nodeId, marking as failed',
+                                [
+                                    'reportId' => $report['id'] ?? 'unknown',
+                                ]
                         );
-                        
-                        $report['status'] = 'failed';
+
+                        $report['status']       = 'failed';
                         $report['errorMessage'] = 'Missing nodeId';
                         $this->objectService->saveObject(object: $report, uuid: $report['id']);
                         continue;
                     }
-                    
-                    // Process the report
+
+                    // Process the report.
                     $this->processReport($report);
                     $processedCount++;
                 } catch (Exception $e) {
                     $this->logger->error(
-                        'Error processing report: ' . $e->getMessage(), [
-                        'reportId' => $report['id'] ?? 'unknown',
-                        'exception' => $e
-                        ]
+                        'Error processing report: '.$e->getMessage(),
+                            [
+                                'reportId'  => $report['id'] ?? 'unknown',
+                                'exception' => $e,
+                            ]
                     );
-                }
-            }
-            
+                }//end try
+            }//end foreach
+
             return $processedCount;
         } catch (Exception $e) {
             $this->logger->error(
-                'Error processing pending reports: ' . $e->getMessage(), [
-                'exception' => $e
-                ]
+                'Error processing pending reports: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                    ]
             );
             return 0;
-        }
-    }
-    
+        }//end try
+
+    }//end processPendingReports()
+
+
     /**
      * Check if reporting is enabled
      *
@@ -754,8 +830,10 @@ class ReportingService
     public function isReportingEnabled(): bool
     {
         return $this->config->getSystemValue('docudesk_enable_reporting', true);
-    }
-    
+
+    }//end isReportingEnabled()
+
+
     /**
      * Check if synchronous processing is enabled
      *
@@ -767,7 +845,8 @@ class ReportingService
     public function isSynchronousProcessingEnabled(): bool
     {
         return $this->config->getSystemValue('docudesk_synchronous_processing', false);
-    }
+
+    }//end isSynchronousProcessingEnabled()
 
 
     /**
@@ -781,7 +860,9 @@ class ReportingService
     public function isAnonymizationEnabled(): bool
     {
         return $this->config->getSystemValue('docudesk_enable_anonymization', true);
-    }
+
+    }//end isAnonymizationEnabled()
+
 
     /**
      * Create a report from a Nextcloud node
@@ -814,71 +895,81 @@ class ReportingService
      * @throws \InvalidArgumentException If the node is not a file
      * @throws Exception If report creation fails
      */
-    public function createReport(\OCP\Files\Node $node): array|null
+    public function createReport(\OCP\Files\Node $node): array | null
     {
-        // Validate that the node is a file
+        // Validate that the node is a file.
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
             throw new \InvalidArgumentException('Node must be a file to create a report');
         }
-        
-        // Check if reporting is enabled
-        if (!$this->isReportingEnabled()) {
-            $this->logger->debug('Reporting is disabled, skipping report creation for node: ' . $node->getId());
+
+        // Check if reporting is enabled.
+        if ($this->isReportingEnabled() === false) {
+            $this->logger->debug('Reporting is disabled, skipping report creation for node: '.$node->getId());
             return null;
-        }      
-        
-        // Check if a report already exists for this node and return updated report if found
-        if ($existingReport = $this->getReport($node)) {
-            $this->logger->debug('Report already exists for node: ' . $node->getId() . ' with hash: ' . $existingReport['fileHash']);
+        }
+
+        // Check if a report already exists for this node and return updated report if found.
+        if (($existingReport = $this->getReport($node)) !== null) {
+            $this->logger->debug(
+                'Report already exists for node: '.$node->getId().' with hash: '.$existingReport['fileHash']
+            );
             return $this->updateReport($node);
         }
-        
-        $this->logger->debug('lets create a report for node: ' . $node->getId());
 
-        // Lets setup the report object with all fields from the documentation
+        $this->logger->debug('lets create a report for node: '.$node->getId());
+
+        // Lets setup the report object with all fields from the documentation.
         $report = [
-            'nodeId' => $node->getId(),
-            'filePath' => $node->getPath(),
-            'fileName' => $node->getName(),
-            'fileType' => $node->getMimetype(),
-            'fileExtension' => pathinfo($node->getName(), PATHINFO_EXTENSION),
-            'fileSize' => $node->getSize(),
-            'status' => 'pending',
-            'errorMessage' => null,
-            'riskScore' => null, // Will be calculated during processing
-            'riskLevel' => 'unknown', // Default value, will be updated during processing
-            'anonymizationResults' => [], // Will be populated during processing
-            'entities' => [], // Will be populated during processing
-            'wcagComplianceResults' => [], // Will be populated if WCAG analysis is enabled
-            'languageLevelResults' => [], // Will be populated if language level analysis is enabled
-            'retentionPeriod' => 0, // Default to indefinite retention
-            'retentionExpiry' => null,
-            'legalBasis' => null,
-            'dataController' => null,
+            'nodeId'                => $node->getId(),
+            'filePath'              => $node->getPath(),
+            'fileName'              => $node->getName(),
+            'fileType'              => $node->getMimetype(),
+            'fileExtension'         => pathinfo($node->getName(), PATHINFO_EXTENSION),
+            'fileSize'              => $node->getSize(),
+            'status'                => 'pending',
+            'errorMessage'          => null,
+            'riskScore'             => null,
+        // Will be calculated during processing.
+            'riskLevel'             => 'unknown',
+        // Default value, will be updated during processing.
+            'anonymizationResults'  => [],
+        // Will be populated during processing.
+            'entities'              => [],
+        // Will be populated during processing.
+            'wcagComplianceResults' => [],
+        // Will be populated if WCAG analysis is enabled.
+            'languageLevelResults'  => [],
+        // Will be populated if language level analysis is enabled.
+            'retentionPeriod'       => 0,
+        // Default to indefinite retention.
+            'retentionExpiry'       => null,
+            'legalBasis'            => null,
+            'dataController'        => null,
         ];
 
-        // Use ETag as file hash if available
-        if (method_exists($node, 'getEtag')) {
+        // Use ETag as file hash if available.
+        if (method_exists($node, 'getEtag') === true) {
             $report['fileHash'] = $node->getEtag();
-            $this->logger->debug('Using ETag as file hash: ' . $report['fileHash']);
+            $this->logger->debug('Using ETag as file hash: '.$report['fileHash']);
         } else {
-            // Fall back to calculating hash
+            // Fall back to calculating hash.
             $report['fileHash'] = $this->calculateFileHash($node->getPath());
         }
-        
-        // Save the report
-        $reportEntity = $this->objectService->saveObject(object: $report);    
-        $report = $reportEntity->jsonSerialize();
-        
-        
-        $this->logger->debug('lets save the report: ' . $report['id']);
 
-        // Process the report now if synchronous processing is enabled
-        // @todo $this->isSynchronousProcessingEnabled() fals;y returns false
-        //if ($this->isSynchronousProcessingEnabled()) {
+        // Save the report.
+        $reportEntity = $this->objectService->saveObject(object: $report);
+        $report       = $reportEntity->jsonSerialize();
+
+        $this->logger->debug('lets save the report: '.$report['id']);
+
+        // Process the report now if synchronous processing is enabled.
+        if ($this->isSynchronousProcessingEnabled() === true) {
             return $this->processReport($report);
-        //}
+        }
 
-        return $report;
-    }    
-} 
+        return $this->processReport($report);
+
+    }//end createReport()
+
+
+}//end class

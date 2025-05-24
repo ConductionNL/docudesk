@@ -1,11 +1,19 @@
 <?php
-
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
+ * FileEventListener
+ *
+ * Event listener for file-related node events
+ *
+ * @category  EventListener
+ * @package   OCA\DocuDesk\EventListener
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @version   GIT: <git_id>
+ * @link      https://www.DocuDesk.app
  *
  * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL), 
+ * it under the terms of the European Union Public License (EUPL),
  * version 1.2 only (the "Licence"), appearing in the file LICENSE
  * included in the packaging of this file.
  *
@@ -16,13 +24,9 @@
  *
  * You should have received a copy of the European Union Public License
  * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
- *
- * @category EventListener
- * @package  OCA\DocuDesk\EventListener
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
+
+declare(strict_types=1);
 
 namespace OCA\DocuDesk\EventListener;
 
@@ -52,19 +56,21 @@ use Psr\Log\LoggerInterface;
  */
 class FileEventListener implements IEventListener
 {
+
+
     /**
      * Constructor for FileEventListener
      *
      * @param ReportingService $reportingService Service for generating reports
      * @param LoggerInterface  $logger           Logger for error reporting
-     *
-     * @return void
      */
     public function __construct(
-    private readonly ReportingService $reportingService,
-    private readonly LoggerInterface $logger
+        private readonly ReportingService $reportingService,
+        private readonly LoggerInterface $logger
     ) {
-    }
+
+    }//end __construct()
+
 
     /**
      * Handle the event
@@ -77,13 +83,13 @@ class FileEventListener implements IEventListener
      */
     public function handle(Event $event): void
     {
-        if (!($event instanceof AbstractNodeEvent)) {
+        if (($event instanceof AbstractNodeEvent) === false) {
             return;
         }
 
         $node = $event->getNode();
-        
-        // Only process file events, not folder events
+
+        // Only process file events, not folder events.
         if ($node->getType() !== FileInfo::TYPE_FILE) {
             return;
         }
@@ -94,18 +100,21 @@ class FileEventListener implements IEventListener
                 $event instanceof NodeDeletedEvent => $this->handleNodeDeleted($event),
                 $event instanceof NodeTouchedEvent => $this->handleNodeTouched($event),
                 $event instanceof NodeWrittenEvent => $this->handleNodeWritten($event),
-            default => throw new InvalidArgumentException('Unsupported event type: ' . get_class($event)),
+            default => throw new InvalidArgumentException('Unsupported event type: '.get_class($event)),
             };
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error handling file event: ' . $e->getMessage(), [
-                'event' => get_class($event),
-                'node_id' => $node->getId(),
-                'exception' => $e
+                'Error handling file event: '.$e->getMessage(),
+                [
+                    'event'     => get_class($event),
+                    'node_id'   => $node->getId(),
+                    'exception' => $e,
                 ]
             );
         }
-    }
+
+    }//end handle()
+
 
     /**
      * Handle node created event
@@ -118,15 +127,18 @@ class FileEventListener implements IEventListener
     {
         $node = $event->getNode();
         $this->logger->debug(
-            'File created: ' . $node->getName(), [
-            'node_id' => $node->getId(),
-            'path' => $node->getPath()
+            'File created: '.$node->getName(),
+            [
+                'node_id' => $node->getId(),
+                'path'    => $node->getPath(),
             ]
         );
-        
-        // Always try to create a report, the ReportingService will check if reporting is enabled
+
+        // Always try to create a report, the ReportingService will check if reporting is enabled.
         $this->reportingService->createReport($node);
-    }
+
+    }//end handleNodeCreated()
+
 
     /**
      * Handle node written event
@@ -139,12 +151,15 @@ class FileEventListener implements IEventListener
     {
         $node = $event->getNode();
         $this->logger->debug(
-            'File written: ' . $node->getName(), [
+            'File written: '.$node->getName(),
+            [
                 'node_id' => $node->getId(),
-                'path' => $node->getPath()
+                'path'    => $node->getPath(),
             ]
-        );        
-    }
+        );
+
+    }//end handleNodeWritten()
+
 
     /**
      * Handle node deleted event
@@ -156,15 +171,18 @@ class FileEventListener implements IEventListener
     private function handleNodeDeleted(NodeDeletedEvent $event): void
     {
         $node = $event->getNode();
+
+        // No report creation needed for deleted files.
         $this->logger->debug(
-            'File deleted: ' . $node->getName(), [
+            'File deleted: '.$node->getName(),
+            [
                 'node_id' => $node->getId(),
-                'path' => $node->getPath()
+                'path'    => $node->getPath(),
             ]
         );
-        
-        // No report creation needed for deleted files
-    }
+
+    }//end handleNodeDeleted()
+
 
     /**
      * Handle node touched event
@@ -176,14 +194,17 @@ class FileEventListener implements IEventListener
     private function handleNodeTouched(NodeTouchedEvent $event): void
     {
         $node = $event->getNode();
+
+        // No report creation needed for touched files (metadata only changes).
         $this->logger->debug(
-            'File touched: ' . $node->getName(), [
-            'node_id' => $node->getId(),
-            'path' => $node->getPath()
+            'File touched: '.$node->getName(),
+            [
+                'node_id' => $node->getId(),
+                'path'    => $node->getPath(),
             ]
         );
-        
-        // No report creation needed for touched files (metadata only changes)
-    }
 
-} 
+    }//end handleNodeTouched()
+
+
+}//end class

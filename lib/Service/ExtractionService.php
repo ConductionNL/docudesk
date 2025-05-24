@@ -1,20 +1,17 @@
 <?php
 /**
- * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * DocuDesk is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * EUPL-1.2 License for more details.
+ * Service for extracting text content from various file types
  *
  * @category Service
  * @package  OCA\DocuDesk\Service
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
- * @link     https://www.DocuDesk.nl
+ *
+ * @author    Conduction Development Team <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * @version GIT: <git_id>
+ *
+ * @link https://www.DocuDesk.app
  */
 
 namespace OCA\DocuDesk\Service;
@@ -27,6 +24,7 @@ use Smalot\PdfParser\Parser as PdfParser;
 use Psr\Log\LoggerInterface;
 use OCA\OpenRegister\Service\ObjectService;
 use OCP\IAppConfig;
+use OCP\Files\IRootFolder;
 
 /**
  * Service for extracting text content from various file types
@@ -37,45 +35,49 @@ use OCP\IAppConfig;
  */
 class ExtractionService
 {
+
     /**
      * Logger instance for error reporting
      *
      * @var LoggerInterface
      */
-    private readonly LoggerInterface $logger;
+    private LoggerInterface $logger;
 
     /**
      * App config for getting app config
      *
      * @var IAppConfig
      */
-    private readonly IAppConfig $appConfig;
+    private IAppConfig $appConfig;
 
     /**
      * Root folder for file operations
      *
-     * @var \OCP\Files\IRootFolder
+     * @var IRootFolder
      */
-    private readonly \OCP\Files\IRootFolder $rootFolder;
+    private IRootFolder $rootFolder;
+
 
     /**
      * Constructor for ExtractionService
      *
-     * @param LoggerInterface $logger Logger for error reporting
-     * @param IAppConfig $appConfig App config for getting app config
-     * @param \OCP\Files\IRootFolder $rootFolder Root folder for file operations
+     * @param LoggerInterface $logger     Logger for error reporting
+     * @param IAppConfig      $appConfig  App config for getting app config
+     * @param IRootFolder     $rootFolder Root folder for file operations
      *
      * @return void
      */
     public function __construct(
         LoggerInterface $logger,
         IAppConfig $appConfig,
-        \OCP\Files\IRootFolder $rootFolder
+        IRootFolder $rootFolder
     ) {
-        $this->logger = $logger;
-        $this->appConfig = $appConfig;
+        $this->logger     = $logger;
+        $this->appConfig  = $appConfig;
         $this->rootFolder = $rootFolder;
-    }
+
+    }//end __construct()
+
 
     /**
      * Extract text content from a file node
@@ -95,94 +97,96 @@ class ExtractionService
      */
     public function extractText(\OCP\Files\Node $node): array
     {
-        // Check if node is a file
+        // Check if node is a file.
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
             throw new \InvalidArgumentException('Node must be a file');
         }
 
-        // Get file path and MIME type
-        $filePath = $node->getPath();
-        $mimeType = $node->getMimeType();
+        // Get file path and MIME type.
+        $filePath  = $node->getPath();
+        $mimeType  = $node->getMimeType();
         $extension = $node->getExtension();
 
-        // Initialize extraction result
+        // Initialize extraction result.
         $extraction = [
-            'text' => null,
-            'errorMessage' => null
+            'text'         => null,
+            'errorMessage' => null,
         ];
 
-        // Extract text based on file type
+        // Extract text based on file type.
         switch ($extension) {
-        case 'pdf':
-            $this->logger->debug('File is a pdf, extracting text: ' . $filePath);
-            $extraction['text'] = $this->extractFromPdf($filePath);
-            break;
-        case 'doc':
-        case 'docx':
-            $this->logger->debug('File is a word document, extracting text: ' . $filePath);
-            $extraction['text'] = $this->extractFromWord($filePath);
-            break;
-        case 'xls':
-        case 'xlsx':
-        case 'csv':
-            $this->logger->debug('File is a spreadsheet, extracting text: ' . $filePath);
-            $extraction['text'] = $this->extractFromSpreadsheet($filePath);
-            break;
-        case 'ppt':
-        case 'pptx':
-            $this->logger->debug('File is a presentation, extracting text: ' . $filePath);
-            $extraction['text'] = $this->extractFromPresentation($filePath);
-            break;
-        case 'txt':
-        case 'md':
-        case 'html':
-        case 'htm':
-        case 'xml':
-        case 'json':
-            $this->logger->debug('File is a text file, extracting text: ' . $filePath);
-            $extraction['text'] = $node->getContent();
-            break;
-            // Image files - return empty string with a log message
-        case 'jpg':
-        case 'jpeg':
-        case 'png':
-        case 'gif':
-        case 'bmp':
-        case 'webp':
-        case 'svg':
-        case 'tiff':
-            $this->logger->debug('File is an image, no text extraction possible: ' . $filePath);
-            $extraction['errorMessage'] = 'File is an image, no text extraction possible';
-            break;
-            // Video files - return empty string with a log message
-        case 'mp4':
-        case 'avi':
-        case 'mov':
-        case 'wmv':
-        case 'flv':
-        case 'webm':
-        case 'mkv':
-            $this->logger->debug('File is a video, no text extraction possible: ' . $filePath);
-            $extraction['errorMessage'] = 'File is a video, no text extraction possible';
-            break;
-            // Audio files - return empty string with a log message
-        case 'mp3':
-        case 'wav':
-        case 'ogg':
-        case 'flac':
-        case 'aac':
-        case 'm4a':
-            $this->logger->debug('File is an audio file, no text extraction possible: ' . $filePath);
-            $extraction['errorMessage'] = 'File is an audio file, no text extraction possible';
-            break;
-        default:
-            // Log warning for unsupported file type
-            $this->logger->warning('Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType);
-            $extraction['errorMessage'] = 'Unsupported file type: ' . $extension . ' with MIME type: ' . $mimeType;
-        }
+            case 'pdf':
+                $this->logger->debug('File is a pdf, extracting text: '.$filePath);
+                $extraction['text'] = $this->extractFromPdf($filePath);
+                break;
+            case 'doc':
+            case 'docx':
+                $this->logger->debug('File is a word document, extracting text: '.$filePath);
+                $extraction['text'] = $this->extractFromWord($filePath);
+                break;
+            case 'xls':
+            case 'xlsx':
+            case 'csv':
+                $this->logger->debug('File is a spreadsheet, extracting text: '.$filePath);
+                $extraction['text'] = $this->extractFromSpreadsheet($filePath);
+                break;
+            case 'ppt':
+            case 'pptx':
+                $this->logger->debug('File is a presentation, extracting text: '.$filePath);
+                $extraction['text'] = $this->extractFromPresentation($filePath);
+                break;
+            case 'txt':
+            case 'md':
+            case 'html':
+            case 'htm':
+            case 'xml':
+            case 'json':
+                $this->logger->debug('File is a text file, extracting text: '.$filePath);
+                $extraction['text'] = $node->getContent();
+                break;
+            // Image files - return empty string with a log message.
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+            case 'bmp':
+            case 'webp':
+            case 'svg':
+            case 'tiff':
+                $this->logger->debug('File is an image, no text extraction possible: '.$filePath);
+                $extraction['errorMessage'] = 'File is an image, no text extraction possible';
+                break;
+            // Video files - return empty string with a log message.
+            case 'mp4':
+            case 'avi':
+            case 'mov':
+            case 'wmv':
+            case 'flv':
+            case 'webm':
+            case 'mkv':
+                $this->logger->debug('File is a video, no text extraction possible: '.$filePath);
+                $extraction['errorMessage'] = 'File is a video, no text extraction possible';
+                break;
+            // Audio files - return empty string with a log message.
+            case 'mp3':
+            case 'wav':
+            case 'ogg':
+            case 'flac':
+            case 'aac':
+            case 'm4a':
+                $this->logger->debug('File is an audio file, no text extraction possible: '.$filePath);
+                $extraction['errorMessage'] = 'File is an audio file, no text extraction possible';
+                break;
+            default:
+                // Log warning for unsupported file type.
+                $this->logger->warning('Unsupported file type: '.$extension.' with MIME type: '.$mimeType);
+                $extraction['errorMessage'] = 'Unsupported file type: '.$extension.' with MIME type: '.$mimeType;
+        }//end switch
 
         return $extraction;
-    }
+
+    }//end extractText()
+
 
     /**
      * Extract text from a PDF file
@@ -199,57 +203,59 @@ class ExtractionService
     private function extractFromPdf(string $filePath): string
     {
         try {
-            // Get the file node from the path
+            // Get the file node from the path.
             $node = $this->rootFolder->get($filePath);
-            
-            // Get the file content as a stream
+
+            // Get the file content as a stream.
             $stream = $node->fopen('r');
-            
-            // Create a temporary file
+
+            // Create a temporary file.
             $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_pdf_');
             if ($tempFile === false) {
                 throw new Exception('Failed to create temporary file');
             }
-            
-            // Write the stream content to the temporary file
+
+            // Write the stream content to the temporary file.
             $tempStream = fopen($tempFile, 'w');
             if ($tempStream === false) {
                 unlink($tempFile);
                 throw new Exception('Failed to open temporary file for writing');
             }
-            
-            // Copy the content from the source stream to the temporary file
+
+            // Copy the content from the source stream to the temporary file.
             stream_copy_to_stream($stream, $tempStream);
             fclose($tempStream);
             fclose($stream);
-            
-            // Create PDF parser instance
+
+            // Create PDF parser instance.
             $parser = new PdfParser();
-            
-            // Parse PDF file from temporary file
+
+            // Parse PDF file from temporary file.
             $pdf = $parser->parseFile($tempFile);
-            
-            // Extract text from all pages
+
+            // Extract text from all pages.
             $text = $pdf->getText();
-            
-            // Clean up text (remove excessive whitespace)
+
+            // Clean up text (remove excessive whitespace).
             $text = preg_replace('/\s+/', ' ', $text);
             $text = trim($text);
-            
-            // Clean up temporary file
+
+            // Clean up temporary file.
             unlink($tempFile);
-            
+
             return $text;
         } catch (Exception $e) {
-            // Clean up temporary file if it exists
-            if (isset($tempFile) && file_exists($tempFile)) {
+            // Clean up temporary file if it exists.
+            if (isset($tempFile) === true && file_exists($tempFile) === true) {
                 unlink($tempFile);
             }
-            
-            $this->logger->error('Error extracting text from PDF: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to extract text from PDF: ' . $e->getMessage(), 0, $e);
-        }
-    }
+
+            $this->logger->error('Error extracting text from PDF: '.$e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from PDF: '.$e->getMessage(), 0, $e);
+        }//end try
+
+    }//end extractFromPdf()
+
 
     /**
      * Extract text from a Word document
@@ -266,79 +272,81 @@ class ExtractionService
     private function extractFromWord(string $filePath): string
     {
         try {
-            // Get the file node from the path
+            // Get the file node from the path.
             $node = $this->rootFolder->get($filePath);
-            
-            // Get the file content as a stream
+
+            // Get the file content as a stream.
             $stream = $node->fopen('r');
-            
-            // Create a temporary file
+
+            // Create a temporary file.
             $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_');
             if ($tempFile === false) {
                 throw new Exception('Failed to create temporary file');
             }
-            
-            // Write the stream content to the temporary file
+
+            // Write the stream content to the temporary file.
             $tempStream = fopen($tempFile, 'w');
             if ($tempStream === false) {
                 unlink($tempFile);
                 throw new Exception('Failed to open temporary file for writing');
             }
-            
-            // Copy the content from the source stream to the temporary file
+
+            // Copy the content from the source stream to the temporary file.
             stream_copy_to_stream($stream, $tempStream);
             fclose($tempStream);
             fclose($stream);
-            
-            // Load the document from the temporary file
+
+            // Load the document from the temporary file.
             $phpWord = WordIOFactory::load($tempFile);
-            
+
             $text = '';
-            
-            // Extract text from headers
+
+            // Extract text from headers.
             foreach ($phpWord->getSections() as $section) {
                 $headers = $section->getHeaders();
                 foreach ($headers as $header) {
-                    $text .= $this->_extractTextFromElements($header->getElements()) . "\n";
+                    $text .= $this->extractTextFromElements($header->getElements())."\n";
                 }
             }
-            
-            // Extract text from main content
+
+            // Extract text from main content.
             foreach ($phpWord->getSections() as $section) {
-                // Get all elements in the section
+                // Get all elements in the section.
                 $elements = $section->getElements();
-                $text .= $this->_extractTextFromElements($elements);
-                
-                // Add section break
+                $text    .= $this->extractTextFromElements($elements);
+
+                // Add section break.
                 $text .= "\n\n";
             }
-            
-            // Extract text from footers
+
+            // Extract text from footers.
             foreach ($phpWord->getSections() as $section) {
                 $footers = $section->getFooters();
                 foreach ($footers as $footer) {
-                    $text .= $this->_extractTextFromElements($footer->getElements()) . "\n";
+                    $text .= $this->extractTextFromElements($footer->getElements())."\n";
                 }
             }
-            
-            // Clean up text
+
+            // Clean up text.
             $text = preg_replace('/\s+/', ' ', $text);
             $text = trim($text);
-            
-            // Clean up temporary file
+
+            // Clean up temporary file.
             unlink($tempFile);
-            
+
             return $text;
         } catch (Exception $e) {
-            // Clean up temporary file if it exists
-            if (isset($tempFile) && file_exists($tempFile)) {
+            // Clean up temporary file if it exists.
+            if (isset($tempFile) === true && file_exists($tempFile) === true) {
                 unlink($tempFile);
             }
-            
-            $this->logger->error('Error extracting text from Word document: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to extract text from Word document: ' . $e->getMessage(), 0, $e);
-        }
-    }
+
+            $this->logger->error('Error extracting text from Word document: '.$e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from Word document: '.$e->getMessage(), 0, $e);
+        }//end try
+
+    }//end extractFromWord()
+
 
     /**
      * Extract text from document elements
@@ -350,41 +358,44 @@ class ExtractionService
      * @psalm-return   string
      * @phpstan-return string
      */
-    private function _extractTextFromElements(array $elements): string
+    private function extractTextFromElements(array $elements): string
     {
         $text = '';
-        
+
         foreach ($elements as $element) {
-            // Handle text runs
-            if (method_exists($element, 'getText')) {
-                $text .= $element->getText() . ' ';
+            // Handle text runs.
+            if (method_exists($element, 'getText') === true) {
+                $text .= $element->getText().' ';
             }
-            
-            // Handle tables
-            if (method_exists($element, 'getRows')) {
+
+            // Handle tables.
+            if (method_exists($element, 'getRows') === true) {
                 foreach ($element->getRows() as $row) {
                     foreach ($row->getCells() as $cell) {
-                        $text .= $this->_extractTextFromElements($cell->getElements()) . "\t";
+                        $text .= $this->extractTextFromElements($cell->getElements())."\t";
                     }
+
                     $text .= "\n";
                 }
             }
-            
-            // Handle lists
-            if (method_exists($element, 'getItems')) {
+
+            // Handle lists.
+            if (method_exists($element, 'getItems') === true) {
                 foreach ($element->getItems() as $item) {
-                    $text .= "• " . $this->_extractTextFromElements($item->getElements()) . "\n";
+                    $text .= "• ".$this->extractTextFromElements($item->getElements())."\n";
                 }
             }
-            
-            // Handle nested elements
-            if (method_exists($element, 'getElements')) {
-                $text .= $this->_extractTextFromElements($element->getElements());
+
+            // Handle nested elements.
+            if (method_exists($element, 'getElements') === true) {
+                $text .= $this->extractTextFromElements($element->getElements());
             }
-        }
-        
+        }//end foreach
+
         return $text;
-    }
+
+    }//end extractTextFromElements()
+
 
     /**
      * Extract text from a spreadsheet (Excel, ODS)
@@ -401,97 +412,101 @@ class ExtractionService
     private function extractFromSpreadsheet(string $filePath): string
     {
         try {
-            // Get the file node from the path
+            // Get the file node from the path.
             $node = $this->rootFolder->get($filePath);
-            
-            // Get the file content as a stream
+
+            // Get the file content as a stream.
             $stream = $node->fopen('r');
-            
-            // Load the spreadsheet from stream
+
+            // Load the spreadsheet from stream.
             $spreadsheet = SpreadsheetIOFactory::load($stream);
-            
+
             $text = '';
-            
-            // Get document properties
+
+            // Get document properties.
             $properties = $spreadsheet->getProperties();
-            if ($properties->getTitle()) {
-                $text .= "Title: " . $properties->getTitle() . "\n";
+            if ($properties->getTitle() !== null && $properties->getTitle() !== '') {
+                $text .= "Title: ".$properties->getTitle()."\n";
             }
-            if ($properties->getDescription()) {
-                $text .= "Description: " . $properties->getDescription() . "\n";
+
+            if ($properties->getDescription() !== null && $properties->getDescription() !== '') {
+                $text .= "Description: ".$properties->getDescription()."\n";
             }
+
             $text .= "\n";
-            
-            // Iterate through all worksheets
+
+            // Iterate through all worksheets.
             foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-                // Add worksheet title
-                $text .= "Sheet: " . $worksheet->getTitle() . "\n";
-                
-                // Get the highest row and column
-                $highestRow = $worksheet->getHighestRow();
-                $highestColumn = $worksheet->getHighestColumn();
+                // Add worksheet title.
+                $text .= "Sheet: ".$worksheet->getTitle()."\n";
+
+                // Get the highest row and column.
+                $highestRow         = $worksheet->getHighestRow();
+                $highestColumn      = $worksheet->getHighestColumn();
                 $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-                
-                // Extract column headers if they exist
+
+                // Extract column headers if they exist.
                 $hasHeaders = false;
-                $headers = [];
+                $headers    = [];
                 for ($col = 1; $col <= $highestColumnIndex; $col++) {
                     $cellValue = $worksheet->getCellByColumnAndRow($col, 1)->getValue();
-                    if (!empty($cellValue)) {
-                        $hasHeaders = true;
+                    if (empty($cellValue) === false) {
+                        $hasHeaders    = true;
                         $headers[$col] = $cellValue;
                     }
                 }
-                
-                // If headers exist, add them to the text
-                if ($hasHeaders) {
-                    $text .= implode("\t", $headers) . "\n";
+
+                // If headers exist, add them to the text.
+                if ($hasHeaders === true) {
+                    $text    .= implode("\t", $headers)."\n";
                     $startRow = 2;
                 } else {
                     $startRow = 1;
                 }
-                
-                // Extract data rows
+
+                // Extract data rows.
                 for ($row = $startRow; $row <= $highestRow; $row++) {
                     $rowData = [];
                     for ($col = 1; $col <= $highestColumnIndex; $col++) {
                         $cell = $worksheet->getCellByColumnAndRow($col, $row);
-                        
-                        // Get cell value
+
+                        // Get cell value.
                         $value = $cell->getValue();
-                        
-                        // Handle formulas
+
+                        // Handle formulas.
                         if ($cell->getDataType() === \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA) {
                             $value = $cell->getCalculatedValue();
                         }
-                        
-                        // Format the value
-                        if (is_numeric($value)) {
-                            // Format numbers according to cell format
+
+                        // Format the value.
+                        if (is_numeric($value) === true) {
+                            // Format numbers according to cell format.
                             $value = $cell->getFormattedValue();
-                        } elseif ($value instanceof \DateTime) {
-                            // Format dates
+                        } else if ($value instanceof \DateTime) {
+                            // Format dates.
                             $value = $value->format('Y-m-d H:i:s');
                         }
-                        
+
                         $rowData[] = $value ?? '';
+                    }//end for
+
+                    // Only add non-empty rows.
+                    if (empty(array_filter($rowData)) === false) {
+                        $text .= implode("\t", $rowData)."\n";
                     }
-                    
-                    // Only add non-empty rows
-                    if (!empty(array_filter($rowData))) {
-                        $text .= implode("\t", $rowData) . "\n";
-                    }
-                }
-                
+                }//end for
+
                 $text .= "\n";
-            }
-            
+            }//end foreach
+
             return trim($text);
         } catch (Exception $e) {
-            $this->logger->error('Error extracting text from spreadsheet: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to extract text from spreadsheet: ' . $e->getMessage(), 0, $e);
-        }
-    }
+            $this->logger->error('Error extracting text from spreadsheet: '.$e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from spreadsheet: '.$e->getMessage(), 0, $e);
+        }//end try
+
+    }//end extractFromSpreadsheet()
+
 
     /**
      * Extract text from a presentation (PowerPoint)
@@ -508,56 +523,58 @@ class ExtractionService
     private function extractFromPresentation(string $filePath): string
     {
         try {
-            // Get the file node from the path
+            // Get the file node from the path.
             $node = $this->rootFolder->get($filePath);
-            
-            // Get the file content as a stream
+
+            // Get the file content as a stream.
             $stream = $node->fopen('r');
-            
-            // Load the presentation from stream
+
+            // Load the presentation from stream.
             $presentation = PresentationIOFactory::load($stream);
-            
+
             $text = '';
-            
-            // Iterate through all slides
+
+            // Iterate through all slides.
             $slideCount = $presentation->getSlideCount();
             for ($i = 0; $i < $slideCount; $i++) {
                 $slide = $presentation->getSlide($i);
-                
-                // Add slide number
-                $text .= 'Slide ' . ($i + 1) . ":\n";
-                
-                // Extract text from shapes
+
+                // Add slide number.
+                $text .= 'Slide '.($i + 1).":\n";
+
+                // Extract text from shapes.
                 foreach ($slide->getShapeCollection() as $shape) {
-                    if (method_exists($shape, 'getText')) {
+                    if (method_exists($shape, 'getText') === true) {
                         $shapeText = $shape->getText();
-                        if (!empty($shapeText)) {
-                            $text .= $shapeText . "\n";
+                        if (empty($shapeText) === false) {
+                            $text .= $shapeText."\n";
                         }
                     }
-                    
-                    // Extract text from rich text elements
-                    if (method_exists($shape, 'getRichTextElements')) {
+
+                    // Extract text from rich text elements.
+                    if (method_exists($shape, 'getRichTextElements') === true) {
                         foreach ($shape->getRichTextElements() as $richText) {
-                            if (method_exists($richText, 'getText')) {
+                            if (method_exists($richText, 'getText') === true) {
                                 $richTextContent = $richText->getText();
-                                if (!empty($richTextContent)) {
-                                    $text .= $richTextContent . "\n";
+                                if (empty($richTextContent) === false) {
+                                    $text .= $richTextContent."\n";
                                 }
                             }
                         }
                     }
                 }
-                
+
                 $text .= "\n";
-            }
-            
+            }//end for
+
             return trim($text);
         } catch (Exception $e) {
-            $this->logger->error('Error extracting text from presentation: ' . $e->getMessage(), ['exception' => $e]);
-            throw new Exception('Failed to extract text from presentation: ' . $e->getMessage(), 0, $e);
-        }
-    }
+            $this->logger->error('Error extracting text from presentation: '.$e->getMessage(), ['exception' => $e]);
+            throw new Exception('Failed to extract text from presentation: '.$e->getMessage(), 0, $e);
+        }//end try
+
+    }//end extractFromPresentation()
+
 
     /**
      * Get metadata from a file
@@ -573,44 +590,46 @@ class ExtractionService
      */
     public function extractMetadata(string $filePath): array
     {
-        // Basic file metadata
+        // Basic file metadata.
         $metadata = [
-            'filename' => basename($filePath),
-            'filesize' => filesize($filePath),
-            'filetype' => mime_content_type($filePath),
-            'extension' => strtolower(pathinfo($filePath, PATHINFO_EXTENSION)),
+            'filename'      => basename($filePath),
+            'filesize'      => filesize($filePath),
+            'filetype'      => mime_content_type($filePath),
+            'extension'     => strtolower(pathinfo($filePath, PATHINFO_EXTENSION)),
             'last_modified' => filemtime($filePath),
         ];
 
-        // Get file extension
+        // Get file extension.
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         try {
-            // Extract additional metadata based on file type
+            // Extract additional metadata based on file type.
             switch ($extension) {
-            case 'pdf':
-                $metadata = array_merge($metadata, $this->extractPdfMetadata($filePath));
-                break;
-            case 'doc':
-            case 'docx':
-                $metadata = array_merge($metadata, $this->extractWordMetadata($filePath));
-                break;
-            case 'xls':
-            case 'xlsx':
-                $metadata = array_merge($metadata, $this->extractSpreadsheetMetadata($filePath));
-                break;
-            case 'ppt':
-            case 'pptx':
-                $metadata = array_merge($metadata, $this->extractPresentationMetadata($filePath));
-                break;
+                case 'pdf':
+                    $metadata = array_merge($metadata, $this->extractPdfMetadata($filePath));
+                    break;
+                case 'doc':
+                case 'docx':
+                    $metadata = array_merge($metadata, $this->extractWordMetadata($filePath));
+                    break;
+                case 'xls':
+                case 'xlsx':
+                    $metadata = array_merge($metadata, $this->extractSpreadsheetMetadata($filePath));
+                    break;
+                case 'ppt':
+                case 'pptx':
+                    $metadata = array_merge($metadata, $this->extractPresentationMetadata($filePath));
+                    break;
             }
         } catch (Exception $e) {
-            $this->logger->warning('Error extracting metadata: ' . $e->getMessage(), ['exception' => $e]);
-            // Continue with basic metadata if advanced extraction fails
-        }
+            $this->logger->warning('Error extracting metadata: '.$e->getMessage(), ['exception' => $e]);
+            // Continue with basic metadata if advanced extraction fails.
+        }//end try
 
         return $metadata;
-    }
+
+    }//end extractMetadata()
+
 
     /**
      * Extract metadata from a PDF file
@@ -626,32 +645,41 @@ class ExtractionService
      */
     private function extractPdfMetadata(string $filePath): array
     {
-        $parser = new PdfParser();
-        $pdf = $parser->parseFile($filePath);
+        $parser  = new PdfParser();
+        $pdf     = $parser->parseFile($filePath);
         $details = $pdf->getDetails();
-        
-        // Extract relevant metadata
+
+        // Extract relevant metadata.
         $metadata = [];
-        
-        // Common PDF metadata fields
+
+        // Common PDF metadata fields.
         $metadataFields = [
-            'Title', 'Author', 'Subject', 'Keywords', 'Creator', 
-            'Producer', 'CreationDate', 'ModDate', 'Pages'
+            'Title',
+            'Author',
+            'Subject',
+            'Keywords',
+            'Creator',
+            'Producer',
+            'CreationDate',
+            'ModDate',
+            'Pages',
         ];
-        
+
         foreach ($metadataFields as $field) {
-            if (isset($details[$field])) {
+            if (isset($details[$field]) === true) {
                 $metadata[strtolower($field)] = $details[$field];
             }
         }
-        
-        // Add page count
-        if (!isset($metadata['pages']) && $pdf->getPages() !== null) {
+
+        // Add page count.
+        if (isset($metadata['pages']) === false && $pdf->getPages() !== null) {
             $metadata['pages'] = count($pdf->getPages());
         }
-        
+
         return $metadata;
-    }
+
+    }//end extractPdfMetadata()
+
 
     /**
      * Extract metadata from a Word document
@@ -667,66 +695,76 @@ class ExtractionService
      */
     private function extractWordMetadata(string $filePath): array
     {
-        $phpWord = WordIOFactory::load($filePath);
+        $phpWord    = WordIOFactory::load($filePath);
         $properties = $phpWord->getDocInfo();
-        
+
         $metadata = [];
-        
-        // Extract document properties
-        if ($properties->getCreator()) {
+
+        // Extract document properties.
+        if ($properties->getCreator() !== null && $properties->getCreator() !== '') {
             $metadata['creator'] = $properties->getCreator();
         }
-        if ($properties->getLastModifiedBy()) {
+
+        if ($properties->getLastModifiedBy() !== null && $properties->getLastModifiedBy() !== '') {
             $metadata['last_modified_by'] = $properties->getLastModifiedBy();
         }
-        if ($properties->getCreated()) {
+
+        if ($properties->getCreated() !== null) {
             $metadata['created'] = $properties->getCreated();
         }
-        if ($properties->getModified()) {
+
+        if ($properties->getModified() !== null) {
             $metadata['modified'] = $properties->getModified();
         }
-        if ($properties->getTitle()) {
+
+        if ($properties->getTitle() !== null && $properties->getTitle() !== '') {
             $metadata['title'] = $properties->getTitle();
         }
-        if ($properties->getDescription()) {
+
+        if ($properties->getDescription() !== null && $properties->getDescription() !== '') {
             $metadata['description'] = $properties->getDescription();
         }
-        if ($properties->getSubject()) {
+
+        if ($properties->getSubject() !== null && $properties->getSubject() !== '') {
             $metadata['subject'] = $properties->getSubject();
         }
-        if ($properties->getKeywords()) {
+
+        if ($properties->getKeywords() !== null && $properties->getKeywords() !== '') {
             $metadata['keywords'] = $properties->getKeywords();
         }
-        if ($properties->getCategory()) {
+
+        if ($properties->getCategory() !== null && $properties->getCategory() !== '') {
             $metadata['category'] = $properties->getCategory();
         }
-        
-        // Count sections, paragraphs, and words
+
+        // Count sections, paragraphs, and words.
         $sections = $phpWord->getSections();
         $metadata['sections'] = count($sections);
-        
+
         $paragraphCount = 0;
-        $wordCount = 0;
-        
+        $wordCount      = 0;
+
         foreach ($sections as $section) {
             $elements = $section->getElements();
             foreach ($elements as $element) {
                 if (get_class($element) === 'PhpOffice\PhpWord\Element\TextRun') {
                     $paragraphCount++;
-                    // Count words in text
-                    if (method_exists($element, 'getText')) {
-                        $text = $element->getText();
+                    // Count words in text.
+                    if (method_exists($element, 'getText') === true) {
+                        $text       = $element->getText();
                         $wordCount += str_word_count($text);
                     }
                 }
             }
         }
-        
+
         $metadata['paragraphs'] = $paragraphCount;
-        $metadata['words'] = $wordCount;
-        
+        $metadata['words']      = $wordCount;
+
         return $metadata;
-    }
+
+    }//end extractWordMetadata()
+
 
     /**
      * Extract metadata from a spreadsheet
@@ -743,69 +781,79 @@ class ExtractionService
     private function extractSpreadsheetMetadata(string $filePath): array
     {
         $spreadsheet = SpreadsheetIOFactory::load($filePath);
-        $properties = $spreadsheet->getProperties();
-        
+        $properties  = $spreadsheet->getProperties();
+
         $metadata = [];
-        
-        // Extract document properties
-        if ($properties->getCreator()) {
+
+        // Extract document properties.
+        if ($properties->getCreator() !== null && $properties->getCreator() !== '') {
             $metadata['creator'] = $properties->getCreator();
         }
-        if ($properties->getLastModifiedBy()) {
+
+        if ($properties->getLastModifiedBy() !== null && $properties->getLastModifiedBy() !== '') {
             $metadata['last_modified_by'] = $properties->getLastModifiedBy();
         }
-        if ($properties->getCreated()) {
+
+        if ($properties->getCreated() !== null) {
             $metadata['created'] = $properties->getCreated();
         }
-        if ($properties->getModified()) {
+
+        if ($properties->getModified() !== null) {
             $metadata['modified'] = $properties->getModified();
         }
-        if ($properties->getTitle()) {
+
+        if ($properties->getTitle() !== null && $properties->getTitle() !== '') {
             $metadata['title'] = $properties->getTitle();
         }
-        if ($properties->getDescription()) {
+
+        if ($properties->getDescription() !== null && $properties->getDescription() !== '') {
             $metadata['description'] = $properties->getDescription();
         }
-        if ($properties->getSubject()) {
+
+        if ($properties->getSubject() !== null && $properties->getSubject() !== '') {
             $metadata['subject'] = $properties->getSubject();
         }
-        if ($properties->getKeywords()) {
+
+        if ($properties->getKeywords() !== null && $properties->getKeywords() !== '') {
             $metadata['keywords'] = $properties->getKeywords();
         }
-        if ($properties->getCategory()) {
+
+        if ($properties->getCategory() !== null && $properties->getCategory() !== '') {
             $metadata['category'] = $properties->getCategory();
         }
-        
-        // Count worksheets and cells
+
+        // Count worksheets and cells.
         $worksheets = $spreadsheet->getAllSheets();
         $metadata['worksheets'] = count($worksheets);
-        
-        $cellCount = 0;
+
+        $cellCount         = 0;
         $nonEmptyCellCount = 0;
-        
+
         foreach ($worksheets as $worksheet) {
-            $highestRow = $worksheet->getHighestRow();
-            $highestColumn = $worksheet->getHighestColumn();
+            $highestRow         = $worksheet->getHighestRow();
+            $highestColumn      = $worksheet->getHighestColumn();
             $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-            
+
             $cellCount += $highestRow * $highestColumnIndex;
-            
-            // Count non-empty cells
+
+            // Count non-empty cells.
             for ($row = 1; $row <= $highestRow; $row++) {
                 for ($col = 1; $col <= $highestColumnIndex; $col++) {
                     $cellValue = $worksheet->getCellByColumnAndRow($col, $row)->getValue();
-                    if (!empty($cellValue)) {
+                    if (empty($cellValue) === false) {
                         $nonEmptyCellCount++;
                     }
                 }
             }
         }
-        
-        $metadata['total_cells'] = $cellCount;
+
+        $metadata['total_cells']     = $cellCount;
         $metadata['non_empty_cells'] = $nonEmptyCellCount;
-        
+
         return $metadata;
-    }
+
+    }//end extractSpreadsheetMetadata()
+
 
     /**
      * Extract metadata from a presentation
@@ -822,52 +870,62 @@ class ExtractionService
     private function extractPresentationMetadata(string $filePath): array
     {
         $presentation = PresentationIOFactory::load($filePath);
-        $properties = $presentation->getDocumentProperties();
-        
+        $properties   = $presentation->getDocumentProperties();
+
         $metadata = [];
-        
-        // Extract document properties
-        if ($properties->getCreator()) {
+
+        // Extract document properties.
+        if ($properties->getCreator() !== null && $properties->getCreator() !== '') {
             $metadata['creator'] = $properties->getCreator();
         }
-        if ($properties->getLastModifiedBy()) {
+
+        if ($properties->getLastModifiedBy() !== null && $properties->getLastModifiedBy() !== '') {
             $metadata['last_modified_by'] = $properties->getLastModifiedBy();
         }
-        if ($properties->getCreated()) {
+
+        if ($properties->getCreated() !== null) {
             $metadata['created'] = $properties->getCreated();
         }
-        if ($properties->getModified()) {
+
+        if ($properties->getModified() !== null) {
             $metadata['modified'] = $properties->getModified();
         }
-        if ($properties->getTitle()) {
+
+        if ($properties->getTitle() !== null && $properties->getTitle() !== '') {
             $metadata['title'] = $properties->getTitle();
         }
-        if ($properties->getDescription()) {
+
+        if ($properties->getDescription() !== null && $properties->getDescription() !== '') {
             $metadata['description'] = $properties->getDescription();
         }
-        if ($properties->getSubject()) {
+
+        if ($properties->getSubject() !== null && $properties->getSubject() !== '') {
             $metadata['subject'] = $properties->getSubject();
         }
-        if ($properties->getKeywords()) {
+
+        if ($properties->getKeywords() !== null && $properties->getKeywords() !== '') {
             $metadata['keywords'] = $properties->getKeywords();
         }
-        if ($properties->getCategory()) {
+
+        if ($properties->getCategory() !== null && $properties->getCategory() !== '') {
             $metadata['category'] = $properties->getCategory();
         }
-        
-        // Count slides and shapes
-        $slideCount = $presentation->getSlideCount();
+
+        // Count slides and shapes.
+        $slideCount         = $presentation->getSlideCount();
         $metadata['slides'] = $slideCount;
-        
+
         $shapeCount = 0;
         for ($i = 0; $i < $slideCount; $i++) {
-            $slide = $presentation->getSlide($i);
+            $slide       = $presentation->getSlide($i);
             $shapeCount += count($slide->getShapeCollection());
         }
-        
-        $metadata['shapes'] = $shapeCount;
-        
-        return $metadata;
-    }
-}
 
+        $metadata['shapes'] = $shapeCount;
+
+        return $metadata;
+
+    }//end extractPresentationMetadata()
+
+
+}//end class
