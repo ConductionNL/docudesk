@@ -560,9 +560,7 @@ class AnonymizationService
 
             // Throw error if multiple anonymizations found.
             if (count($anonymizations) > 1) {
-                $errorMessage = 'Multiple anonymizations found for node '.
-                    $node->getId().
-                    '. There should only be one anonymization per node.';
+                $errorMessage = 'Multiple anonymizations found for node '.$node->getId().'. There should only be one anonymization per node.';
                 throw new \RuntimeException($errorMessage);
             }
 

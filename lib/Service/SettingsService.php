@@ -99,13 +99,7 @@ class SettingsService
 
             // Check if new configuration version is higher than current.
             if (version_compare($settings['info']['version'], $currentVersion, '<=') === true) {
-                $results['info'][] 
-                = 'Current configuration version (' .
-                    $currentVersion .
-                    ') is up to date ' .
-                    'or newer than available version (' .
-                    $settings['info']['version'] .
-                    ')';
+                $results['info'][] = "Configuration version {$currentVersion} is up to date or newer than {$settings['info']['version']}";
                 return $results;
             }
 
