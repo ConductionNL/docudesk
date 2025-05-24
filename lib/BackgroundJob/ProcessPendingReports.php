@@ -1,8 +1,15 @@
 <?php
 
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
+ * Background job to process pending reports
+ *
+ * @category  BackgroundJob
+ * @package   OCA\DocuDesk\BackgroundJob
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @version   GIT: <git_id>
+ * @link      https://www.DocuDesk.app
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL),
@@ -16,12 +23,6 @@
  *
  * You should have received a copy of the European Union Public License
  * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
- *
- * @category BackgroundJob
- * @package  OCA\DocuDesk\BackgroundJob
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
 
 namespace OCA\DocuDesk\BackgroundJob;
@@ -72,7 +73,7 @@ class ProcessPendingReports extends TimedJob
         private readonly IConfig $config,
         private readonly LoggerInterface $logger
     ) {
-        // Run every 15 minutes
+        // Run every 15 minutes.
         $this->setInterval(15 * 60);
 
     }//end __construct()
@@ -91,7 +92,7 @@ class ProcessPendingReports extends TimedJob
     protected function run($argument): void
     {
         try {
-            // Use the ReportingService to process pending reports
+            // Use the ReportingService to process pending reports.
             $processedCount = $this->reportingService->processPendingReports(self::MAX_REPORTS_PER_RUN);
 
             if ($processedCount > 0) {

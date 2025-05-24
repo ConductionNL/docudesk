@@ -1,8 +1,15 @@
 <?php
 
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
+ * Event listener for file-related node events
+ *
+ * @category  EventListener
+ * @package   OCA\DocuDesk\EventListener
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @version   GIT: <git_id>
+ * @link      https://www.DocuDesk.app
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL),
@@ -16,12 +23,6 @@
  *
  * You should have received a copy of the European Union Public License
  * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
- *
- * @category EventListener
- * @package  OCA\DocuDesk\EventListener
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
 
 namespace OCA\DocuDesk\EventListener;
@@ -81,13 +82,13 @@ class FileEventListener implements IEventListener
      */
     public function handle(Event $event): void
     {
-        if (!($event instanceof AbstractNodeEvent)) {
+        if (($event instanceof AbstractNodeEvent) === false) {
             return;
         }
 
         $node = $event->getNode();
 
-        // Only process file events, not folder events
+        // Only process file events, not folder events.
         if ($node->getType() !== FileInfo::TYPE_FILE) {
             return;
         }
@@ -132,7 +133,7 @@ class FileEventListener implements IEventListener
                 ]
         );
 
-        // Always try to create a report, the ReportingService will check if reporting is enabled
+        // Always try to create a report, the ReportingService will check if reporting is enabled.
         $this->reportingService->createReport($node);
 
     }//end handleNodeCreated()
@@ -170,7 +171,6 @@ class FileEventListener implements IEventListener
     {
         $node = $event->getNode();
 
-
         $this->logger->debug(
             'File deleted: '.$node->getName(),
                 [
@@ -179,27 +179,32 @@ class FileEventListener implements IEventListener
                 ]
         );
 
-        // No report creation needed for deleted files    }//end handleNodeDeleted()
+        // No report creation needed for deleted files.
+
+    }//end handleNodeDeleted()
 
 
-        /**
-         * Handle node touched event
-         *
-         * @param NodeTouchedEvent $event The node touched event
-         *
-         * @return void
-         */
+    /**
+     * Handle node touched event
+     *
+     * @param NodeTouchedEvent $event The node touched event
+     *
+     * @return void
+     */
     private function handleNodeTouched(NodeTouchedEvent $event): void
-        {
-            $node = $event->getNode();
+    {
+        $node = $event->getNode();
 
-
-            $this->logger->debug(
+        $this->logger->debug(
             'File touched: '.$node->getName(),
                 [
                     'node_id' => $node->getId(),
                     'path'    => $node->getPath(),
                 ]
-            );
+        );
 
-            // No report creation needed for touched files (metadata only changes)    }//end handleNodeTouched()    }//end handleNodeTouched()
+        // No report creation needed for touched files (metadata only changes).
+
+    }//end handleNodeTouched()
+
+}//end class

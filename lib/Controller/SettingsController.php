@@ -1,27 +1,17 @@
 <?php
-
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
- *
- * DocuDesk is free software: you can redistribute it and/or modify
- * it under the terms of the European Union Public License (EUPL),
- * version 1.2 only (the "Licence"), appearing in the file LICENSE
- * included in the packaging of this file.
- *
- * DocuDesk is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * European Union Public License for more details.
- *
- * You should have received a copy of the European Union Public License
- * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
+ * Controller for handling settings-related operations
  *
  * @category Controller
  * @package  OCA\DocuDesk\Controller
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
+ *
+ * @author    Conduction Development Team <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * @version GIT: <git_id>
+ *
+ * @link https://www.DocuDesk.app
  */
 
 namespace OCA\DocuDesk\Controller;
@@ -37,15 +27,17 @@ use OCP\App\IAppManager;
 use OCA\OpenRegister\Service\ObjectService;
 
 /**
- * Class SettingsController
+ * Controller for handling settings-related operations
  *
- * Controller for handling settings-related operations in the DocuDesk app.
+ * This controller provides functionality for managing application settings,
+ * including configuration of Presidio API endpoints, reporting settings,
+ * and integration with OpenRegister for object type management.
  *
  * @category Controller
  * @package  OCA\DocuDesk\Controller
  * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
+ * @license  EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @link     https://www.DocuDesk.nl
  */
 class SettingsController extends Controller
 {
@@ -91,8 +83,8 @@ class SettingsController extends Controller
      */
     public function getObjectService(): ?ObjectService
     {
-        if ($this->objectService === null) {
-            if (in_array('openregister', $this->appManager->getInstalledApps(), true)) {
+        if (($this->objectService === null) === true) {
+            if (in_array('openregister', $this->appManager->getInstalledApps(), true) === true) {
                 $this->objectService = $this->container->get('OCA\OpenRegister\Service\ObjectService');
                 return $this->objectService;
             }
@@ -118,25 +110,25 @@ class SettingsController extends Controller
      */
     public function index(): JSONResponse
     {
-        // Initialize the data array
+        // Initialize the data array.
         $data = [];
         $data['objectTypes']        = ['template', 'anonymization', 'report'];
         $data['openRegisters']      = false;
         $data['availableRegisters'] = [];
 
         try {
-            // Check if the OpenRegister service is available
+            // Check if the OpenRegister service is available.
             $objectService = $this->getObjectService();
             if ($objectService !== null) {
                 $data['openRegisters'] = true;
-                // Get all registers from the ObjectService
+                // Get all registers from the ObjectService.
                 $data['availableRegisters'] = $objectService->getRegisters();
             }
         } catch (\RuntimeException $e) {
-            // OpenRegister is not available, continue with default settings
+            // OpenRegister is not available, continue with default settings.
         }
 
-        // Build defaults array dynamically based on object types
+        // Build defaults array dynamically based on object types.
         $defaults = [];
         foreach ($data['objectTypes'] as $type) {
             $defaults["{$type}_source"]   = 'internal';
@@ -144,7 +136,7 @@ class SettingsController extends Controller
             $defaults["{$type}_register"] = 'document';
         }
 
-        // Add system configuration values
+        // Add system configuration values.
         $data['presidioAnalyzerUrl']   = $this->config->getSystemValue(
             'docudesk_presidio_analyzer_url',
             'http://presidio-api:8080/analyze'
@@ -158,13 +150,13 @@ class SettingsController extends Controller
         $data['enableAnonymization']   = $this->config->getSystemValue('docudesk_enable_anonymization', true);
         $data['storeOriginalText']     = $this->config->getSystemValue('docudesk_store_original_text', true);
 
-        // Get the current values for the object types from the configuration
+        // Get the current values for the object types from the configuration.
         try {
             foreach ($defaults as $key => $defaultValue) {
                 $data[$key] = $this->appConfig->getValueString($this->appName, $key, $defaultValue);
             }
 
-            // Add configuration object for object type mappings
+            // Add configuration object for object type mappings.
             $data['configuration'] = [];
             foreach ($data['objectTypes'] as $type) {
                 $data['configuration']["{$type}_source"]   = $data["{$type}_source"] ?? 'openregister';
@@ -192,11 +184,11 @@ class SettingsController extends Controller
      */
     public function create(): JSONResponse
     {
-        // Get all parameters from the request
+        // Get all parameters from the request.
         $data = $this->request->getParams();
 
         try {
-            // Separate system config values from app config values
+            // Separate system config values from app config values.
             $systemConfigKeys = [
                 'presidioAnalyzerUrl'   => 'docudesk_presidio_analyzer_url',
                 'presidioAnonymizerUrl' => 'docudesk_presidio_anonymizer_url',
@@ -206,24 +198,24 @@ class SettingsController extends Controller
                 'storeOriginalText'     => 'docudesk_store_original_text',
             ];
 
-            // Update system configuration values
+            // Update system configuration values.
             foreach ($systemConfigKeys as $requestKey => $configKey) {
-                if (isset($data[$requestKey])) {
+                if (isset($data[$requestKey]) === true) {
                     $this->config->setSystemValue($configKey, $data[$requestKey]);
-                    // Add the updated value to the response
+                    // Add the updated value to the response.
                     $data[$requestKey] = $this->config->getSystemValue($configKey);
                 }
             }
 
-            // Update app configuration values (for object storage settings)
+            // Update app configuration values (for object storage settings).
             foreach ($data as $key => $value) {
-                // Skip system config keys that we've already processed
-                if (in_array($key, array_keys($systemConfigKeys))) {
+                // Skip system config keys that we've already processed.
+                if (in_array($key, array_keys($systemConfigKeys)) === true) {
                     continue;
                 }
 
                 $this->appConfig->setValueString($this->appName, $key, $value);
-                // Retrieve the updated value to confirm the change
+                // Retrieve the updated value to confirm the change.
                 $data[$key] = $this->appConfig->getValueString($this->appName, $key);
             }
 
@@ -249,12 +241,12 @@ class SettingsController extends Controller
     {
         $presidioUrl = $this->request->getParam('presidioUrl');
 
-        if (empty($presidioUrl)) {
+        if (empty($presidioUrl) === true) {
             return new JSONResponse(['error' => 'Presidio Analyzer URL is required'], 400);
         }
 
         try {
-            // Create a test payload
+            // Create a test payload.
             $payload = [
                 'text'                    => 'John Smith lives in New York and his phone number is 212-555-1234.',
                 'language'                => 'en',
@@ -262,29 +254,29 @@ class SettingsController extends Controller
                 'return_decision_process' => false,
             ];
 
-            // Create a Guzzle client
+            // Create a Guzzle client.
             $client = new \GuzzleHttp\Client([
                 'timeout'         => 10,
                 'connect_timeout' => 5,
             ]);
 
-            // Send a test request to the Presidio Analyzer API
+            // Send a test request to the Presidio Analyzer API.
             $response = $client->post(
-            $presidioUrl,
-           [
-               'json'    => $payload,
-               'headers' => [
-                   'Content-Type' => 'application/json',
-                   'Accept'       => 'application/json',
-               ],
-           ]
+                $presidioUrl,
+                [
+                    'json'    => $payload,
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'Accept'       => 'application/json',
+                    ],
+                ]
             );
 
-            // Check if the response is valid
+            // Check if the response is valid.
             $statusCode = $response->getStatusCode();
             $body       = json_decode($response->getBody()->getContents(), true);
 
-            if ($statusCode === 200 && is_array($body)) {
+            if ($statusCode === 200 && is_array($body) === true) {
                 return new JSONResponse(
             [
                 'success'           => true,
@@ -328,12 +320,12 @@ class SettingsController extends Controller
     {
         $presidioUrl = $this->request->getParam('presidioUrl');
 
-        if (empty($presidioUrl)) {
+        if (empty($presidioUrl) === true) {
             return new JSONResponse(['error' => 'Presidio Anonymizer URL is required'], 400);
         }
 
         try {
-            // Create a test payload
+            // Create a test payload.
             $payload = [
                 'text'             => 'John Smith lives in New York and his phone number is 212-555-1234.',
                 'analyzer_results' => [
@@ -352,29 +344,29 @@ class SettingsController extends Controller
                 ],
             ];
 
-            // Create a Guzzle client
+            // Create a Guzzle client.
             $client = new \GuzzleHttp\Client([
                 'timeout'         => 10,
                 'connect_timeout' => 5,
             ]);
 
-            // Send a test request to the Presidio Anonymizer API
+            // Send a test request to the Presidio Anonymizer API.
             $response = $client->post(
-            $presidioUrl,
-           [
-               'json'    => $payload,
-               'headers' => [
-                   'Content-Type' => 'application/json',
-                   'Accept'       => 'application/json',
-               ],
-           ]
+                $presidioUrl,
+                [
+                    'json'    => $payload,
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'Accept'       => 'application/json',
+                    ],
+                ]
             );
 
-            // Check if the response is valid
+            // Check if the response is valid.
             $statusCode = $response->getStatusCode();
             $body       = json_decode($response->getBody()->getContents(), true);
 
-            if ($statusCode === 200 && is_array($body) && isset($body['text'])) {
+            if ($statusCode === 200 && is_array($body) === true && isset($body['text']) === true) {
                 return new JSONResponse(
             [
                 'success'         => true,
@@ -454,46 +446,49 @@ class SettingsController extends Controller
     public function saveApiConfig(): JSONResponse
     {
         try {
-            // Get all parameters from the request
+            // Get all parameters from the request.
             $apiConfig = $this->request->getParams();
 
-            if (!is_array($apiConfig)) {
+            if (is_array($apiConfig) === false) {
                 return new JSONResponse(['error' => 'Invalid API configuration'], 400);
             }
 
-            // Store Presidio API configuration directly without validation
-            if (isset($apiConfig['presidio'])) {
-                if (isset($apiConfig['presidio']['analyzerUrl'])) {
+            // Store Presidio API configuration directly without validation.
+            if (isset($apiConfig['presidio']) === true) {
+                if (isset($apiConfig['presidio']['analyzerUrl']) === true) {
                     $this->config->setSystemValue('docudesk_presidio_analyzer_url', $apiConfig['presidio']['analyzerUrl']);
                 }
 
-                if (isset($apiConfig['presidio']['anonymizerUrl'])) {
-                    $this->config->setSystemValue('docudesk_presidio_anonymizer_url', $apiConfig['presidio']['anonymizerUrl']);
+                if (isset($apiConfig['presidio']['anonymizerUrl']) === true) {
+                    $this->config->setSystemValue(
+                        'docudesk_presidio_anonymizer_url',
+                        $apiConfig['presidio']['anonymizerUrl']
+                    );
                 }
 
-                if (isset($apiConfig['presidio']['key'])) {
+                if (isset($apiConfig['presidio']['key']) === true) {
                     $this->config->setSystemValue('docudesk_presidio_api_key', $apiConfig['presidio']['key']);
                 }
             }
 
-            // Store ChatGPT API configuration directly without validation
-            if (isset($apiConfig['chatgpt'])) {
-                if (isset($apiConfig['chatgpt']['url'])) {
+            // Store ChatGPT API configuration directly without validation.
+            if (isset($apiConfig['chatgpt']) === true) {
+                if (isset($apiConfig['chatgpt']['url']) === true) {
                     $this->config->setSystemValue('docudesk_chatgpt_url', $apiConfig['chatgpt']['url']);
                 }
 
-                if (isset($apiConfig['chatgpt']['key'])) {
+                if (isset($apiConfig['chatgpt']['key']) === true) {
                     $this->config->setSystemValue('docudesk_chatgpt_api_key', $apiConfig['chatgpt']['key']);
                 }
             }
 
-            // Store NLDocs API configuration directly without validation
-            if (isset($apiConfig['nldocs'])) {
-                if (isset($apiConfig['nldocs']['url'])) {
+            // Store NLDocs API configuration directly without validation.
+            if (isset($apiConfig['nldocs']) === true) {
+                if (isset($apiConfig['nldocs']['url']) === true) {
                     $this->config->setSystemValue('docudesk_nldocs_url', $apiConfig['nldocs']['url']);
                 }
 
-                if (isset($apiConfig['nldocs']['key'])) {
+                if (isset($apiConfig['nldocs']['key']) === true) {
                     $this->config->setSystemValue('docudesk_nldocs_api_key', $apiConfig['nldocs']['key']);
                 }
             }
@@ -550,42 +545,45 @@ class SettingsController extends Controller
     public function saveReportConfig(): JSONResponse
     {
         try {
-            // Get all parameters from the request
+            // Get all parameters from the request.
             $reportConfig = $this->request->getParams();
 
-            if (!is_array($reportConfig)) {
+            if (is_array($reportConfig) === false) {
                 return new JSONResponse(['error' => 'Invalid report configuration'], 400);
             }
 
-            // Store report configuration
-            if (isset($reportConfig['enable_reporting'])) {
+            // Store report configuration.
+            if (isset($reportConfig['enable_reporting']) === true) {
                 $this->config->setSystemValue('docudesk_enable_reporting', (bool) $reportConfig['enable_reporting']);
             }
 
-            if (isset($reportConfig['enable_anonymization'])) {
+            if (isset($reportConfig['enable_anonymization']) === true) {
                 $this->config->setSystemValue('docudesk_enable_anonymization', (bool) $reportConfig['enable_anonymization']);
             }
 
-            if (isset($reportConfig['synchronous_processing'])) {
-                $this->config->setSystemValue('docudesk_synchronous_processing', (bool) $reportConfig['synchronous_processing']);
+            if (isset($reportConfig['synchronous_processing']) === true) {
+                $this->config->setSystemValue(
+                    'docudesk_synchronous_processing',
+                    (bool) $reportConfig['synchronous_processing']
+                );
             }
 
-            if (isset($reportConfig['confidence_threshold'])) {
+            if (isset($reportConfig['confidence_threshold']) === true) {
                 $threshold = (float) $reportConfig['confidence_threshold'];
-                // Ensure threshold is between 0 and 1
+                // Ensure threshold is between 0 and 1.
                 $threshold = max(0.0, min(1.0, $threshold));
                 $this->config->setSystemValue('docudesk_confidence_threshold', $threshold);
             }
 
-            if (isset($reportConfig['store_original_text'])) {
+            if (isset($reportConfig['store_original_text']) === true) {
                 $this->config->setSystemValue('docudesk_store_original_text', (bool) $reportConfig['store_original_text']);
             }
 
-            if (isset($reportConfig['report_object_type'])) {
+            if (isset($reportConfig['report_object_type']) === true) {
                 $this->config->setSystemValue('docudesk_report_object_type', $reportConfig['report_object_type']);
             }
 
-            if (isset($reportConfig['log_object_type'])) {
+            if (isset($reportConfig['log_object_type']) === true) {
                 $this->config->setSystemValue('docudesk_log_object_type', $reportConfig['log_object_type']);
             }
 

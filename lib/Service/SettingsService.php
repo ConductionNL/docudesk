@@ -84,29 +84,30 @@ class SettingsService
         ];
 
         try {
-            // Try to get the OpenCatalogi configuration service
+            // Try to get the OpenCatalogi configuration service.
             try {
                 $configurationService = $this->getConfigurationService();
             } catch (\Exception $e) {
                 throw new \RuntimeException('OpenCatalogi configuration service is not available: '.$e->getMessage());
             }
 
-            // Get current configuration version from app config
+            // Get current configuration version from app config.
             $currentVersion = $this->config->getValueString($this->appName, 'configuration_version', '0.0.0');
 
-            // Load settings from file
+            // Load settings from file.
             $settings = $this->loadSettings();
 
-            // Check if new configuration version is higher than current
-            if (version_compare($settings['info']['version'], $currentVersion, '<=')) {
-                $results['info'][] = 'Current configuration version ('.$currentVersion.') is up to date or newer than available version ('.$settings['info']['version'].')';
+            // Check if new configuration version is higher than current.
+            if (version_compare($settings['info']['version'], $currentVersion, '<=') === true) {
+                $results['info'][] = 'Current configuration version ('.$currentVersion.') is up to date '
+                    . 'or newer than available version ('.$settings['info']['version'].')';
                 return $results;
             }
 
-            // Import the new configuration
+            // Import the new configuration.
             $configurationService->importFromJson($settings, false);
 
-            // Update the configuration version in app config
+            // Update the configuration version in app config.
             $this->config->setValueString($this->appName, 'configuration_version', $settings['info']['version']);
 
             $results['configuration'] = true;
@@ -132,7 +133,7 @@ class SettingsService
         $settingsFilePath = __DIR__.'/../Settings/document_register.json';
 
         try {
-            if (!file_exists($settingsFilePath)) {
+            if (file_exists($settingsFilePath) === false) {
                 throw new \RuntimeException('Settings file not found at: '.$settingsFilePath);
             }
 
@@ -146,7 +147,7 @@ class SettingsService
                 throw new \RuntimeException('Error decoding JSON: '.json_last_error_msg());
             }
 
-            if (!isset($settings['info']['version'])) {
+            if (isset($settings['info']['version']) === false) {
                 throw new \RuntimeException('Settings file does not contain version information');
             }
 

@@ -1,8 +1,15 @@
 <?php
 
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
+ * Controller for managing document reports
+ *
+ * @category  Controller
+ * @package   OCA\DocuDesk\Controller
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @version   GIT: <git_id>
+ * @link      https://www.DocuDesk.app
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL),
@@ -16,12 +23,6 @@
  *
  * You should have received a copy of the European Union Public License
  * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
- *
- * @category Controller
- * @package  OCA\DocuDesk\Controller
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
 
 namespace OCA\DocuDesk\Controller;
@@ -65,8 +66,8 @@ class ReportController extends Controller
      * @param IRootFolder      $rootFolder       Root folder service
      * @param IUserSession     $userSession      User session service
      * @param IConfig          $config           Configuration service
+     * @param IAppConfig       $appConfig        App configuration service
      * @param LoggerInterface  $logger           Logger for error reporting
-     * @param IAppConfig       $appConfig        App config
      *
      * @return void
      */
@@ -81,7 +82,7 @@ class ReportController extends Controller
         private readonly IAppConfig $appConfig,
         private readonly LoggerInterface $logger
     ) {
-        // Set the object service to use the reporting service
+        // Set the object service to use the reporting service.
         $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
 
@@ -131,13 +132,13 @@ class ReportController extends Controller
                 $filters['status'] = $status;
             }
 
-            // Get the current user
+            // Get the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
             }
 
-            // Filter reports by user ID
+            // Filter reports by user ID.
             $filters['userId'] = $user->getUID();
 
             $reports = $this->objectService->getObjects($reportObjectType, $limit, $offset, $filters, $orderBy, $order);
@@ -175,7 +176,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report not found'], Http::STATUS_NOT_FOUND);
             }
 
-            // Check if the report belongs to the current user
+            // Check if the report belongs to the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
@@ -218,12 +219,12 @@ class ReportController extends Controller
         ?array $analysisTypes=null
     ): JSONResponse {
         try {
-            // Validate required parameters
+            // Validate required parameters.
             if ($nodeId === null) {
                 return new JSONResponse(['error' => 'Node ID is required'], 400);
             }
 
-            // Get the current user
+            // Get the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
@@ -231,21 +232,21 @@ class ReportController extends Controller
 
             $userId = $user->getUID();
 
-            // Get the file node
+            // Get the file node.
             $userFolder = $this->rootFolder->getUserFolder($userId);
             $nodes      = $userFolder->getById($nodeId);
 
-            if (empty($nodes)) {
+            if (empty($nodes) === true) {
                 return new JSONResponse(['error' => 'File not found'], 404);
             }
 
             $node = $nodes[0];
 
-            // Create the report using the ReportingService
+            // Create the report using the ReportingService.
             $report = $this->reportingService->createReport($node);
 
-            // If processNow is true, process the report immediately
-            if ($processNow && $report !== null) {
+            // If processNow is true, process the report immediately.
+            if ($processNow === true && $report !== null) {
                 $report = $this->reportingService->processReport($report);
             }
 
@@ -284,7 +285,7 @@ class ReportController extends Controller
     public function update(string $id, array $updates): JSONResponse
     {
         try {
-            // Get the current report
+            // Get the current report.
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             $report           = $this->objectService->getObject($reportObjectType, $id);
 
@@ -292,23 +293,23 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report not found'], 404);
             }
 
-            // Validate that the user has permission to update this report
+            // Validate that the user has permission to update this report.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
             }
 
-            // Prevent updating certain fields
+            // Prevent updating certain fields.
             foreach ($updates as $key => $value) {
-                if (in_array($key, ['id', 'nodeId', 'fileHash', 'userId', 'created'])) {
+                if (in_array($key, ['id', 'nodeId', 'fileHash', 'userId', 'created']) === true) {
                     unset($updates[$key]);
                 }
             }
 
-            // Apply updates
+            // Apply updates.
             $updatedReport = array_merge($report, $updates);
 
-            // Save the updated report
+            // Save the updated report.
             $result = $this->objectService->saveObject($reportObjectType, $updatedReport);
 
             return new JSONResponse($result);
@@ -349,7 +350,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report not found'], Http::STATUS_NOT_FOUND);
             }
 
-            // Check if the report belongs to the current user
+            // Check if the report belongs to the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
@@ -361,7 +362,7 @@ class ReportController extends Controller
 
             $success = $this->objectService->deleteObject($reportObjectType, $id);
 
-            if ($success) {
+            if ($success === true) {
                 return new JSONResponse(['success' => true]);
             } else {
                 return new JSONResponse(['error' => 'Failed to delete report'], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -392,7 +393,7 @@ class ReportController extends Controller
         try {
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
 
-            // Get the current user
+            // Get the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], Http::STATUS_UNAUTHORIZED);
@@ -405,7 +406,7 @@ class ReportController extends Controller
 
             $reports = $this->objectService->getObjects($reportObjectType, 1, 0, $filters, 'created', 'desc');
 
-            if (empty($reports)) {
+            if (empty($reports) === true) {
                 return new JSONResponse(['error' => 'No reports found for this node'], Http::STATUS_NOT_FOUND);
             }
 
@@ -434,7 +435,7 @@ class ReportController extends Controller
     public function process(string $id): JSONResponse
     {
         try {
-            // Get the report
+            // Get the report.
             $reportObjectType = $this->config->getSystemValue('docudesk_report_object_type', 'report');
             $report           = $this->objectService->getObject($reportObjectType, $id);
 
@@ -442,7 +443,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report not found'], 404);
             }
 
-            // Get the file node
+            // Get the file node.
             $filePath = $report['filePath'] ?? null;
             $fileName = $report['fileName'] ?? null;
 
@@ -450,7 +451,7 @@ class ReportController extends Controller
                 return new JSONResponse(['error' => 'Report has no file path'], 400);
             }
 
-            // Get the current user
+            // Get the current user.
             $user = $this->userSession->getUser();
             if ($user === null) {
                 return new JSONResponse(['error' => 'User not authenticated'], 401);
@@ -458,11 +459,11 @@ class ReportController extends Controller
 
             $userId = $user->getUID();
 
-            // Process the report
+            // Process the report.
             $processedReport = $this->reportingService->processReport($report);
 
-            // Update file path and name if they were missing
-            if (!isset($processedReport['filePath']) || !isset($processedReport['fileName'])) {
+            // Update file path and name if they were missing.
+            if (isset($processedReport['filePath']) === false || isset($processedReport['fileName']) === false) {
                 $processedReport['filePath'] = $filePath;
                 $processedReport['fileName'] = $fileName;
                 $processedReport = $this->objectService->saveObject($reportObjectType, $processedReport);

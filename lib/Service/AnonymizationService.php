@@ -135,6 +135,7 @@ class AnonymizationService
      * @param ObjectService     $objectService     Service for storing objects
      * @param ExtractionService $extractionService Service for extracting text from documents
      * @param IUserSession      $userSession       User session for getting current user
+     * @param IAppConfig        $appConfig         App configuration service
      *
      * @return void
      */
@@ -168,7 +169,7 @@ class AnonymizationService
         $this->objectService->setRegister($this->anonymizationRegisterType);
         $this->objectService->setSchema($this->anonymizationSchemaType);
 
-        // Initialize Guzzle HTTP client
+        // Initialize Guzzle HTTP client.
         $this->client = new Client(
             [
                 'timeout'         => 30,
@@ -202,9 +203,10 @@ class AnonymizationService
     /**
      * Anonymize a Word document by replacing detected entities in the document structure
      *
-     * @param  \OCP\Files\Node $node               The file node to anonymize
-     * @param  array           $processedEntities  The processed entities with replacement info
-     * @param  string          $anonymizedFileName The name for the anonymized file
+     * @param \OCP\Files\Node $node               The file node to anonymize
+     * @param array           $processedEntities  The processed entities with replacement info
+     * @param string          $anonymizedFileName The name for the anonymized file
+     *
      * @return \OCP\Files\File The new anonymized file node
      *
      * @throws Exception If anonymization fails
@@ -217,7 +219,7 @@ class AnonymizationService
         array $processedEntities,
         string $anonymizedFileName
     ): \OCP\Files\File {
-        // Get the file content as a stream and save to a temp file
+        // Get the file content as a stream and save to a temp file.
         $stream   = $node->fopen('r');
         $tempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_');
         if ($tempFile === false) {
@@ -234,14 +236,14 @@ class AnonymizationService
         fclose($tempStream);
         fclose($stream);
 
-        // Load the document
+        // Load the document.
         $phpWord = \PhpOffice\PhpWord\IOFactory::load($tempFile);
 
-        // Helper: Replace text in all elements recursively
+        // Helper: Replace text in all elements recursively.
         $replaceInElements = function (array $elements, array $replacements) use (&$replaceInElements) {
             foreach ($elements as $element) {
-                // Replace in text runs
-                if (method_exists($element, 'getText') && method_exists($element, 'setText')) {
+                // Replace in text runs.
+                if (method_exists($element, 'getText') === true && method_exists($element, 'setText') === true) {
                     $text = $element->getText();
                     foreach ($replacements as $replacement) {
                         $text = str_ireplace($replacement['originalText'], $replacement['replacementText'], $text);
@@ -250,8 +252,8 @@ class AnonymizationService
                     $element->setText($text);
                 }
 
-                // Replace in tables
-                if (method_exists($element, 'getRows')) {
+                // Replace in tables.
+                if (method_exists($element, 'getRows') === true) {
                     foreach ($element->getRows() as $row) {
                         foreach ($row->getCells() as $cell) {
                             $replaceInElements($cell->getElements(), $replacements);
@@ -259,21 +261,21 @@ class AnonymizationService
                     }
                 }
 
-                // Replace in lists
-                if (method_exists($element, 'getItems')) {
+                // Replace in lists.
+                if (method_exists($element, 'getItems') === true) {
                     foreach ($element->getItems() as $item) {
                         $replaceInElements($item->getElements(), $replacements);
                     }
                 }
 
-                // Replace in nested elements
-                if (method_exists($element, 'getElements')) {
+                // Replace in nested elements.
+                if (method_exists($element, 'getElements') === true) {
                     $replaceInElements($element->getElements(), $replacements);
                 }
             }//end foreach
         };
 
-        // Build replacements array
+        // Build replacements array.
         $replacements = [];
         foreach ($processedEntities as $entity) {
             $replacements[] = [
@@ -282,38 +284,39 @@ class AnonymizationService
             ];
         }
 
-        // Replace in headers
+        // Replace in headers.
         foreach ($phpWord->getSections() as $section) {
             foreach ($section->getHeaders() as $header) {
                 $replaceInElements($header->getElements(), $replacements);
             }
         }
 
-        // Replace in main content
+        // Replace in main content.
         foreach ($phpWord->getSections() as $section) {
             $replaceInElements($section->getElements(), $replacements);
         }
 
-        // Replace in footers
+        // Replace in footers.
         foreach ($phpWord->getSections() as $section) {
             foreach ($section->getFooters() as $footer) {
                 $replaceInElements($footer->getElements(), $replacements);
             }
         }
 
-        // Save the anonymized document to a new temp file
+        // Save the anonymized document to a new temp file.
         $anonymizedTempFile = tempnam(sys_get_temp_dir(), 'docudesk_word_anon_');
         \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007')->save($anonymizedTempFile);
 
-        // Get the parent folder and create the new file
+        // Get the parent folder and create the new file.
         $parentFolder = $node->getParent();
-        if ($parentFolder->nodeExists($anonymizedFileName)) {
+        if ($parentFolder->nodeExists($anonymizedFileName) === true) {
             $parentFolder->get($anonymizedFileName)->delete();
         }
 
         $anonymizedStream = fopen($anonymizedTempFile, 'r');
         $newFile          = $parentFolder->newFile($anonymizedFileName, $anonymizedStream);
-        // Do NOT call fclose($anonymizedStream) here; Nextcloud handles the stream lifecycle internally.        // Clean up temp files
+        // Do NOT call fclose($anonymizedStream) here; Nextcloud handles the stream lifecycle internally.
+        // Clean up temp files.
         unlink($tempFile);
         unlink($anonymizedTempFile);
 
@@ -343,71 +346,59 @@ class AnonymizationService
     {
         $startTime = microtime(true);
 
-        // Create a new file name with "_anonymized" suffix
+        // Create a new file name with "_anonymized" suffix.
         $fileName      = $node->getName();
         $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
         $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
 
-        // If the file is already anonymized, skip processing and return
-        if (str_ends_with($fileNameWithoutExtension, '_anonymized')) {
+        // If the file is already anonymized, skip processing and return.
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized') === true) {
             $this->logger->info('Skipping anonymization for file already ending with _anonymized: '.$fileName);
             return;
         }
 
-        // If no report is provided, try to get one
+        // If no report is provided, try to get one.
         if ($report === null) {
             $this->logger->debug('No report provided, trying to get existing report');
 
-            // Try to get existing report
+            // Try to get existing report.
             $report = $this->reportingService->getReport($node);
 
-            // If no report exists, create one
+            // If no report exists, create one.
             if ($report === null) {
                 $this->logger->debug('No existing report found, creating new report');
                 $report = $this->reportingService->createReport($node);
             }
 
-            // If report is not completed, process it
+            // If report is not completed, process it.
             if ($report['status'] !== 'completed') {
                 $this->logger->debug('Report not completed, processing report');
                 $report = $this->reportingService->processReport($report);
             }
         }
 
-        // Create a new file name with "_anonymized" suffix
-        $fileName      = $node->getName();
-        $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
-        $anonymizedFileName       = $fileNameWithoutExtension.'_anonymized';
-        if (!empty($fileExtension)) {
+        // Create a new file name with "_anonymized" suffix.
+        $anonymizedFileName = $fileNameWithoutExtension.'_anonymized';
+        if (empty($fileExtension) === false) {
             $anonymizedFileName .= '.'.$fileExtension;
-        }
-
-        // If the file is already anonymized, get the existing anonymization
-        if (str_ends_with($fileNameWithoutExtension, '_anonymized')) {
-            $this->logger->debug('File is already anonymized, getting existing anonymization');
-            $anonymization = $this->getAnonymization($node);
-            if ($anonymization !== null) {
-                return $anonymization;
-            }
         }
 
         $this->logger->error('we found the file');
 
-        // Use ETag as file hash if available, otherwise calculate hash
+        // Use ETag as file hash if available, otherwise calculate hash.
         $fileHash = null;
-        if (method_exists($node, 'getEtag')) {
+        if (method_exists($node, 'getEtag') === true) {
             $fileHash = $node->getEtag();
             $this->logger->debug('Using ETag as file hash: '.$fileHash);
         } else {
-            // Fall back to calculating hash
+            // Fall back to calculating hash.
             $fileHash = $this->reportingService->calculateFileHash($node->getPath());
         }
 
-        // Check if anonymization already exists for this node
+        // Check if anonymization already exists for this node.
         $anonymization = $this->getAnonymization($node);
         if ($anonymization === null) {
-            // Initialize base anonymization result array only if no existing anonymization found
+            // Initialize base anonymization result array only if no existing anonymization found.
             $anonymization       = [
                 'nodeId'             => $node->getId(),
                 'fileHash'           => $report['fileHash'] ?? $fileHash,
@@ -434,7 +425,7 @@ class AnonymizationService
         $this->logger->error('Made the anonymization object under register: '.$this->anonymizationRegisterType);
         $this->logger->error('Made the anonymization object under schema: '.$this->anonymizationSchemaType);
 
-        // Lets return the anonymization if the hash is the same
+        // Lets return the anonymization if the hash is the same.
         if ($anonymization['fileHash'] === $fileHash && $anonymization['status'] === 'completed') {
             $this->logger->debug(
                 'File hash matches existing anonymization, returning cached result',
@@ -443,42 +434,42 @@ class AnonymizationService
                         'anonymizationId' => $anonymization['id'] ?? null,
                     ]
             );
-            // Save the anonymization result before returning
+            // Save the anonymization result before returning.
             $anonymization['message'] = 'File hash matches existing anonymization, returning cached result';
             $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
             return $anonymization;
         }
 
-        // Check if anonymization is needed (if there are entities)
-        if (empty($report['entities'])) {
+        // Check if anonymization is needed (if there are entities).
+        if (empty($report['entities']) === true) {
             $this->logger->info('No entities detected for anonymization in document: '.$node->getPath());
 
-            // Update result array
+            // Update result array.
             $anonymization['status']         = 'completed';
             $anonymization['message']        = 'No entities detected for anonymization in document: '.$node->getPath();
             $anonymization['endTime']        = microtime(true);
             $anonymization['processingTime'] = $anonymization['endTime'] - $startTime;
 
-            // Save the anonymization result before returning
+            // Save the anonymization result before returning.
             $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
 
             return $anonymization;
         }
 
-        // Update anonymization with entities from report
+        // Update anonymization with entities from report.
         $anonymization['entities'] = $report['entities'];
         $anonymization['status']   = 'processing';
 
-        // Save the updated log
+        // Save the updated log.
         $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
 
-        // Process entities and find their positions in the content if not provided
+        // Process entities and find their positions in the content if not provided.
         $processedEntities = [];
         foreach ($report['entities'] as $entity) {
             $entityType = $entity['entityType'] ?? 'UNKNOWN';
             $entityText = $entity['text'] ?? '';
             $score      = $entity['score'] ?? 0;
-            if (empty($entityText)) {
+            if (empty($entityText) === true) {
                 continue;
             }
 
@@ -490,30 +481,34 @@ class AnonymizationService
             ];
         }
 
-        // If the file is a Word document, anonymize using PhpWord
-        if (in_array(strtolower($fileExtension), ['doc', 'docx'])) {
+        // If the file is a Word document, anonymize using PhpWord.
+        if (in_array(strtolower($fileExtension), ['doc', 'docx'], true) === true) {
             $newFile = $this->anonymizeWordDocument($node, $processedEntities, $anonymizedFileName);
         } else {
-            // For other file types, use the old logic
+            // For other file types, use the old logic.
             $content = $node->getContent();
-            if (empty($content)) {
+            if (empty($content) === true) {
                 throw new Exception('Failed to get content from file: '.$node->getPath());
             }
 
             $anonymizedContent = $content;
             foreach ($processedEntities as $entity) {
-                $anonymizedContent = str_ireplace($entity['text'], '['.$entity['entityType'].': '.$entity['key'].']', $anonymizedContent);
+                $anonymizedContent = str_ireplace(
+                    $entity['text'],
+                    '['.$entity['entityType'].': '.$entity['key'].']',
+                    $anonymizedContent
+                );
             }
 
             $parentFolder = $node->getParent();
-            if ($parentFolder->nodeExists($anonymizedFileName)) {
+            if ($parentFolder->nodeExists($anonymizedFileName) === true) {
                 $parentFolder->get($anonymizedFileName)->delete();
             }
 
             $newFile = $parentFolder->newFile($anonymizedFileName, $anonymizedContent);
         }//end if
 
-        // Update anonymization object
+        // Update anonymization object.
         $endTime = microtime(true);
         $anonymization['status']       = 'completed';
         $anonymization['message']      = 'Anonymization completed successfully';
@@ -523,7 +518,7 @@ class AnonymizationService
         $anonymization['endTime']            = $endTime;
         $anonymization['processingTime']     = $endTime - $startTime;
 
-        // Save the updated log
+        // Save the updated log.
         $anonymizationEntity = $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
         return $anonymizationEntity->jsonSerialize();
 
@@ -547,7 +542,7 @@ class AnonymizationService
      */
     public function getAnonymization(\OCP\Files\Node $node): ?array
     {
-        // Validate that the node is a file
+        // Validate that the node is a file.
         if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
             throw new \InvalidArgumentException('Node must be a file to get anonymization data');
         }
@@ -563,12 +558,18 @@ class AnonymizationService
 
             $anonymizations = $this->objectService->findAll($config);
 
-            // Throw error if multiple anonymizations found
+            // Throw error if multiple anonymizations found.
             if (count($anonymizations) > 1) {
-                throw new \RuntimeException('Multiple anonymizations found for node '.$node->getId().'. There should only be one anonymization per node.');
+                throw new \RuntimeException(
+                    'Multiple anonymizations found for node '.$node->getId().'. There should only be one anonymization per node.'
+                );
             }
 
-            return !empty($anonymizations) ? $anonymizations[0]->jsonSerialize() : null;
+            if (empty($anonymizations) === false) {
+                return $anonymizations[0]->jsonSerialize();
+            } else {
+                return null;
+            }
         } catch (Exception $e) {
             $this->logger->error(
                 'Failed to retrieve anonymization: '.$e->getMessage(),

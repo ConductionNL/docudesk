@@ -1,8 +1,15 @@
 <?php
 
 /**
- * @copyright Copyright (c) 2024 Conduction B.V. <info@conduction.nl>
- * @license   EUPL-1.2
+ * Admin settings for DocuDesk
+ *
+ * @category  Settings
+ * @package   OCA\DocuDesk\Settings
+ * @author    Conduction B.V. <info@conduction.nl>
+ * @copyright 2024 Conduction B.V.
+ * @license   EUPL-1.2 https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ * @version   GIT: <git_id>
+ * @link      https://www.DocuDesk.app
  *
  * DocuDesk is free software: you can redistribute it and/or modify
  * it under the terms of the European Union Public License (EUPL),
@@ -16,12 +23,6 @@
  *
  * You should have received a copy of the European Union Public License
  * along with DocuDesk. If not, see <https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12>.
- *
- * @category Settings
- * @package  OCA\DocuDesk\Settings
- * @author   Conduction B.V. <info@conduction.nl>
- * @license  EUPL-1.2
- * @link     https://github.com/conductionnl/docudesk
  */
 
 namespace OCA\DocuDesk\Settings;
@@ -62,14 +63,14 @@ class DocuDeskAdmin implements ISettings
     /**
      * L10N service for translations
      *
-     * @var IL10N
+     * @var IL10N $l
      */
     private readonly IL10N $l;
 
     /**
      * Configuration service
      *
-     * @var IConfig
+     * @var IConfig $config
      */
     private readonly IConfig $config;
 
