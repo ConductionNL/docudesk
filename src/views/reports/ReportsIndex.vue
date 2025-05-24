@@ -154,8 +154,8 @@
 		</NcAppContent>
 
 		<!-- Sidebars -->
-		<!-- <ReportsSideBar v-if="navigationStore.sidebarState.reports" />
-		<ReportSideBar v-if="navigationStore.sidebarState.report" /> -->
+		<ReportsSideBar v-if="navigationStore.sidebarState.reports" />
+		<ReportSideBar v-if="navigationStore.sidebarState.report" />
 	</div>
 </template>
 
@@ -177,8 +177,8 @@ import ChevronLeft from 'vue-material-design-icons/ChevronLeft.vue'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 
 // Sidebar components
-// import ReportsSideBar from '../../sidebars/reports/ReportsSideBar.vue'
-// import ReportSideBar from '../../sidebars/reports/ReportSideBar.vue'
+import ReportsSideBar from '../../sidebars/reports/ReportsSideBar.vue'
+import ReportSideBar from '../../sidebars/reports/ReportSideBar.vue'
 
 export default {
 	name: 'ReportsIndex',
@@ -193,8 +193,8 @@ export default {
 		ChevronLeft,
 		ChevronRight,
 		// Sidebar components
-		// ReportsSideBar,
-		// ReportSideBar,
+		ReportsSideBar,
+		ReportSideBar,
 	},
 	data() {
 		return {
@@ -342,7 +342,7 @@ export default {
 			case 'failed':
 				return 'error'
 			default:
-				return 'secondary'
+				return 'primary'
 			}
 		},
 
@@ -362,7 +362,7 @@ export default {
 			case 'low':
 				return 'success'
 			default:
-				return 'secondary'
+				return 'primary'
 			}
 		},
 

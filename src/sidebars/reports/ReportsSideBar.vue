@@ -161,6 +161,7 @@
 
 <script>
 import { NcAppSidebar, NcAppSidebarTab, NcLoadingIcon, NcNoteCard, NcSelect, NcEmptyContent } from '@nextcloud/vue'
+import { translate as t } from '@nextcloud/l10n'
 import { objectStore, navigationStore } from '../../store/store.js'
 import ChartBar from 'vue-material-design-icons/ChartBar.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
@@ -297,6 +298,14 @@ export default {
 		objectStore.fetchCollection('report')
 	},
 	methods: {
+		/**
+		 * Translation function
+		 * @param {string} app - App name
+		 * @param {string} text - Text to translate
+		 * @return {string} Translated text
+		 */
+		t,
+
 		/**
 		 * Handle status filter change
 		 * @param {string|null} status - Selected status

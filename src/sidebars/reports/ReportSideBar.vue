@@ -81,6 +81,39 @@
 
 			<div class="section">
 				<div class="sectionTitle">
+					{{ t('docudesk', 'Anonymization') }}
+				</div>
+				<div class="anonymizationContainer">
+					<div v-if="report.isAnonymized" class="anonymizedInfo">
+						<NcCounterBubble type="success">
+							{{ t('docudesk', 'Document is anonymized') }}
+						</NcCounterBubble>
+						<div class="anonymizedDetails">
+							<p>{{ t('docudesk', 'This document has been processed to remove or mask sensitive information.') }}</p>
+							<div v-if="report.anonymizedDate" class="anonymizedMeta">
+								<strong>{{ t('docudesk', 'Anonymized on:') }}</strong> {{ formatDate(report.anonymizedDate) }}
+							</div>
+						</div>
+					</div>
+					<div v-else class="notAnonymized">
+						<NcCounterBubble type="warning">
+							{{ t('docudesk', 'Document contains sensitive data') }}
+						</NcCounterBubble>
+						<div class="anonymizeAction">
+							<p>{{ t('docudesk', 'This document contains {count} sensitive entities that could be anonymized.', { count: report.entities?.length || 0 }) }}</p>
+							<NcButton type="primary" @click="anonymizeDocument">
+								<template #icon>
+									<Incognito :size="20" />
+								</template>
+								{{ t('docudesk', 'Anonymize Document') }}
+							</NcButton>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="section">
+				<div class="sectionTitle">
 					{{ t('docudesk', 'File Information') }}
 				</div>
 				<div class="statsContainer">
@@ -147,7 +180,15 @@
 						<div v-for="(entity, index) in report.entities" :key="index" class="entityItem">
 							<div class="entityHeader">
 								<span class="entityType">{{ formatEntityType(entity.entityType) }}</span>
-								<span class="entityScore">{{ (entity.score * 100).toFixed(1) }}%</span>
+								<div class="entityActions">
+									<NcCheckboxRadioSwitch
+										:checked="entity.shouldAnonymize !== undefined ? entity.shouldAnonymize : true"
+										type="switch"
+										@update:checked="toggleEntityAnonymization(index, $event)">
+										{{ t('docudesk', 'Anonymize') }}
+									</NcCheckboxRadioSwitch>
+									<span class="entityScore">{{ (entity.score * 100).toFixed(1) }}%</span>
+								</div>
 							</div>
 							<div class="entityText">{{ entity.text }}</div>
 						</div>
@@ -213,12 +254,6 @@
 					</NcEmptyContent>
 				</div>
 			</div>
-		</NcAppSidebarTab>
-
-		<NcAppSidebarTab id="retention-tab" name="Retention" :order="4">
-			<template #icon>
-				<ClockOutline :size="20" />
-			</template>
 
 			<div class="section">
 				<div class="sectionTitle">
@@ -252,16 +287,17 @@
 </template>
 
 <script>
-import { NcAppSidebar, NcAppSidebarTab, NcButton, NcEmptyContent, NcNoteCard, NcCounterBubble } from '@nextcloud/vue'
+import { NcAppSidebar, NcAppSidebarTab, NcButton, NcEmptyContent, NcNoteCard, NcCounterBubble, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 import { objectStore, navigationStore } from '../../store/store.js'
 import InformationOutline from 'vue-material-design-icons/InformationOutline.vue'
 import TagOutline from 'vue-material-design-icons/TagOutline.vue'
 import ShieldCheckOutline from 'vue-material-design-icons/ShieldCheckOutline.vue'
-import ClockOutline from 'vue-material-design-icons/ClockOutline.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Download from 'vue-material-design-icons/Download.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import Incognito from 'vue-material-design-icons/Incognito.vue'
 
 export default {
 	name: 'ReportSideBar',
@@ -272,13 +308,14 @@ export default {
 		NcEmptyContent,
 		NcNoteCard,
 		NcCounterBubble,
+		NcCheckboxRadioSwitch,
 		InformationOutline,
 		TagOutline,
 		ShieldCheckOutline,
-		ClockOutline,
 		Pencil,
 		Download,
 		Delete,
+		Incognito,
 	},
 	data() {
 		return {
@@ -302,6 +339,14 @@ export default {
 		},
 	},
 	methods: {
+		/**
+		 * Translation function
+		 * @param {string} app - App name
+		 * @param {string} text - Text to translate
+		 * @return {string} Translated text
+		 */
+		t,
+
 		/**
 		 * Format file size to human readable format
 		 * @param {number} bytes - Number of bytes
@@ -331,7 +376,7 @@ export default {
 			case 'failed':
 				return 'error'
 			default:
-				return 'secondary'
+				return 'primary'
 			}
 		},
 
@@ -342,6 +387,8 @@ export default {
 		 */
 		getRiskLevelBadgeType(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
+			case 'critical':
+				return 'error'
 			case 'high':
 				return 'error'
 			case 'medium':
@@ -349,7 +396,7 @@ export default {
 			case 'low':
 				return 'success'
 			default:
-				return 'secondary'
+				return 'primary'
 			}
 		},
 
@@ -359,6 +406,16 @@ export default {
 		 * @return {string} CSS class
 		 */
 		getRiskScoreClass(riskScore) {
+			// Handle percentage values (>=1)
+			if (riskScore >= 1) {
+				if (riskScore >= 90) return 'risk-critical'
+				if (riskScore >= 70) return 'risk-high'
+				if (riskScore >= 40) return 'risk-medium'
+				return 'risk-low'
+			}
+
+			// Handle decimal values (0-1)
+			if (riskScore >= 0.9) return 'risk-critical'
 			if (riskScore >= 0.7) return 'risk-high'
 			if (riskScore >= 0.4) return 'risk-medium'
 			return 'risk-low'
@@ -367,10 +424,18 @@ export default {
 		/**
 		 * Format risk score for display
 		 * @param {number} riskScore - Risk score
-		 * @return {string} Formatted risk score
+		 * @return {string} Formatted risk score with percentage
 		 */
 		formatRiskScore(riskScore) {
-			return Math.round(riskScore * 100)
+			if (!riskScore && riskScore !== 0) return '0%'
+
+			// If the score is already a percentage (>= 1), use it directly
+			if (riskScore >= 1) {
+				return Math.round(riskScore) + '%'
+			}
+
+			// If it's a decimal (between 0 and 1), convert to percentage
+			return Math.round(riskScore * 100) + '%'
 		},
 
 		/**
@@ -380,6 +445,8 @@ export default {
 		 */
 		getRiskExplanation(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
+			case 'critical':
+				return 'This document contains extremely sensitive information that poses severe risk and requires urgent action.'
 			case 'high':
 				return 'This document contains highly sensitive information that requires immediate attention.'
 			case 'medium':
@@ -454,6 +521,38 @@ export default {
 				showError(this.t('docudesk', 'Failed to download report'))
 			}
 		},
+
+		/**
+		 * Anonymize the document
+		 */
+		async anonymizeDocument() {
+			// Implementation depends on your API
+			// This is a placeholder - implement according to your backend
+			showError(this.t('docudesk', 'Anonymization functionality not implemented yet'))
+		},
+
+		/**
+		 * Format date for display
+		 * @param {string|number} date - Date to format
+		 * @return {string} Formatted date
+		 */
+		formatDate(date) {
+			return new Date(date).toLocaleDateString()
+		},
+
+		/**
+		 * Toggle entity anonymization
+		 * @param {number} index - Index of the entity in the entities array
+		 * @param {boolean} shouldAnonymize - New anonymization state
+		 */
+		toggleEntityAnonymization(index, shouldAnonymize) {
+			// Implementation depends on your API
+			// This is a placeholder - implement according to your backend
+			// Update the entity's anonymization state
+			if (this.report.entities && this.report.entities[index]) {
+				this.report.entities[index].shouldAnonymize = shouldAnonymize
+			}
+		},
 	},
 }
 </script>
@@ -463,6 +562,28 @@ export default {
 	padding: 16px;
 	margin-bottom: 16px;
 	border-bottom: 1px solid var(--color-border);
+}
+
+/* Entities tab specific styling */
+#entities-tab .section {
+	height: calc(100vh - 200px);
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 0;
+}
+
+#entities-tab .sectionTitle {
+	flex-shrink: 0;
+}
+
+#entities-tab .entitySummary {
+	flex-shrink: 0;
+}
+
+#entities-tab .entityList,
+#entities-tab .emptyContainer {
+	flex: 1;
+	min-height: 0;
 }
 
 .sectionTitle {
@@ -504,6 +625,10 @@ export default {
 	font-weight: bold;
 	color: white;
 	flex-shrink: 0;
+}
+
+.risk-critical {
+	background-color: #8B0000;
 }
 
 .risk-high {
@@ -577,8 +702,9 @@ export default {
 }
 
 .entityList {
-	max-height: 400px;
 	overflow-y: auto;
+	flex: 1;
+	min-height: 200px;
 }
 
 .entityItem {
@@ -602,6 +728,12 @@ export default {
 	font-size: 14px;
 }
 
+.entityActions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
 .entityScore {
 	background-color: var(--color-primary);
 	color: white;
@@ -609,6 +741,7 @@ export default {
 	border-radius: 12px;
 	font-size: 12px;
 	font-weight: 500;
+	flex-shrink: 0;
 }
 
 .entityText {
@@ -624,5 +757,47 @@ export default {
 .emptyContainer {
 	padding: 20px;
 	text-align: center;
+}
+
+.anonymizationContainer {
+	margin-bottom: 16px;
+}
+
+.anonymizedInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.anonymizedDetails {
+	padding: 12px;
+	background-color: var(--color-background-hover);
+	border-radius: 8px;
+}
+
+.anonymizedDetails p {
+	margin: 0 0 8px 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.anonymizedMeta {
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+}
+
+.notAnonymized {
+	margin-bottom: 16px;
+}
+
+.anonymizeAction {
+	margin-top: 12px;
+	padding: 12px;
+	background-color: var(--color-background-hover);
+	border-radius: 8px;
+}
+
+.anonymizeAction p {
+	margin: 0 0 12px 0;
+	color: var(--color-text-maxcontrast);
 }
 </style>
