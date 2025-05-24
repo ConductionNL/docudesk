@@ -27,6 +27,12 @@ The workflow `.github/workflows/code-quality.yml` performs the following checks:
 - **PHP**: Runs syntax checking, code style validation, and static analysis with Psalm
 - **JavaScript**: Executes ESLint and Stylelint for code quality
 
+### 5. Unit Testing
+- **PHP Unit Tests**: Runs PHPUnit tests following Nextcloud testing conventions
+- **Test Coverage**: Generates code coverage reports when possible
+- **Nextcloud Integration**: Uses proper Nextcloud test bootstrapping for app testing
+- **Mocking**: Utilizes PHPUnit mocking for database and external dependencies
+
 ## Recent Improvements
 
 ### npm Audit Output Format Handling
@@ -75,8 +81,30 @@ fi
 
 All checks generate individual reports that are:
 1. Combined into a comprehensive quality report
-2. Uploaded as build artifacts
-3. Can be sent to Slack channels for team notification
+2. Uploaded as build artifacts (including the combined report)
+3. Can be sent to Slack channels for team notification (optional)
+
+The combined report includes:
+- Repository status (stale branches, open PRs)
+- License compliance results
+- Security vulnerability findings  
+- Code linting results
+- Unit test results and coverage
+
+### Slack Integration (Optional)
+
+The workflow can optionally send notifications to Slack when quality checks complete:
+
+#### Setup Instructions
+1. **Create a Slack App**: Go to https://api.slack.com/apps and create a new app
+2. **Generate Bot Token**: Create a bot token with appropriate permissions
+3. **Add Secret**: Add the token as `SLACK_BOT_TOKEN` in your repository secrets
+4. **Configure Channel**: Update the `channel-id` in the workflow file
+
+#### Behavior
+- **With Token**: Sends quality report summary to configured Slack channel
+- **Without Token**: Workflow completes successfully, logs that Slack is skipped
+- **Never Fails**: Missing Slack configuration will not cause the workflow to fail
 
 ## Configuration Files
 
@@ -86,6 +114,66 @@ The quality checks use several configuration files:
 - `phpcs.xml` - PHP CodeSniffer rules
 - `.eslintrc.js` - ESLint configuration
 - `stylelint.config.js` - Stylelint configuration
+- `phpunit.xml` - PHPUnit testing configuration
+
+## Unit Testing Setup
+
+### PHP Unit Testing Configuration
+
+The project follows [Nextcloud unit testing guidelines](https://docs.nextcloud.com/server/latest/developer_manual/server/unit-testing.html) with the following setup:
+
+#### Directory Structure
+```
+tests/
+├── bootstrap.php          # Test environment bootstrap
+└── unit/                  # Unit tests directory
+    └── Service/           # Service layer tests
+        └── TemplateServiceTest.php
+```
+
+#### Bootstrap Configuration
+The `tests/bootstrap.php` file properly initializes the Nextcloud testing environment:
+- Loads Nextcloud base libraries
+- Sets up autoloading for test files
+- Ensures the DocuDesk app is loaded
+- Provides access to Nextcloud test utilities
+
+#### Test Conventions
+All test classes follow these conventions:
+- Extend `\Test\TestCase` (Nextcloud's base test class)
+- Use proper PHPUnit annotations and type hints
+- Include comprehensive docblocks with @psalm and @phpstan annotations
+- Follow Arrange-Act-Assert pattern in test methods
+- Use meaningful test method names starting with 'test'
+
+#### Example Test Structure
+```php
+class TemplateServiceTest extends TestCase
+{
+    private TemplateService $templateService;
+    private TemplateMapper|MockObject $mockMapper;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mockMapper = $this->createMock(TemplateMapper::class);
+        $this->templateService = new TemplateService($this->mockMapper);
+    }
+
+    public function testCreateTemplateWithValidData(): void
+    {
+        // Arrange: Set up test data
+        // Act: Call method under test
+        // Assert: Verify results
+    }
+}
+```
+
+#### Mocking Strategy
+- Use PHPUnit's `createMock()` for database mappers
+- Mock external dependencies and services
+- Verify method calls with `expects()` and `with()`
+- Use callback functions for complex parameter validation
 
 ## Running Checks Locally
 
@@ -104,6 +192,11 @@ npm run stylelint
 # Security checks
 composer audit
 npm audit
+
+# Unit tests
+./vendor/bin/phpunit --configuration phpunit.xml
+./vendor/bin/phpunit tests/unit --testdox
+./vendor/bin/phpunit --coverage-text  # With coverage report
 ```
 
 ## Troubleshooting
@@ -114,6 +207,11 @@ npm audit
 2. **Missing dependencies**: Ensure all dev dependencies are installed with `composer install` and `npm ci`
 3. **Psalm not found**: Install development tools using the composer bin plugin
 4. **Artifact path errors**: Fixed in the latest version - artifacts are downloaded into directories, so file paths need to include the artifact directory name (e.g., `reports/repo-status/repo-status.txt` instead of `reports/repo-status`)
+5. **PHPUnit not found**: Ensure PHPUnit is installed via composer and available in `vendor/bin/phpunit`
+6. **Nextcloud test bootstrap errors**: Verify the bootstrap file correctly points to Nextcloud's base.php and test libraries
+7. **Test database issues**: Unit tests should use mocks instead of real database connections
+8. **Permission errors in tests**: Ensure test directories have proper read/write permissions
+9. **Slack notification failures**: The workflow gracefully handles missing Slack tokens - no configuration needed unless you want notifications
 
 ### Recent Fixes
 

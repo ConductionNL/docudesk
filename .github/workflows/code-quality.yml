@@ -212,6 +212,84 @@ jobs:
           name: security-report
           path: security-report.txt
 
+  unit-test:
+    name: Unit Testing
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.report_only }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          extensions: mbstring, xml, ctype, json, zip, gd, curl, sqlite3
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Set up Nextcloud test environment
+        run: |
+          echo "Setting up Nextcloud test environment" > unit-test-report.txt
+          echo "===================================" >> unit-test-report.txt
+          echo "" >> unit-test-report.txt
+          
+          # Create required directories
+          mkdir -p tests/fixtures
+          mkdir -p tests/data
+          
+          # Set proper permissions for test files
+          chmod -R 755 tests/
+          
+          echo "Test environment setup completed" >> unit-test-report.txt
+          echo "" >> unit-test-report.txt
+
+      - name: Run PHP unit tests
+        run: |
+          echo "PHP Unit Test Results" >> unit-test-report.txt
+          echo "===================" >> unit-test-report.txt
+          echo "" >> unit-test-report.txt
+          
+          # Run PHPUnit tests with coverage if possible
+          if [ -f phpunit.xml ]; then
+            ./vendor/bin/phpunit --configuration phpunit.xml --colors=never --testdox >> unit-test-report.txt 2>&1 || echo "Unit tests failed - check output above" >> unit-test-report.txt
+          else
+            echo "No phpunit.xml configuration found" >> unit-test-report.txt
+            # Try to run tests directly
+            if [ -d tests/unit ]; then
+              ./vendor/bin/phpunit tests/unit --colors=never --testdox >> unit-test-report.txt 2>&1 || echo "Direct unit tests failed - check output above" >> unit-test-report.txt
+            else
+              echo "No unit tests directory found" >> unit-test-report.txt
+            fi
+          fi
+
+      - name: Generate test coverage report
+        run: |
+          echo "Test Coverage Report" >> unit-test-report.txt
+          echo "==================" >> unit-test-report.txt
+          echo "" >> unit-test-report.txt
+          
+          # Generate coverage report if possible
+          if ./vendor/bin/phpunit --version | grep -q "PHPUnit"; then
+            echo "PHPUnit version:" >> unit-test-report.txt
+            ./vendor/bin/phpunit --version >> unit-test-report.txt 2>&1 || true
+            echo "" >> unit-test-report.txt
+            
+            # Try to generate coverage report
+            ./vendor/bin/phpunit --configuration phpunit.xml --coverage-text --colors=never >> unit-test-report.txt 2>&1 || echo "Coverage report generation failed" >> unit-test-report.txt
+          else
+            echo "PHPUnit not available for coverage report" >> unit-test-report.txt
+          fi
+
+      - name: Upload unit test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: unit-test-report.txt
+
   lint-check:
     name: Code Linting Check
     runs-on: ubuntu-latest
@@ -266,7 +344,7 @@ jobs:
 
   report:
     name: Generate and Send Report
-    needs: [repo-status, license-check, security-check, lint-check]
+    needs: [repo-status, license-check, security-check, lint-check, unit-test]
     runs-on: ubuntu-latest
     if: always()
     
@@ -312,7 +390,31 @@ jobs:
             cat reports/lint-report/lint-report.txt >> combined-report.txt
           fi
 
+          if [ -f reports/unit-test-report/unit-test-report.txt ]; then
+            echo "Unit Test Results:" >> combined-report.txt
+            echo "-----------------" >> combined-report.txt
+            cat reports/unit-test-report/unit-test-report.txt >> combined-report.txt
+          fi
+
+      - name: Upload combined report
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-quality-report
+          path: combined-report.txt
+
+      - name: Check Slack configuration
+        id: slack-check
+        run: |
+          if [ -n "${{ secrets.SLACK_BOT_TOKEN }}" ]; then
+            echo "slack_available=true" >> $GITHUB_OUTPUT
+            echo "Slack token is available - notification will be sent"
+          else
+            echo "slack_available=false" >> $GITHUB_OUTPUT
+            echo "Slack token not configured - skipping notification"
+          fi
+
       - name: Send to Slack
+        if: steps.slack-check.outputs.slack_available == 'true'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           channel-id: 'your-channel-id'
@@ -320,6 +422,15 @@ jobs:
             Code Quality Report for ${{ github.repository }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             
-            ```${{ steps.combine-reports.outputs.report }}```
+            Report available as artifact: combined-quality-report
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }} 
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Log Slack skip
+        if: steps.slack-check.outputs.slack_available == 'false'
+        run: |
+          echo "Slack notification skipped - SLACK_BOT_TOKEN secret not configured"
+          echo "To enable Slack notifications:"
+          echo "1. Create a Slack app and bot token"
+          echo "2. Add SLACK_BOT_TOKEN to repository secrets"
+          echo "3. Update the channel-id in the workflow" 
