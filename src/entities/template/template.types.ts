@@ -15,4 +15,4 @@ export type TTemplate = {
     version?: string
     updated?: string
     created?: string
-} 
+}

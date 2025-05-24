@@ -47,15 +47,13 @@ import { objectStore, navigationStore } from '../../store/store.js'
 			<div class="status-badge-container">
 				<NcCounterBubble
 					:type="getStatusBadgeType(report.status)"
-					:class="{ 'status-badge': true }"
-				>
+					:class="{ 'status-badge': true }">
 					{{ report.status }}
 				</NcCounterBubble>
 				<NcCounterBubble
 					v-if="report.riskLevel"
 					:type="getRiskLevelBadgeType(report.riskLevel)"
-					:class="{ 'risk-badge': true }"
-				>
+					:class="{ 'risk-badge': true }">
 					Risk: {{ report.riskLevel }}
 				</NcCounterBubble>
 			</div>
@@ -79,7 +77,7 @@ import { objectStore, navigationStore } from '../../store/store.js'
 						</p>
 					</div>
 				</div>
-				
+
 				<div v-if="report.entities && report.entities.length > 0" class="risk-factors">
 					<h3>Risk Factors</h3>
 					<p>The risk assessment is based on {{ report.entities.length }} detected entities:</p>
@@ -131,15 +129,21 @@ import { objectStore, navigationStore } from '../../store/store.js'
 						</div>
 					</div>
 				</BTab>
-				
+
 				<!-- Entities Tab -->
 				<BTab title="Entities">
 					<div v-if="report.entities && report.entities.length > 0">
 						<div class="entity-list">
 							<div v-for="(entity, index) in report.entities" :key="index" class="entity-item">
-								<div class="entity-type">{{ entity.entityType }}</div>
-								<div class="entity-text">{{ entity.text }}</div>
-								<div class="entity-score">Score: {{ (entity.score * 100).toFixed(1) }}%</div>
+								<div class="entity-type">
+									{{ entity.entityType }}
+								</div>
+								<div class="entity-text">
+									{{ entity.text }}
+								</div>
+								<div class="entity-score">
+									Score: {{ (entity.score * 100).toFixed(1) }}%
+								</div>
 							</div>
 						</div>
 					</div>
@@ -209,8 +213,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
  * Component for displaying and managing report details
  * Includes functionality for viewing report data, downloading reports,
  * and managing report lifecycle
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
@@ -274,129 +278,129 @@ export default {
 					console.error('Error downloading report:', error)
 				})
 		},
-		
+
 		/**
 		 * Format file size to human-readable format
-		 * 
+		 *
 		 * @param {number} bytes - File size in bytes
-		 * @returns {string} Formatted file size
+		 * @return {string} Formatted file size
 		 */
 		formatFileSize(bytes) {
 			if (bytes === 0) return '0 Bytes'
-			
+
 			const k = 1024
 			const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
 			const i = Math.floor(Math.log(bytes) / Math.log(k))
-			
+
 			return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 		},
-		
+
 		/**
 		 * Format object key to display format
-		 * 
+		 *
 		 * @param {string} key - Object key
-		 * @returns {string} Formatted key
+		 * @return {string} Formatted key
 		 */
 		formatKey(key) {
 			return key
 				.replace(/_/g, ' ')
 				.replace(/\b\w/g, l => l.toUpperCase())
 		},
-		
+
 		/**
 		 * Format value for display
-		 * 
+		 *
 		 * @param {any} value - Value to format
-		 * @returns {string} Formatted value
+		 * @return {string} Formatted value
 		 */
 		formatValue(value) {
 			if (value === null || value === undefined) {
 				return 'Not available'
 			}
-			
+
 			if (typeof value === 'boolean') {
 				return value ? 'Yes' : 'No'
 			}
-			
+
 			if (Array.isArray(value)) {
 				return value.length > 0 ? value.join(', ') : 'None'
 			}
-			
+
 			if (typeof value === 'object') {
 				return JSON.stringify(value, null, 2)
 			}
-			
+
 			return value.toString()
 		},
-		
+
 		/**
 		 * Get badge type based on report status
-		 * 
+		 *
 		 * @param {string} status - Report status
-		 * @returns {string} Badge type
+		 * @return {string} Badge type
 		 */
 		getStatusBadgeType(status) {
 			switch (status) {
-				case 'completed':
-					return 'success'
-				case 'processing':
-					return 'primary'
-				case 'pending':
-					return 'warning'
-				case 'failed':
-					return 'error'
-				default:
-					return 'secondary'
+			case 'completed':
+				return 'success'
+			case 'processing':
+				return 'primary'
+			case 'pending':
+				return 'warning'
+			case 'failed':
+				return 'error'
+			default:
+				return 'secondary'
 			}
 		},
-		
+
 		/**
 		 * Get badge type based on risk level
-		 * 
+		 *
 		 * @param {string} riskLevel - Risk level
-		 * @returns {string} Badge type
+		 * @return {string} Badge type
 		 */
 		getRiskLevelBadgeType(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
-				case 'low':
-					return 'success'
-				case 'medium':
-					return 'warning'
-				case 'high':
-					return 'error'
-				case 'critical':
-					return 'error'
-				default:
-					return 'secondary'
+			case 'low':
+				return 'success'
+			case 'medium':
+				return 'warning'
+			case 'high':
+				return 'error'
+			case 'critical':
+				return 'error'
+			default:
+				return 'secondary'
 			}
 		},
-		
+
 		/**
 		 * Get CSS class for risk level
-		 * 
+		 *
 		 * @param {string} riskLevel - Risk level
-		 * @returns {string} CSS class
+		 * @return {string} CSS class
 		 */
 		getRiskLevelClass(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
-				case 'low':
-					return 'risk-low'
-				case 'medium':
-					return 'risk-medium'
-				case 'high':
-					return 'risk-high'
-				case 'critical':
-					return 'risk-critical'
-				default:
-					return 'risk-unknown'
+			case 'low':
+				return 'risk-low'
+			case 'medium':
+				return 'risk-medium'
+			case 'high':
+				return 'risk-high'
+			case 'critical':
+				return 'risk-critical'
+			default:
+				return 'risk-unknown'
 			}
 		},
-		
+
 		/**
 		 * Format risk score for display
-		 * 
+		 *
 		 * @param {number|null} score - Risk score
-		 * @returns {string} Formatted risk score
+		 * @return {string} Formatted risk score
 		 */
 		formatRiskScore(score) {
 			if (score === null || score === undefined) {
@@ -404,18 +408,18 @@ export default {
 			}
 			return Math.round(score).toString()
 		},
-		
+
 		/**
 		 * Get CSS class for risk score
-		 * 
+		 *
 		 * @param {number|null} score - Risk score
-		 * @returns {string} CSS class
+		 * @return {string} CSS class
 		 */
 		getRiskScoreClass(score) {
 			if (score === null || score === undefined) {
 				return 'risk-unknown'
 			}
-			
+
 			if (score < 20) {
 				return 'risk-low'
 			} else if (score < 50) {
@@ -426,90 +430,90 @@ export default {
 				return 'risk-critical'
 			}
 		},
-		
+
 		/**
 		 * Get explanation for risk level
-		 * 
+		 *
 		 * @param {string} riskLevel - Risk level
-		 * @returns {string} Risk explanation
+		 * @return {string} Risk explanation
 		 */
 		getRiskExplanation(riskLevel) {
 			switch (riskLevel?.toLowerCase()) {
-				case 'low':
-					return 'This document contains minimal sensitive information and poses little privacy risk.'
-				case 'medium':
-					return 'This document contains some sensitive information that may require attention.'
-				case 'high':
-					return 'This document contains significant sensitive information and should be handled with care.'
-				case 'critical':
-					return 'This document contains highly sensitive information and requires immediate attention.'
-				default:
-					return 'Risk level could not be determined for this document.'
+			case 'low':
+				return 'This document contains minimal sensitive information and poses little privacy risk.'
+			case 'medium':
+				return 'This document contains some sensitive information that may require attention.'
+			case 'high':
+				return 'This document contains significant sensitive information and should be handled with care.'
+			case 'critical':
+				return 'This document contains highly sensitive information and requires immediate attention.'
+			default:
+				return 'Risk level could not be determined for this document.'
 			}
 		},
-		
+
 		/**
 		 * Get unique entity types and their counts
-		 * 
+		 *
 		 * @param {Array} entities - List of entities
-		 * @returns {Array} Entity types with counts
+		 * @return {Array} Entity types with counts
 		 */
 		getEntityTypes(entities) {
 			if (!entities || !Array.isArray(entities)) {
 				return []
 			}
-			
+
 			const typeCounts = {}
-			
+
 			entities.forEach(entity => {
 				const type = entity.entityType || 'UNKNOWN'
 				typeCounts[type] = (typeCounts[type] || 0) + 1
 			})
-			
+
 			return Object.keys(typeCounts).map(type => ({
 				type,
-				count: typeCounts[type]
+				count: typeCounts[type],
 			})).sort((a, b) => this.getEntityWeight(b.type) - this.getEntityWeight(a.type))
 		},
-		
+
 		/**
 		 * Format entity type for display
-		 * 
+		 *
 		 * @param {string} entityType - Entity type
-		 * @returns {string} Formatted entity type
+		 * @return {string} Formatted entity type
 		 */
 		formatEntityType(entityType) {
 			return entityType
 				.replace(/_/g, ' ')
 				.replace(/\b\w/g, l => l.toUpperCase())
 		},
-		
+
 		/**
 		 * Get weight for entity type
-		 * 
+		 *
 		 * @param {string} entityType - Entity type
-		 * @returns {number} Entity weight
+		 * @return {number} Entity weight
 		 */
 		getEntityWeight(entityType) {
 			const weights = {
-				'PERSON': 5.0,
-				'EMAIL_ADDRESS': 8.0,
-				'PHONE_NUMBER': 7.0,
-				'CREDIT_CARD': 10.0,
-				'IBAN_CODE': 9.0,
-				'US_SSN': 10.0,
-				'US_BANK_NUMBER': 9.0,
-				'LOCATION': 3.0,
-				'DATE_TIME': 1.0,
-				'NRP': 8.0,
-				'IP_ADDRESS': 6.0,
-				'US_DRIVER_LICENSE': 8.0,
-				'US_PASSPORT': 9.0,
-				'US_ITIN': 9.0,
-				'MEDICAL_LICENSE': 7.0,
-				'URL': 2.0
+				PERSON: 5.0,
+				EMAIL_ADDRESS: 8.0,
+				PHONE_NUMBER: 7.0,
+				CREDIT_CARD: 10.0,
+				IBAN_CODE: 9.0,
+				US_SSN: 10.0,
+				US_BANK_NUMBER: 9.0,
+				LOCATION: 3.0,
+				DATE_TIME: 1.0,
+				NRP: 8.0,
+				IP_ADDRESS: 6.0,
+				US_DRIVER_LICENSE: 8.0,
+				US_PASSPORT: 9.0,
+				US_ITIN: 9.0,
+				MEDICAL_LICENSE: 7.0,
+				URL: 2.0,
 			}
-			
+
 			return weights[entityType] || 4.0 // Default weight
 		},
 	},

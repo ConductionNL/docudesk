@@ -87,8 +87,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
 <script>
 /**
  * Component for displaying and managing the list of documents for anonymization
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2

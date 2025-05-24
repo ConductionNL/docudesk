@@ -3,4 +3,4 @@
  * @license EUPL-1.2
  */
 
-export * from './anonymization' 
+export * from './anonymization.ts'

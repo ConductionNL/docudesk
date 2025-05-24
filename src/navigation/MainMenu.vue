@@ -33,15 +33,12 @@ import { navigationStore } from '../store/store.js'
 import {
 	NcAppNavigation,
 	NcAppNavigationList,
-	NcAppNavigationSettings,
 	NcAppNavigationItem,
 } from '@nextcloud/vue'
 
 // Icons
 import Finance from 'vue-material-design-icons/Finance.vue'
 import Incognito from 'vue-material-design-icons/Incognito.vue'
-import FileSign from 'vue-material-design-icons/FileSign.vue'
-import CameraDocument from 'vue-material-design-icons/CameraDocument.vue'
 import FileOutline from 'vue-material-design-icons/FileOutline.vue'
 
 export default {
@@ -54,9 +51,7 @@ export default {
 		// icons
 		Finance,
 		Incognito,
-		FileSign,
-		CameraDocument,
-		FileOutline
+		FileOutline,
 	},
 	methods: {
 		openLink(url, type = '') {

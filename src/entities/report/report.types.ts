@@ -1,21 +1,19 @@
 /**
  * Type definitions for the Report entity
- * 
- * @category Entity
- * @package DocuDesk
+ *
+ * @package docudesk
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
  * @version 1.0.0
- * @link https://github.com/ConductionNL/docudesk
  */
 
 /**
  * Type definition for Report entity
- * 
+ *
  * Represents the structure of a document report containing analysis results
  * for anonymization, WCAG compliance, and language level assessments.
- * 
+ *
  * @see website/docs/api/document-reports.md for documentation
  */
 export type TReport = {
@@ -153,4 +151,4 @@ export type TReport = {
     created?: string;
     /** Last update timestamp */
     updated?: string;
-} 
+}

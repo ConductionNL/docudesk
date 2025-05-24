@@ -44,15 +44,14 @@ import { objectStore, navigationStore } from '../../store/store.js'
 							<FileOutline :size="44" />
 							<NcCounterBubble v-if="report.status"
 								:type="report.status === 'active' ? 'success' : 'error'"
-								:class="{ 'status-badge': true }"
-							>
+								:class="{ 'status-badge': true }">
 								{{ report.status }}
 							</NcCounterBubble>
 						</div>
 					</template>
 					<template #subname>
 						<div class="report-subname">
-							<span v-if="report.riskLevel" 
+							<span v-if="report.riskLevel"
 								class="risk-level-badge"
 								:class="getRiskLevelClass(report.riskLevel)">
 								{{ report.riskLevel }}
@@ -95,8 +94,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
 <script>
 /**
  * Component for displaying and managing the list of reports
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
@@ -151,63 +150,63 @@ export default {
 			// Ensure we're in the files view
 			navigationStore.setSelected('files')
 		},
-		
+
 		/**
 		 * Format file path for display
 		 * @param {string} path - The file path
-		 * @returns {string} Formatted file path
+		 * @return {string} Formatted file path
 		 */
 		formatFilePath(path) {
-			if (!path) return '';
-			
+			if (!path) return ''
+
 			// If path is too long, truncate it
 			if (path.length > 40) {
-				const parts = path.split('/');
-				const fileName = parts.pop();
-				const directory = parts.join('/');
-				return directory.substring(0, 20) + '.../' + fileName;
+				const parts = path.split('/')
+				const fileName = parts.pop()
+				const directory = parts.join('/')
+				return directory.substring(0, 20) + '.../' + fileName
 			}
-			
-			return path;
+
+			return path
 		},
-		
+
 		/**
 		 * Get badge type based on report status
 		 * @param {string} status - Report status
-		 * @returns {string} Badge type
+		 * @return {string} Badge type
 		 */
 		getStatusBadgeType(status) {
 			switch (status) {
-				case 'completed':
-					return 'success'
-				case 'processing':
-					return 'primary'
-				case 'pending':
-					return 'warning'
-				case 'failed':
-					return 'error'
-				default:
-					return 'secondary'
+			case 'completed':
+				return 'success'
+			case 'processing':
+				return 'primary'
+			case 'pending':
+				return 'warning'
+			case 'failed':
+				return 'error'
+			default:
+				return 'secondary'
 			}
 		},
-		
+
 		/**
 		 * Get CSS class for risk level
 		 * @param {string} riskLevel - Risk level
-		 * @returns {string} CSS class
+		 * @return {string} CSS class
 		 */
 		getRiskLevelClass(riskLevel) {
 			switch (riskLevel.toLowerCase()) {
-				case 'low':
-					return 'risk-low'
-				case 'medium':
-					return 'risk-medium'
-				case 'high':
-					return 'risk-high'
-				case 'critical':
-					return 'risk-critical'
-				default:
-					return 'risk-unknown'
+			case 'low':
+				return 'risk-low'
+			case 'medium':
+				return 'risk-medium'
+			case 'high':
+				return 'risk-high'
+			case 'critical':
+				return 'risk-critical'
+			default:
+				return 'risk-unknown'
 			}
 		},
 	},

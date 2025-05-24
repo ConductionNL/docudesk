@@ -238,8 +238,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
  * Component for displaying and managing template details
  * Includes functionality for editing templates, managing template properties,
  * skills, items, conditions, events and downloading templates
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2

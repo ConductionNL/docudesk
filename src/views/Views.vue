@@ -34,7 +34,7 @@ export default {
 		Dashboard,
 		FileIndex,
 		AnonymizationIndex,
-		TemplatesIndex
+		TemplatesIndex,
 	},
 }
 </script>

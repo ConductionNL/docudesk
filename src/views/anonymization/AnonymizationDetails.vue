@@ -139,8 +139,8 @@ import { objectStore, navigationStore } from '../../store/store.js'
  * Component for displaying and managing document anonymization details
  * Includes functionality for editing documents, managing anonymization rules,
  * and downloading anonymized PDFs
- * 
- * @package DocuDesk
+ *
+ * @package
  * @author Conduction B.V. <info@conduction.nl>
  * @copyright Copyright (c) 2024 Conduction B.V.
  * @license EUPL-1.2
@@ -209,8 +209,8 @@ export default {
 
 		/**
 		 * Download a file from processing history
-		 * 
-		 * @param {Object} history - The history entry containing file information
+		 *
+		 * @param {object} history - The history entry containing file information
 		 */
 		downloadHistoryFile(history) {
 			const documentId = this.document.id

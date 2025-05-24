@@ -3,4 +3,4 @@
  * @license EUPL-1.2
  */
 
-export * from './template' 
+export * from './template.ts'
