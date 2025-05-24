@@ -254,8 +254,8 @@ class SettingsService
         $data = [];
         $data['objectTypes']        = [
             "report",
-            "anonymization",
             "template",
+            "entity",
         ];
         $data['openRegisters']      = false;
         $data['availableRegisters'] = [];

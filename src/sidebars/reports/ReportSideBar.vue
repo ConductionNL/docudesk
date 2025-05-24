@@ -84,14 +84,14 @@
 					{{ t('docudesk', 'Anonymization') }}
 				</div>
 				<div class="anonymizationContainer">
-					<div v-if="report.isAnonymized" class="anonymizedInfo">
+					<div v-if="report.anonymization && report.anonymization.status === 'completed'" class="anonymizedInfo">
 						<NcCounterBubble type="success">
 							{{ t('docudesk', 'Document is anonymized') }}
 						</NcCounterBubble>
 						<div class="anonymizedDetails">
 							<p>{{ t('docudesk', 'This document has been processed to remove or mask sensitive information.') }}</p>
-							<div v-if="report.anonymizedDate" class="anonymizedMeta">
-								<strong>{{ t('docudesk', 'Anonymized on:') }}</strong> {{ formatDate(report.anonymizedDate) }}
+							<div v-if="report.anonymization && report.anonymization.endTime" class="anonymizedMeta">
+								<strong>{{ t('docudesk', 'Anonymized on:') }}</strong> {{ formatDate(new Date(report.anonymization.endTime * 1000)) }}
 							</div>
 						</div>
 					</div>
@@ -182,7 +182,7 @@
 								<span class="entityType">{{ formatEntityType(entity.entityType) }}</span>
 								<div class="entityActions">
 									<NcCheckboxRadioSwitch
-										:checked="entity.shouldAnonymize !== undefined ? entity.shouldAnonymize : true"
+										:checked="entity.anonymize !== undefined ? entity.anonymize : true"
 										type="switch"
 										@update:checked="toggleEntityAnonymization(index, $event)">
 										{{ t('docudesk', 'Anonymize') }}
@@ -550,7 +550,7 @@ export default {
 			// This is a placeholder - implement according to your backend
 			// Update the entity's anonymization state
 			if (this.report.entities && this.report.entities[index]) {
-				this.report.entities[index].shouldAnonymize = shouldAnonymize
+				this.report.entities[index].anonymize = shouldAnonymize
 			}
 		},
 	},

@@ -31,7 +31,8 @@ use OCA\OpenRegister\Service\ObjectService;
  * Service for anonymizing sensitive information in documents
  *
  * This service handles the anonymization of sensitive information in documents
- * using Presidio for entity detection and replacement.
+ * using Presidio for entity detection and replacement. Anonymization results
+ * are stored directly on the report object.
  */
 class AnonymizationService
 {
@@ -57,20 +58,6 @@ class AnonymizationService
     private const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 
     /**
-     * Schema type for anonymization objects
-     *
-     * @var string
-     */
-    private string $anonymizationSchemaType;
-
-    /**
-     * Register type for anonymization objects
-     *
-     * @var string
-     */
-    private string $anonymizationRegisterType;
-
-    /**
      * Logger instance for error reporting
      *
      * @var LoggerInterface
@@ -92,7 +79,7 @@ class AnonymizationService
     private IConfig $config;
 
     /**
-     * Object service for storing anonymization data
+     * Object service for storing report data
      *
      * @var ObjectService
      */
@@ -153,21 +140,6 @@ class AnonymizationService
         $this->extractionService = $extractionService;
         $this->userSession       = $userSession;
         $this->appConfig         = $appConfig;
-
-        $this->anonymizationSchemaType = $this->appConfig->getValueString(
-            'DocuDesk',
-            'anonymization_schema',
-            'anonymization'
-        );
-
-        $this->anonymizationRegisterType = $this->appConfig->getValueString(
-            'DocuDesk',
-            'anonymization_register',
-            'document'
-        );
-
-        $this->objectService->setRegister($this->anonymizationRegisterType);
-        $this->objectService->setSchema($this->anonymizationSchemaType);
 
         // Initialize Guzzle HTTP client.
         $this->client = new Client(
@@ -328,21 +300,20 @@ class AnonymizationService
     /**
      * Process anonymization for a document based on a report
      *
-     * This method checks if anonymization is needed based on the file hash/etag,
-     * creates a new anonymized file with the same name plus "_anonymized",
-     * and replaces entities with [entityType: key] format.
+     * This method creates an anonymized file and stores the anonymization results
+     * directly on the report object.
      *
      * @param \OCP\Files\Node           $node   The file node to anonymize
      * @param array<string, mixed>|null $report The report containing detected entities (optional)
      *
-     * @return array<string, mixed>|void The anonymization result or void if no anonymization needed
+     * @return array<string, mixed> The updated report with anonymization results
      *
      * @throws Exception If anonymization fails
      *
-     * @psalm-return   array<string, mixed>|void
-     * @phpstan-return array<string, mixed>|void
+     * @psalm-return   array<string, mixed>
+     * @phpstan-return array<string, mixed>
      */
-    public function processAnonymization(\OCP\Files\Node $node, ?array $report=null)
+    public function processAnonymization(\OCP\Files\Node $node, ?array $report=null): array
     {
         $startTime = microtime(true);
 
@@ -351,10 +322,10 @@ class AnonymizationService
         $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
         $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
 
-        // If the file is already anonymized, skip processing and return.
+        // If the file is already anonymized, skip processing and return report.
         if (str_ends_with($fileNameWithoutExtension, '_anonymized') === true) {
             $this->logger->info('Skipping anonymization for file already ending with _anonymized: '.$fileName);
-            return;
+            return $report ?? [];
         }
 
         // If no report is provided, try to get one.
@@ -383,8 +354,6 @@ class AnonymizationService
             $anonymizedFileName .= '.'.$fileExtension;
         }
 
-        $this->logger->error('we found the file');
-
         // Use ETag as file hash if available, otherwise calculate hash.
         $fileHash = null;
         if (method_exists($node, 'getEtag') === true) {
@@ -395,17 +364,14 @@ class AnonymizationService
             $fileHash = $this->reportingService->calculateFileHash($node->getPath());
         }
 
-        // Check if anonymization already exists for this node.
-        $anonymization = $this->getAnonymization($node);
-        if ($anonymization === null) {
-            // Initialize base anonymization result array only if no existing anonymization found.
-            $anonymization       = [
-                'nodeId'             => $node->getId(),
-                'fileHash'           => $report['fileHash'] ?? $fileHash,
-                'originalFileName'   => $report['fileName'] ?? $node->getName(),
+        // Initialize anonymization result if not exists or if file changed.
+        if (isset($report['anonymization']) === false 
+            || ($report['anonymization']['fileHash'] ?? null) !== $fileHash
+        ) {
+            $report['anonymization'] = [
+                'fileHash'           => $fileHash,
                 'anonymizedFileName' => '',
                 'anonymizedFilePath' => '',
-                'entities'           => [],
                 'replacements'       => [],
                 'startTime'          => $startTime,
                 'endTime'            => null,
@@ -413,55 +379,44 @@ class AnonymizationService
                 'status'             => 'pending',
                 'message'            => '',
             ];
-            $anonymizationEntity = $this->objectService->saveObject(
-                object: $anonymization,
-                register: $this->anonymizationRegisterType,
-                schema: $this->anonymizationSchemaType
-            );
-            $anonymization       = $anonymizationEntity->jsonSerialize();
-            $this->logger->error('Made the anonymization object under id: '.$anonymization['id']);
-        }//end if
-
-        $this->logger->error('Made the anonymization object under register: '.$this->anonymizationRegisterType);
-        $this->logger->error('Made the anonymization object under schema: '.$this->anonymizationSchemaType);
-
-        // Lets return the anonymization if the hash is the same.
-        if ($anonymization['fileHash'] === $fileHash && $anonymization['status'] === 'completed') {
+        } else if ($report['anonymization']['status'] === 'completed') {
+            // Return existing anonymization if already completed and file hasn't changed.
             $this->logger->debug(
                 'File hash matches existing anonymization, returning cached result',
-                    [
-                        'fileHash'        => $fileHash,
-                        'anonymizationId' => $anonymization['id'] ?? null,
-                    ]
+                [
+                    'fileHash' => $fileHash,
+                    'reportId' => $report['id'] ?? null,
+                ]
             );
-            // Save the anonymization result before returning.
-            $anonymization['message'] = 'File hash matches existing anonymization, returning cached result';
-            $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
-            return $anonymization;
+            $report['anonymization']['message'] = 'File hash matches existing anonymization, returning cached result';
+            return $report;
         }
 
         // Check if anonymization is needed (if there are entities).
         if (empty($report['entities']) === true) {
             $this->logger->info('No entities detected for anonymization in document: '.$node->getPath());
 
-            // Update result array.
-            $anonymization['status']         = 'completed';
-            $anonymization['message']        = 'No entities detected for anonymization in document: '.$node->getPath();
-            $anonymization['endTime']        = microtime(true);
-            $anonymization['processingTime'] = $anonymization['endTime'] - $startTime;
+            // Update anonymization result.
+            $report['anonymization']['status']         = 'completed';
+            $report['anonymization']['message']        = 'No entities detected for anonymization in document: '.$node->getPath();
+            $report['anonymization']['endTime']        = microtime(true);
+            $report['anonymization']['processingTime'] = $report['anonymization']['endTime'] - $startTime;
 
-            // Save the anonymization result before returning.
-            $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
+            // Save the updated report.
+            // Ensure ObjectService is configured for reports before saving
+            $this->ensureReportConfiguration();
+            $this->objectService->saveObject(object: $report, uuid: $report['id'] ?? null);
 
-            return $anonymization;
+            return $report;
         }
 
-        // Update anonymization with entities from report.
-        $anonymization['entities'] = $report['entities'];
-        $anonymization['status']   = 'processing';
+        // Update anonymization status to processing.
+        $report['anonymization']['status'] = 'processing';
 
-        // Save the updated log.
-        $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
+        // Save the updated report.
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
+        $this->objectService->saveObject(object: $report, uuid: $report['id'] ?? null);
 
         // Process entities and find their positions in the content if not provided.
         $processedEntities = [];
@@ -469,16 +424,22 @@ class AnonymizationService
             $entityType = $entity['entityType'] ?? 'UNKNOWN';
             $entityText = $entity['text'] ?? '';
             $score      = $entity['score'] ?? 0;
+            $entityKey  = $entity['key'] ?? substr(\Symfony\Component\Uid\Uuid::v4()->toRfc4122(), 0, 8);
+            $anonymize  = $entity['anonymize'] ?? true;
+            
             if (empty($entityText) === true) {
                 continue;
             }
 
-            $processedEntities[] = [
-                'entityType' => $entityType,
-                'text'       => $entityText,
-                'score'      => $score,
-                'key'        => substr(\Symfony\Component\Uid\Uuid::v4()->toRfc4122(), 0, 8),
-            ];
+            // Only process entities that should be anonymized
+            if ($anonymize === true) {
+                $processedEntities[] = [
+                    'entityType' => $entityType,
+                    'text'       => $entityText,
+                    'score'      => $score,
+                    'key'        => $entityKey,
+                ];
+            }
         }
 
         // If the file is a Word document, anonymize using PhpWord.
@@ -510,127 +471,89 @@ class AnonymizationService
 
         // Update anonymization object.
         $endTime = microtime(true);
-        $anonymization['status']       = 'completed';
-        $anonymization['message']      = 'Anonymization completed successfully';
-        $anonymization['replacements'] = $processedEntities;
-        $anonymization['anonymizedFileName'] = $anonymizedFileName;
-        $anonymization['anonymizedFilePath'] = $newFile->getPath();
-        $anonymization['endTime']            = $endTime;
-        $anonymization['processingTime']     = $endTime - $startTime;
+        $report['anonymization']['status']             = 'completed';
+        $report['anonymization']['message']            = 'Anonymization completed successfully';
+        $report['anonymization']['replacements']       = $processedEntities;
+        $report['anonymization']['anonymizedFileName'] = $anonymizedFileName;
+        $report['anonymization']['anonymizedFilePath'] = $newFile->getPath();
+        $report['anonymization']['endTime']            = $endTime;
+        $report['anonymization']['processingTime']     = $endTime - $startTime;
 
-        // Save the updated log.
-        $anonymizationEntity = $this->objectService->saveObject(object: $anonymization, uuid: $anonymization['id'] ?? null);
-        return $anonymizationEntity->jsonSerialize();
+        // Save the updated report.
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
+        $this->objectService->saveObject(object: $report, uuid: $report['id'] ?? null);
+        
+        return $report;
 
     }//end processAnonymization()
 
 
     /**
-     * Get anonymization for a node
+     * Get anonymization results for a report
      *
-     * This method retrieves the anonymization data for a specific file node.
+     * This method retrieves the anonymization data from a report object.
      *
-     * @param \OCP\Files\Node $node The file node to get the anonymization for
+     * @param array $report The report object
      *
      * @return array<string, mixed>|null The anonymization data or null if not found
-     *
-     * @throws \InvalidArgumentException If the node is not a file
-     * @throws \RuntimeException If multiple anonymizations are found for the node
      *
      * @psalm-return   array<string, mixed>|null
      * @phpstan-return array<string, mixed>|null
      */
-    public function getAnonymization(\OCP\Files\Node $node): ?array
+    public function getAnonymizationFromReport(array $report): ?array
     {
-        // Validate that the node is a file.
-        if ($node->getType() !== \OCP\Files\FileInfo::TYPE_FILE) {
-            throw new \InvalidArgumentException('Node must be a file to get anonymization data');
-        }
+        return $report['anonymization'] ?? null;
 
-        try {
-            $anonymizationObjectType = 'anonymization';
-
-            $config['filters'] = [
-                'nodeId'   => $node->getId(),
-                'register' => $this->anonymizationRegisterType,
-                'schema'   => $this->anonymizationSchemaType,
-            ];
-
-            $anonymizations = $this->objectService->findAll($config);
-
-            // Throw error if multiple anonymizations found.
-            if (count($anonymizations) > 1) {
-                $errorMessage = 'Multiple anonymizations found for node '.$node->getId().'. There should only be one anonymization per node.';
-                throw new \RuntimeException($errorMessage);
-            }
-
-            if (empty($anonymizations) === false) {
-                return $anonymizations[0]->jsonSerialize();
-            } else {
-                return null;
-            }
-        } catch (Exception $e) {
-            $this->logger->error(
-                'Failed to retrieve anonymization: '.$e->getMessage(),
-                    [
-                        'nodeId'    => $node->getId(),
-                        'exception' => $e,
-                    ]
-            );
-            return null;
-        }//end try
-
-    }//end getAnonymization()
+    }//end getAnonymizationFromReport()
 
 
     /**
-     * Delete an anonymization by ID
+     * Check if a report has been anonymized
      *
-     * @param string $anonymizationId ID of the anonymization to delete
+     * @param array $report The report object
      *
-     * @return bool True if deletion was successful, false otherwise
+     * @return bool True if the report has been anonymized, false otherwise
      *
      * @psalm-return   bool
      * @phpstan-return bool
      */
-    public function deleteAnonymization(string $anonymizationId): bool
+    public function isReportAnonymized(array $report): bool
     {
-        try {
-            return $this->objectService->deleteObject('anonymization', $anonymizationId);
-        } catch (Exception $e) {
-            $this->logger->error('Failed to delete anonymization: '.$e->getMessage(), ['exception' => $e]);
-            return false;
-        }
+        $anonymization = $this->getAnonymizationFromReport($report);
+        return $anonymization !== null && ($anonymization['status'] ?? '') === 'completed';
 
-    }//end deleteAnonymization()
+    }//end isReportAnonymized()
 
 
     /**
-     * Get anonymization by ID
+     * Ensure ObjectService is configured for reports
      *
-     * @param string $anonymizationId The ID of the anonymization to retrieve
+     * This method ensures that the ObjectService is properly configured
+     * for report operations when saving reports from AnonymizationService.
      *
-     * @return array<string, mixed>|null The anonymization data or null if not found
+     * @return void
      *
-     * @psalm-return   array<string, mixed>|null
-     * @phpstan-return array<string, mixed>|null
+     * @psalm-return   void
+     * @phpstan-return void
      */
-    public function getAnonymizationById(string $anonymizationId): ?array
+    private function ensureReportConfiguration(): void
     {
-        try {
-            return $this->objectService->getObject('anonymization', $anonymizationId);
-        } catch (Exception $e) {
-            $this->logger->error(
-                'Failed to retrieve anonymization by ID: '.$e->getMessage(),
-                    [
-                        'anonymizationId' => $anonymizationId,
-                        'exception'       => $e,
-                    ]
-            );
-            return null;
-        }
+        // Get report configuration from app config (same as ReportingService)
+        $reportRegisterType = $this->appConfig->getValueString('docudesk', 'report_register', 'document');
+        $reportSchemaType   = $this->appConfig->getValueString('docudesk', 'report_schema', 'report');
+        
+        // Reset ObjectService to report configuration
+        $this->objectService->setRegister($reportRegisterType);
+        $this->objectService->setSchema($reportSchemaType);
+        
+        $this->logger->debug(
+            'ObjectService configured for reports in AnonymizationService',
+            [
+                'register' => $reportRegisterType,
+                'schema'   => $reportSchemaType,
+            ]
+        );
+    }
 
-    }//end getAnonymizationById()
-
-
-}//end class
+}//end class 
