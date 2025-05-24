@@ -321,7 +321,7 @@ export default {
 			// Global object holding schema options per register.
 			globalSchemasOptions: {},
 			// Define the object types we want to configure
-			objectTypes: ['template', 'anonymization', 'report'],
+			objectTypes: ['template', 'entity', 'report'],
 			labelOptions: {
 				options: [
 					{ label: 'Internal', value: 'internal' },
@@ -390,7 +390,7 @@ export default {
 		titleMapping(type) {
 			const mapping = {
 				template: 'Document Template',
-				anonymization: 'Anonymization Data',
+				entity: 'Entity Data',
 				report: 'Document Report',
 				publicationtype: 'Publicatie type',
 				organization: 'Organisatie',
@@ -501,9 +501,9 @@ export default {
 							data.objectTypes.push('template')
 						}
 					}
-					if (!data.objectTypes.includes('anonymization')) {
-						console.info('Adding anonymization to object types')
-						data.objectTypes.push('anonymization')
+					if (!data.objectTypes.includes('entity')) {
+						console.info('Adding entity to object types')
+						data.objectTypes.push('entity')
 					}
 					if (!data.objectTypes.includes('report')) {
 						console.info('Adding report to object types')

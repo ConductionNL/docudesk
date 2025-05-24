@@ -105,10 +105,7 @@ jobs:
 
       - name: Install and verify static analysis tools
         run: |
-          echo "Installing static analysis tools..."
-          
-          # Force install dev dependencies
-          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          echo "Verifying static analysis tools installation..."
           
           # Check if tools are available
           echo "Checking tool availability:"
@@ -120,7 +117,7 @@ jobs:
           
           # List vendor bin contents for debugging
           echo "Vendor bin contents:"
-          ls -la vendor/bin/ | head -20
+          ls -la vendor/bin/ | head -20 || echo "No vendor/bin directory found"
 
       - name: Check PHP dependencies licenses
         run: |
@@ -181,10 +178,7 @@ jobs:
 
       - name: Install and verify static analysis tools
         run: |
-          echo "Installing static analysis tools..."
-          
-          # Force install dev dependencies
-          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          echo "Verifying static analysis tools installation..."
           
           # Check if tools are available
           echo "Checking tool availability:"
@@ -196,7 +190,7 @@ jobs:
           
           # List vendor bin contents for debugging
           echo "Vendor bin contents:"
-          ls -la vendor/bin/ | head -20
+          ls -la vendor/bin/ | head -20 || echo "No vendor/bin directory found"
 
       - name: Check PHP dependencies security
         run: |
@@ -357,10 +351,7 @@ jobs:
 
       - name: Install and verify static analysis tools
         run: |
-          echo "Installing static analysis tools..."
-          
-          # Force install dev dependencies
-          composer install --dev --no-interaction --prefer-dist --optimize-autoloader
+          echo "Verifying static analysis tools installation..."
           
           # Check if tools are available
           echo "Checking tool availability:"
@@ -372,12 +363,21 @@ jobs:
           
           # List vendor bin contents for debugging
           echo "Vendor bin contents:"
-          ls -la vendor/bin/ | head -20
+          ls -la vendor/bin/ | head -20 || echo "No vendor/bin directory found"
 
       - name: Run PHP linting
         run: |
           echo "PHP Linting Report" > lint-report.txt
           echo "================" >> lint-report.txt
+          echo "" >> lint-report.txt
+          
+          # Verify we're in the correct directory and config files exist
+          echo "Working directory: $(pwd)" >> lint-report.txt
+          echo "Config files available:" >> lint-report.txt
+          [ -f phpcs.xml ] && echo "✓ phpcs.xml found" >> lint-report.txt || echo "✗ phpcs.xml missing" >> lint-report.txt
+          [ -f phpmd.xml ] && echo "✓ phpmd.xml found" >> lint-report.txt || echo "✗ phpmd.xml missing" >> lint-report.txt
+          [ -f psalm.xml ] && echo "✓ psalm.xml found" >> lint-report.txt || echo "✗ psalm.xml missing" >> lint-report.txt
+          [ -f .php-cs-fixer.dist.php ] && echo "✓ .php-cs-fixer.dist.php found" >> lint-report.txt || echo "✗ .php-cs-fixer.dist.php missing" >> lint-report.txt
           echo "" >> lint-report.txt
           
           # Basic PHP syntax check

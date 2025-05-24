@@ -112,7 +112,7 @@ class SettingsController extends Controller
     {
         // Initialize the data array.
         $data = [];
-        $data['objectTypes']        = ['template', 'anonymization', 'report'];
+        $data['objectTypes']        = ['template', 'report', 'entity'];
         $data['openRegisters']      = false;
         $data['availableRegisters'] = [];
 

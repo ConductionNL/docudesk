@@ -83,15 +83,45 @@ class ReportController extends Controller
         private readonly LoggerInterface $logger
     ) {
         // Set the object service to use the reporting service.
-        $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
+        $reportRegisterType = $this->appConfig->getValueString('docudesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
 
-        $reportObjectType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $reportObjectType = $this->appConfig->getValueString('docudesk', 'report_schema', 'report');
         $this->objectService->setSchema($reportObjectType);
 
         parent::__construct($appName, $request);
 
     }//end __construct()
+
+
+    /**
+     * Ensure ObjectService is configured for reports
+     *
+     * This method ensures that the ObjectService is properly configured
+     * for report operations.
+     *
+     * @return void
+     *
+     * @psalm-return   void
+     * @phpstan-return void
+     */
+    private function ensureReportConfiguration(): void
+    {
+        // Reset ObjectService to report configuration
+        $reportRegisterType = $this->appConfig->getValueString('docudesk', 'report_register', 'document');
+        $reportObjectType   = $this->appConfig->getValueString('docudesk', 'report_schema', 'report');
+        
+        $this->objectService->setRegister($reportRegisterType);
+        $this->objectService->setSchema($reportObjectType);
+        
+        $this->logger->debug(
+            'ObjectService configured for reports in ReportController',
+            [
+                'register' => $reportRegisterType,
+                'schema'   => $reportObjectType,
+            ]
+        );
+    }
 
 
     /**
@@ -310,6 +340,8 @@ class ReportController extends Controller
             $updatedReport = array_merge($report, $updates);
 
             // Save the updated report.
+            // Ensure ObjectService is configured for reports before saving
+            $this->ensureReportConfiguration();
             $result = $this->objectService->saveObject($reportObjectType, $updatedReport);
 
             return new JSONResponse($result);
@@ -466,6 +498,9 @@ class ReportController extends Controller
             if (isset($processedReport['filePath']) === false || isset($processedReport['fileName']) === false) {
                 $processedReport['filePath'] = $filePath;
                 $processedReport['fileName'] = $fileName;
+                
+                // Ensure ObjectService is configured for reports before saving
+                $this->ensureReportConfiguration();
                 $processedReport = $this->objectService->saveObject($reportObjectType, $processedReport);
             }
 

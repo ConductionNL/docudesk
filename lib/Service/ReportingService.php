@@ -30,6 +30,7 @@ use Symfony\Component\Uid\Uuid;
 use OCA\DocuDesk\Service\AnonymizationService;
 use OCA\OpenRegister\Service\ObjectService;
 use OCA\OpenRegister\Db\ObjectEntity;
+use OCA\DocuDesk\Service\EntityService;
 
 /**
  * Service for generating and managing document reports
@@ -74,6 +75,12 @@ class ReportingService
      */
     public $reportSchemaType;
 
+    /**
+     * Entity service for managing entity objects
+     *
+     * @var EntityService
+     */
+    private EntityService $entityService;
 
     /**
      * Constructor for ReportingService
@@ -85,6 +92,7 @@ class ReportingService
      * @param IRootFolder          $rootFolder           Root folder service for accessing files
      * @param AnonymizationService $anonymizationService Service for anonymizing documents
      * @param IAppConfig           $appConfig            App configuration service
+     * @param EntityService        $entityService        Service for managing entity objects
      *
      * @return void
      */
@@ -95,7 +103,8 @@ class ReportingService
         ExtractionService $extractionService,
         IRootFolder $rootFolder,
         AnonymizationService $anonymizationService,
-        IAppConfig $appConfig
+        IAppConfig $appConfig,
+        EntityService $entityService
     ) {
         $this->logger            = $logger;
         $this->config            = $config;
@@ -104,15 +113,16 @@ class ReportingService
         $this->rootFolder        = $rootFolder;
         $this->anonymizationService = $anonymizationService;
         $this->appConfig            = $appConfig;
+        $this->entityService        = $entityService;
 
         // Set this service in the anonymization service to avoid circular dependency.
         $this->anonymizationService->setReportingService($this);
 
         // Set the object service to use the reporting service.
-        $reportRegisterType = $this->appConfig->getValueString('DocuDesk', 'report_register', 'document');
+        $reportRegisterType = $this->appConfig->getValueString('docudesk', 'report_register', 'document');
         $this->objectService->setRegister($reportRegisterType);
 
-        $reportSchemaType = $this->appConfig->getValueString('DocuDesk', 'report_schema', 'report');
+        $reportSchemaType = $this->appConfig->getValueString('docudesk', 'report_schema', 'report');
         $this->objectService->setSchema($reportSchemaType);
 
         $this->reportRegisterType = $reportRegisterType;
@@ -191,6 +201,9 @@ class ReportingService
         $this->logger->info('Processing report for node: '.$node->getId());
 
         $report['status'] = 'processing';
+        
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Extract text from document.
@@ -203,6 +216,9 @@ class ReportingService
             $this->logger->error('Error extracting text from document: '.$e->getMessage(), ['exception' => $e]);
             $report['status']       = 'failed';
             $report['errorMessage'] = 'Error extracting text from document: '.$e->getMessage();
+            
+            // Ensure ObjectService is configured for reports before saving
+            $this->ensureReportConfiguration();
             $this->objectService->saveObject(object: $report, uuid: $report['id']);
             return  $report;
         }
@@ -221,6 +237,9 @@ class ReportingService
             ];
 
             $report['riskLevel'] = 'low';
+            
+            // Ensure ObjectService is configured for reports before saving
+            $this->ensureReportConfiguration();
             $this->objectService->saveObject(object: $report, uuid: $report['id']);
             return  $report;
         }
@@ -228,15 +247,8 @@ class ReportingService
         // Send text to Presidio for analysis and get entities.
         $presidioResults = $this->analyzeWithPresidio($report['text'], $threshold);
 
-        // Map entity_type to entityType in each entity.
-        $report['entities'] = array_map(
-            function ($entity) {
-                $entity['entityType'] = $entity['entity_type'];
-                unset($entity['entity_type']);
-                return $entity;
-            },
-                $presidioResults['entities_found']
-        );
+        // Process entities from Presidio with new enhanced logic
+        $report['entities'] = $this->processEntitiesFromPresidio($presidioResults['entities_found']);
 
         if (empty($report['entities']) === true) {
             $this->logger->debug('No entities detected in document: '.$filePath);
@@ -252,22 +264,16 @@ class ReportingService
         $report['riskLevel'] = $this->getRiskLevel($report['riskScore']);
 
         // Save updated report.
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Process anonymization if enabled.
-        // @todo the detecting of settings seems to be broken, we should fix this.
         if ($this->isAnonymizationEnabled() === true && empty($report['entities']) === false) {
-            $this->anonymizationService->processAnonymization($node, $report);
+            $report = $this->anonymizationService->processAnonymization($node, $report);
         }
 
-        $this->anonymizationService->processAnonymization($node, $report);
-
-        // Process the report now if synchronous processing is enabled.
-        if ($this->isSynchronousProcessingEnabled() === true) {
-            return $this->processReport($report);
-        }
-
-        return $this->processReport($report);
+        return $report;
 
     }//end processReport()
 
@@ -340,6 +346,156 @@ class ReportingService
         }//end try
 
     }//end analyzeWithPresidio()
+
+
+    /**
+     * Process entities from Presidio results with enhanced logic
+     *
+     * This method processes entities from Presidio by:
+     * - Making entities unique by text property
+     * - Adding key and anonymize boolean to each entity
+     * - Looking up or creating entity objects
+     * - Storing entity object IDs in the report entities
+     *
+     * @param array<int,array{
+     *     entity_type: string,
+     *     start: int,
+     *     end: int,
+     *     score: float,
+     *     text: string
+     * }> $presidioEntities Raw entities from Presidio
+     *
+     * @return array<int,array{
+     *     text: string,
+     *     score: float,
+     *     entityType: string,
+     *     start: int,
+     *     end: int,
+     *     key: string,
+     *     anonymize: bool,
+     *     entityObjectId: string
+     * }> Processed entities with enhanced data
+     *
+     * @throws Exception If entity processing fails
+     *
+     * @psalm-return   array
+     * @phpstan-return array
+     */
+    private function processEntitiesFromPresidio(array $presidioEntities): array
+    {
+        // Make entities unique by text property and aggregate scores
+        $uniqueEntities = [];
+        
+        foreach ($presidioEntities as $entity) {
+            $text       = $entity['text'] ?? '';
+            $entityType = $entity['entity_type'] ?? 'UNKNOWN';
+            $score      = $entity['score'] ?? 0.0;
+            $start      = $entity['start'] ?? 0;
+            $end        = $entity['end'] ?? 0;
+            
+            if (empty($text) === true) {
+                continue;
+            }
+            
+            // Use text as unique key for deduplication
+            $uniqueKey = $text;
+            
+            if (isset($uniqueEntities[$uniqueKey]) === true) {
+                // If entity already exists, keep the higher score
+                if ($score > $uniqueEntities[$uniqueKey]['score']) {
+                    $uniqueEntities[$uniqueKey]['score'] = $score;
+                    $uniqueEntities[$uniqueKey]['start'] = $start;
+                    $uniqueEntities[$uniqueKey]['end']   = $end;
+                }
+            } else {
+                // New unique entity
+                $uniqueEntities[$uniqueKey] = [
+                    'text'       => $text,
+                    'score'      => $score,
+                    'entityType' => $entityType,
+                    'start'      => $start,
+                    'end'        => $end,
+                ];
+            }
+        }
+        
+        // Process each unique entity
+        $processedEntities = [];
+        
+        foreach ($uniqueEntities as $entity) {
+            try {
+                // Find or create entity object
+                $entityObject = $this->entityService->findOrCreateEntity(
+                    $entity['text'],
+                    $entity['entityType']
+                );
+                
+                // Verify the entity was created successfully before trying to update statistics
+                if (empty($entityObject['id']) === true) {
+                    throw new Exception('Entity object has no ID');
+                }
+                
+                // Update entity statistics
+                $this->entityService->updateEntityStatistics(
+                    $entityObject['id'],
+                    $entity['score']
+                );
+                
+                // Generate unique key for this document-specific entity
+                $entityKey = substr(\Symfony\Component\Uid\Uuid::v4()->toRfc4122(), 0, 8);
+                
+                // Add enhanced data to entity
+                $enhancedEntity = [
+                    'text'           => $entity['text'],
+                    'score'          => $entity['score'],
+                    'entityType'     => $entity['entityType'],
+                    'start'          => $entity['start'],
+                    'end'            => $entity['end'],
+                    'key'            => $entityKey,
+                    'anonymize'      => true, // Default to true for security-first approach
+                    'entityObjectId' => $entityObject['id'],
+                ];
+                
+                $processedEntities[] = $enhancedEntity;
+                
+                $this->logger->debug(
+                    'Processed entity: '.$entity['text'].' with object ID: '.$entityObject['id']
+                );
+                
+            } catch (Exception $e) {
+                $this->logger->error(
+                    'Failed to process entity: '.$e->getMessage(),
+                    [
+                        'entity'    => $entity,
+                        'exception' => $e,
+                    ]
+                );
+                
+                // Add entity without object reference as fallback
+                $entityKey = substr(\Symfony\Component\Uid\Uuid::v4()->toRfc4122(), 0, 8);
+                
+                $fallbackEntity = [
+                    'text'           => $entity['text'],
+                    'score'          => $entity['score'],
+                    'entityType'     => $entity['entityType'],
+                    'start'          => $entity['start'],
+                    'end'            => $entity['end'],
+                    'key'            => $entityKey,
+                    'anonymize'      => true,
+                    'entityObjectId' => null, // No object reference
+                ];
+                
+                $processedEntities[] = $fallbackEntity;
+            }//end try
+        }//end foreach
+        
+        $this->logger->info(
+            'Processed '.count($processedEntities).' unique entities from '.count($presidioEntities).' detected entities'
+        );
+        
+        return $processedEntities;
+        
+    }//end processEntitiesFromPresidio()
 
 
     /**
@@ -634,6 +790,8 @@ class ReportingService
         }
 
         // Save the updated report.
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
         $this->objectService->saveObject(object: $report, uuid: $report['id']);
 
         // Process the report now if synchronous processing is enabled.
@@ -787,6 +945,9 @@ class ReportingService
 
                         $report['status']       = 'failed';
                         $report['errorMessage'] = 'Missing nodeId';
+                        
+                        // Ensure ObjectService is configured for reports before saving
+                        $this->ensureReportConfiguration();
                         $this->objectService->saveObject(object: $report, uuid: $report['id']);
                         continue;
                     }
@@ -902,6 +1063,18 @@ class ReportingService
             throw new \InvalidArgumentException('Node must be a file to create a report');
         }
 
+        // Skip reporting for anonymized files (safeguard)
+        $fileName = $node->getName();
+        $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
+        
+        if (str_ends_with($fileNameWithoutExtension, '_anonymized') === true) {
+            $this->logger->info(
+                'Skipping report creation for anonymized file: '.$fileName.' (safeguard check)',
+                ['nodeId' => $node->getId(), 'path' => $node->getPath()]
+            );
+            return null;
+        }
+
         // Check if reporting is enabled.
         if ($this->isReportingEnabled() === false) {
             $this->logger->debug('Reporting is disabled, skipping report creation for node: '.$node->getId());
@@ -957,6 +1130,8 @@ class ReportingService
         }
 
         // Save the report.
+        // Ensure ObjectService is configured for reports before saving
+        $this->ensureReportConfiguration();
         $reportEntity = $this->objectService->saveObject(object: $report);
         $report       = $reportEntity->jsonSerialize();
 
@@ -971,5 +1146,47 @@ class ReportingService
 
     }//end createReport()
 
+
+    /**
+     * Ensure ObjectService is configured for reports
+     *
+     * This method ensures that the ObjectService is properly configured
+     * for report operations, as it might have been changed by EntityService.
+     *
+     * @return void
+     *
+     * @psalm-return   void
+     * @phpstan-return void
+     */
+    private function ensureReportConfiguration(): void
+    {
+        // Reset ObjectService to report configuration
+        $this->objectService->setRegister($this->reportRegisterType);
+        $this->objectService->setSchema($this->reportSchemaType);
+        
+        $this->logger->debug(
+            'ObjectService configured for reports',
+            [
+                'register' => $this->reportRegisterType,
+                'schema'   => $this->reportSchemaType,
+            ]
+        );
+        
+        // Verify configuration was set correctly
+        $currentRegister = $this->objectService->getRegister();
+        $currentSchema = $this->objectService->getSchema();
+        
+        if ($currentRegister !== $this->reportRegisterType || $currentSchema !== $this->reportSchemaType) {
+            $this->logger->warning(
+                'ObjectService configuration mismatch after setting',
+                [
+                    'expected_register' => $this->reportRegisterType,
+                    'actual_register'   => $currentRegister,
+                    'expected_schema'   => $this->reportSchemaType,
+                    'actual_schema'     => $currentSchema,
+                ]
+            );
+        }
+    }
 
 }//end class

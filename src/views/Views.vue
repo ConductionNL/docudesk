@@ -7,7 +7,7 @@ import { navigationStore } from '../store/store.js'
 	<NcAppContent>
 		<template #default>
 			<Dashboard v-if="navigationStore.selected === 'dashboard'" />
-			<FileIndex v-if="navigationStore.selected === 'files'" />
+			<ReportsIndex v-if="navigationStore.selected === 'reports'" />
 			<AnonymizationIndex v-if="navigationStore.selected === 'anonymization'" />
 			<TemplatesIndex v-if="navigationStore.selected === 'templates'" />
 		</template>
@@ -23,7 +23,7 @@ import { NcAppContent } from '@nextcloud/vue'
 
 // View components
 import Dashboard from './dashboard/DashboardIndex.vue'
-import FileIndex from './files/FileIndex.vue'
+import ReportsIndex from './reports/ReportsIndex.vue'
 import AnonymizationIndex from './anonymization/AnonymizationIndex.vue'
 import TemplatesIndex from './templates/TemplatesIndex.vue'
 
@@ -32,7 +32,7 @@ export default {
 	components: {
 		NcAppContent,
 		Dashboard,
-		FileIndex,
+		ReportsIndex,
 		AnonymizationIndex,
 		TemplatesIndex,
 	},

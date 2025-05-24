@@ -2,7 +2,7 @@
 	<NcContent app-name="docudesk">
 		<MainMenu />
 		<Views />
-		<SideBars />
+		<!-- <SideBars /> -->
 		<Modals />
 		<Dialogs />
 	</NcContent>
@@ -14,7 +14,7 @@ import MainMenu from './navigation/MainMenu.vue'
 import Modals from './modals/Modals.vue'
 import Dialogs from './dialogs/Dialogs.vue'
 import Views from './views/Views.vue'
-import SideBars from './sidebars/SideBars.vue'
+// import SideBars from './sidebars/SideBars.vue'
 import { objectStore } from './store/store.js'
 
 export default {
@@ -25,7 +25,7 @@ export default {
 		Modals,
 		Dialogs,
 		Views,
-		SideBars,
+		// SideBars,
 	},
 	async mounted() {
 		// Preload all collections when the app starts

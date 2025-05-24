@@ -10,9 +10,9 @@ import { navigationStore } from '../store/store.js'
 					<Finance :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<NcAppNavigationItem :active="navigationStore.selected === 'files'" name="Files" @click="navigationStore.setSelected('files')">
+			<NcAppNavigationItem :active="navigationStore.selected === 'reports'" name="Reports" @click="navigationStore.setSelected('reports')">
 				<template #icon>
-					<FileOutline :size="20" />
+					<FileDocumentOutline :size="20" />
 				</template>
 			</NcAppNavigationItem>
 			<NcAppNavigationItem :active="navigationStore.selected === 'anonymization'" name="Anonymization" @click="navigationStore.setSelected('anonymization')">
@@ -40,6 +40,7 @@ import {
 import Finance from 'vue-material-design-icons/Finance.vue'
 import Incognito from 'vue-material-design-icons/Incognito.vue'
 import FileOutline from 'vue-material-design-icons/FileOutline.vue'
+import FileDocumentOutline from 'vue-material-design-icons/FileDocumentOutline.vue'
 
 export default {
 	name: 'MainMenu',
@@ -52,6 +53,7 @@ export default {
 		Finance,
 		Incognito,
 		FileOutline,
+		FileDocumentOutline,
 	},
 	methods: {
 		openLink(url, type = '') {
