@@ -11,76 +11,139 @@ The entity management system consists of:
 - **Anonymization Control**: Per-entity anonymization settings stored on reports
 - **Robust Error Handling**: Comprehensive error handling and fallback mechanisms
 - **Performance Optimization**: Automatic skipping of anonymized files to prevent unnecessary processing
-
-## Performance Optimizations
-
-### Anonymized File Handling
-
-To optimize performance and prevent unnecessary processing overhead, DocuDesk automatically skips report generation for files that end with '_anonymized'. This prevents:
-
-- **Duplicate Processing**: Anonymized files are already processed results and don't need entity detection
-- **Performance Drain**: Avoiding unnecessary text extraction and Presidio API calls
-- **Resource Usage**: Reducing database operations and storage requirements
-- **Report Clutter**: Preventing duplicate reports in the system
-
-The system implements this optimization at multiple levels:
-
-1. **FileEventListener**: Primary check when files are created/uploaded
-2. **ReportingService**: Safeguard check in createReport method
-3. **Logging**: Debug information when files are skipped
-
-```php
-// Example: Files that are automatically skipped
-- document_anonymized.docx
-- report_2024_anonymized.pdf  
-- sensitive_data_anonymized.txt
-
-// Files that are processed normally
-- document.docx
-- report_2024.pdf
-- sensitive_data.txt
-```
+- **Frontend Interface**: Comprehensive web interface for entity management
 
 ## Entity Objects
 
 Entity objects are stored separately from reports and contain:
 
 - `text`: The actual text content of the entity
-- `entityType`: The type of entity (PERSON, ORGANIZATION, etc.)
+- `entityType`: The type of entity (PERSON, EMAIL_ADDRESS, etc.)
 - `occurrenceCount`: Number of times this entity has been detected
 - `averageConfidence`: Average confidence score across all detections
 - `firstDetected`: Timestamp of first detection
-- `lastDetected`: Timestamp of last detection
+- `lastDetected`: Timestamp of most recent detection
 
 ## Entity Processing
 
-When Presidio detects entities in a document, the system:
+When a document is processed:
 
-1. **Deduplicates entities** by text content (unique by text property)
-2. **Finds or creates entity objects** for each unique entity
-3. **Validates entity creation** to ensure objects have valid IDs
-4. **Updates statistics** in the entity object with robust error handling
-5. **Generates document-specific keys** for anonymization
-6. **Adds anonymization flags** (default: true for security-first approach)
-7. **Links entities to objects** via entityObjectId
-8. **Provides fallback processing** if entity object operations fail
+1. **Text Extraction**: Document content is extracted
+2. **Entity Detection**: Presidio analyzes the text for sensitive entities
+3. **Entity Deduplication**: Identical entities are merged
+4. **Statistics Update**: Occurrence counts and confidence scores are updated
+5. **Report Association**: Entities are linked to the report
 
-## Error Handling
+## Entity Types
+
+DocuDesk supports detection of various entity types:
+
+- **PERSON**: Names of individuals
+- **EMAIL_ADDRESS**: Email addresses
+- **PHONE_NUMBER**: Phone numbers
+- **CREDIT_CARD**: Credit card numbers
+- **IBAN_CODE**: International Bank Account Numbers
+- **ORGANIZATION**: Organization names
+- **LOCATION**: Geographic locations
+- **IP_ADDRESS**: IP addresses
+- **URL**: Web addresses
+
+## Frontend Interface
+
+### Entities Overview
+
+The entities interface provides:
+
+- **Entity List**: Table view of all detected entities
+- **Filtering**: Filter by entity type, confidence level
+- **Statistics**: Overview of entity counts and types
+- **Search**: Find specific entities by text content
+
+### Entity Details
+
+Individual entity views show:
+
+- **Entity Information**: Text content and type
+- **Statistics**: Occurrence count, confidence scores, detection dates
+- **Related Reports**: List of reports containing this entity
+- **Actions**: Edit or delete entity
+
+### Sidebars
+
+Two sidebar types are available:
+
+1. **Entities Sidebar**: Overview statistics and filters
+2. **Entity Sidebar**: Details for a specific entity
+
+## Performance Optimizations
+
+### Anonymized File Skipping
+
+To prevent unnecessary processing overhead, the system automatically skips creating reports for files that end with '_anonymized'. This optimization:
+
+- Reduces server load
+- Prevents duplicate processing
+- Improves overall system performance
+
+The check is implemented at multiple levels:
+- File event listener level (primary check)
+- Report service level (safeguard)
+
+### Error Handling
 
 The system includes comprehensive error handling:
 
-- **Entity Creation Validation**: Verifies entity objects are created with valid IDs
-- **Entity Not Found Handling**: Graceful fallback when entity lookups fail
-- **Configuration Validation**: Ensures consistent app name usage across services
-- **Fallback Processing**: Continues processing even if individual entities fail
-- **Detailed Logging**: Comprehensive logging for debugging and monitoring
+- **Configuration Consistency**: Ensures proper app name usage across services
+- **Entity Creation**: Handles race conditions in entity creation
+- **Report Configuration**: Maintains proper ObjectService configuration
+- **Logging**: Detailed logging for debugging and monitoring
 
-## Configuration Consistency
+## Configuration
 
-All services now use consistent configuration naming:
-- App name: `'docudesk'` (lowercase) across all services
-- Entity register: Configurable via `entity_register` setting
-- Entity schema: Configurable via `entity_schema` setting
+Entity management is configured through app settings:
+
+```php
+// Entity configuration
+$entityRegisterType = $this->appConfig->getValueString('docudesk', 'entity_register', 'document');
+$entitySchemaType = $this->appConfig->getValueString('docudesk', 'entity_schema', 'entity');
+```
+
+## API Endpoints
+
+Entity management provides REST API endpoints:
+
+- `GET /entity` - List all entities
+- `GET /entity/{id}` - Get specific entity
+- `PUT /entity/{id}` - Update entity
+- `DELETE /entity/{id}` - Delete entity
+- `GET /entity/{id}/used` - Get reports containing entity
+
+## Best Practices
+
+1. **Regular Monitoring**: Monitor entity detection accuracy
+2. **Performance Tuning**: Adjust confidence thresholds as needed
+3. **Data Cleanup**: Regularly review and clean up false positives
+4. **Privacy Compliance**: Ensure entity handling meets privacy requirements
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Entity Not Found Errors**: Usually caused by configuration inconsistencies
+2. **Performance Issues**: Check for processing of anonymized files
+3. **Missing Entities**: Verify Presidio service connectivity
+
+### Debug Information
+
+Enable debug logging to see detailed entity processing information:
+
+```php
+$this->logger->debug('Entity processing details', [
+    'entityId' => $entityId,
+    'entityType' => $entityType,
+    'confidence' => $confidence
+]);
+```
 
 ## Report Entity Structure
 
@@ -94,12 +157,12 @@ Entities in reports now include enhanced information:
 - `anonymize`: Boolean flag for anonymization control
 - `entityObjectId`: Reference to the centralized entity object (null if creation failed)
 
-## Configuration
+## Configuration Consistency
 
-Entity management can be configured through the admin settings:
-
-- **Entity Register**: Which register to use for storing entity objects (default: 'document')
-- **Entity Schema**: Which schema to use for entity objects (default: 'entity')
+All services now use consistent configuration naming:
+- App name: `'docudesk'` (lowercase) across all services
+- Entity register: Configurable via `entity_register` setting
+- Entity schema: Configurable via `entity_schema` setting
 
 ## Anonymization Integration
 
