@@ -40,7 +40,6 @@ namespace OCA\Filinq\Service;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
-use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
@@ -817,11 +816,14 @@ class DossierManagementService {
 
 		try {
 			$userFolder = $this->rootFolder->getUserFolder($user->getUID());
-			if ($userFolder->nodeExists('Filinq') === true) {
-				$parent = $userFolder->get('Filinq');
-			} else {
-				$parent = $userFolder->newFolder('Filinq');
+			// Ensure-then-read, rather than if/else or a ternary: phpmd rejects
+			// the else and phpcs rejects the inline if, and this reads better
+			// than either.
+			if ($userFolder->nodeExists('Filinq') === false) {
+				$userFolder->newFolder('Filinq');
 			}
+
+			$parent = $userFolder->get('Filinq');
 
 			if (($parent instanceof Folder) === false) {
 				throw new RuntimeException('Filinq is not a folder.', 500);
@@ -829,11 +831,24 @@ class DossierManagementService {
 
 			$safe = $this->safeFolderName(name: $name);
 
-			if ($parent->nodeExists($safe) === true) {
-				return $parent->get($safe);
+			if ($parent->nodeExists($safe) === false) {
+				return $parent->newFolder($safe);
 			}
 
-			return $parent->newFolder($safe);
+			// `get()` answers a Node, and a FILE can carry this name — a user
+			// who saved "Mijn dossier" into Filinq/ occupies it. Returning that
+			// against a `: Folder` signature is a TypeError, which the catch
+			// below rewrites into "Could not create the dossier folder", naming
+			// the wrong cause. Say what is actually in the way.
+			$existing = $parent->get($safe);
+			if (($existing instanceof Folder) === false) {
+				throw new RuntimeException(
+					'Filinq/' . $safe . ' already exists and is a file, not a folder.',
+					500
+				);
+			}
+
+			return $existing;
 		} catch (Throwable $e) {
 			throw new RuntimeException('Could not create the dossier folder: ' . $e->getMessage(), 500, $e);
 		}
@@ -940,7 +955,9 @@ class DossierManagementService {
 			$nodes = $this->rootFolder->getUserFolder($user->getUID())->getById($fileId);
 
 			return ($nodes[0] ?? null);
-		} catch (NotFoundException | Throwable $e) {
+		} catch (Throwable $e) {
+			// `Throwable` alone: naming NotFoundException beside it caught
+			// nothing extra, and phpstan reports the unreachable arm.
 			return null;
 		}
 
