@@ -19,7 +19,10 @@ declare(strict_types=1);
 
 namespace OCA\Filinq\Tests\Unit\Service;
 
+use OCA\Filinq\Service\DossierContextService;
+use OCA\Filinq\Service\DossierFileService;
 use OCA\Filinq\Service\DossierManagementService;
+use OCA\Filinq\Service\DossierObjectReader;
 use OCA\Filinq\Service\DossierObjectRepository;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -109,10 +112,28 @@ final class DossierManagementServiceTest extends TestCase {
 
 		$this->repository->method('objectService')->willReturn($this->objectService());
 
-		$this->service = new DossierManagementService(
+		$files = new DossierFileService(
 			$this->repository,
 			$this->rootFolder,
 			$this->userSession,
+			$this->createMock(LoggerInterface::class),
+		);
+		$reader = new DossierObjectReader();
+
+		// The collaborators are REAL here, not doubles. They were private
+		// methods on this class until the decomposition, so every case below
+		// was written against their behaviour; stubbing them now would keep
+		// the tests green while proving nothing about the split.
+		$this->service = new DossierManagementService(
+			$this->repository,
+			$files,
+			new DossierContextService(
+				$this->repository,
+				$files,
+				$reader,
+				$this->createMock(LoggerInterface::class),
+			),
+			$reader,
 			$this->createMock(LoggerInterface::class),
 		);
 
