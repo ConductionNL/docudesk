@@ -65,7 +65,7 @@
 						write regardless of what is offered here.
 					-->
 					<NcButton
-						v-for="target in dossierStore.dossier.availableTransitions"
+						v-for="target in offeredTransitions"
 						:key="target"
 						variant="secondary"
 						:disabled="dossierStore.saving"
@@ -323,6 +323,32 @@ export default {
 
 		hasUnknownBase() {
 			return (this.dossierStore.dossier?.bases || []).some((b) => !b.known)
+		},
+
+		/**
+		 * The lifecycle transitions this instance can actually carry out.
+		 *
+		 * `published` is dropped when the Woo publication pipeline is absent.
+		 * The section below already says publishing is unavailable here, and
+		 * the button offered it anyway: pressing it moved the dossier to
+		 * `published` without publishing anything, leaving a record that says
+		 * a Woo request was answered when nothing left the instance. That is
+		 * worse than a missing button, because the next reader has no way to
+		 * tell the two apart.
+		 *
+		 * The server still guards every write. This only stops the UI
+		 * offering one it knows means nothing here.
+		 *
+		 * @return {Array<string>} The targets to render a button for.
+		 *
+		 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
+		 */
+		offeredTransitions() {
+			const targets = this.dossierStore.dossier?.availableTransitions || []
+			if (this.dossierStore.dossier?.capabilities?.publicationPipeline) {
+				return targets
+			}
+			return targets.filter((target) => target !== 'published')
 		},
 
 		/**
