@@ -21,6 +21,7 @@ namespace OCA\Filinq\Tests\Unit\Service;
 
 use OCA\Filinq\Service\DossierManagementService;
 use OCA\Filinq\Service\DossierObjectRepository;
+use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\IUser;
@@ -633,8 +634,8 @@ final class DossierManagementServiceTest extends TestCase {
 		try {
 			$this->service->create('Woo 2026-002');
 		} catch (RuntimeException $e) {
-			// detail() re-reads through the fake, which does not serve the new
-			// object. The SAVE is what this test is about.
+			// The re-read in detail() goes through the fake, which does not
+			// serve the new object. The SAVE is what this test is about.
 		}
 
 		self::assertNotSame([], $this->saved, 'create() must write the object');
@@ -693,5 +694,127 @@ final class DossierManagementServiceTest extends TestCase {
 		self::assertFalse($detail['publication']['installed']);
 
 	}//end testPublicationIsPresenceGated()
+
+	/**
+	 * The Filinq directory is created when it is not there yet, and the dossier
+	 * folder is made inside it.
+	 *
+	 * This used to read `newFolder()`'s answer directly. Ensure-then-read is
+	 * one statement longer and pins the same result, so the case is worth a
+	 * test of its own rather than being assumed from the create() test above,
+	 * which only ever ran the branch where Filinq already exists.
+	 *
+	 * @return void
+	 */
+	public function testTheFilinqDirectoryIsCreatedWhenItIsAbsent(): void {
+		$made = $this->createMock(Folder::class);
+		$made->method('getId')->willReturn(4242);
+
+		$parent = $this->createMock(Folder::class);
+		$parent->method('nodeExists')->willReturn(false);
+		$parent->expects(self::once())->method('newFolder')->with('Woo 2026-003')->willReturn($made);
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('nodeExists')->with('Filinq')->willReturn(false);
+		$userFolder->expects(self::once())->method('newFolder')->with('Filinq');
+		$userFolder->method('get')->with('Filinq')->willReturn($parent);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		try {
+			$this->service->create('Woo 2026-003');
+		} catch (RuntimeException $e) {
+			// The re-read in detail() goes through the fake, which does not
+			// serve the new object. The FOLDER is what this test is about.
+		}
+
+		self::assertNotSame([], $this->saved, 'create() must write the object');
+		self::assertSame(4242, $this->saved[0]['@self']['folder']);
+
+	}//end testTheFilinqDirectoryIsCreatedWhenItIsAbsent()
+
+	/**
+	 * An existing dossier folder is reused rather than created a second time.
+	 *
+	 * @return void
+	 */
+	public function testAnExistingDossierFolderIsReused(): void {
+		$existing = $this->createMock(Folder::class);
+		$existing->method('getId')->willReturn(77);
+
+		$parent = $this->createMock(Folder::class);
+		$parent->method('nodeExists')->willReturn(true);
+		$parent->method('get')->with('Woo 2026-004')->willReturn($existing);
+		$parent->expects(self::never())->method('newFolder');
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('nodeExists')->willReturn(true);
+		$userFolder->method('get')->willReturn($parent);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		try {
+			$this->service->create('Woo 2026-004');
+		} catch (RuntimeException $e) {
+			// As above: the save is what matters here.
+		}
+
+		self::assertNotSame([], $this->saved, 'create() must write the object');
+		self::assertSame(77, $this->saved[0]['@self']['folder']);
+
+	}//end testAnExistingDossierFolderIsReused()
+
+	/**
+	 * A FILE occupying the dossier name says so, rather than reporting a
+	 * failure to create the folder.
+	 *
+	 * A user who saved "Mijn dossier" into Filinq/ occupies that name. `get()`
+	 * answers a Node, so returning it against a `: Folder` signature is a
+	 * TypeError, and the catch around it rewrites every TypeError into "Could
+	 * not create the dossier folder" - which names the wrong cause and sends
+	 * the reader looking at permissions.
+	 *
+	 * @return void
+	 */
+	public function testAFileOccupyingTheDossierNameIsNamedAsSuch(): void {
+		$parent = $this->createMock(Folder::class);
+		$parent->method('nodeExists')->willReturn(true);
+		$parent->method('get')->willReturn($this->createMock(File::class));
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('nodeExists')->willReturn(true);
+		$userFolder->method('get')->willReturn($parent);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		try {
+			$this->service->create('Mijn dossier');
+			self::fail('a file in the way must be refused');
+		} catch (RuntimeException $e) {
+			self::assertStringContainsString('is a file, not a folder', $e->getMessage());
+		}
+
+		self::assertSame([], $this->saved, 'nothing may be stored when the folder cannot be made');
+
+	}//end testAFileOccupyingTheDossierNameIsNamedAsSuch()
+
+	/**
+	 * A FILE named Filinq is refused for the same reason, one level up.
+	 *
+	 * @return void
+	 */
+	public function testAFileNamedFilinqIsRefused(): void {
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('nodeExists')->willReturn(true);
+		$userFolder->method('get')->willReturn($this->createMock(File::class));
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		try {
+			$this->service->create('Woo 2026-005');
+			self::fail('a file named Filinq must be refused');
+		} catch (RuntimeException $e) {
+			self::assertStringContainsString('Filinq is not a folder', $e->getMessage());
+		}
+
+		self::assertSame([], $this->saved);
+
+	}//end testAFileNamedFilinqIsRefused()
 
 }//end class
