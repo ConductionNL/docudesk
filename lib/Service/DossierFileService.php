@@ -79,6 +79,8 @@ class DossierFileService {
 	 * @return Folder The created (or existing) folder.
 	 *
 	 * @throws RuntimeException When it cannot be created.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function createHomeFolder(string $name): Folder {
 		$user = $this->userSession->getUser();
@@ -135,6 +137,8 @@ class DossierFileService {
 	 * @param string $name The new name.
 	 *
 	 * @return string A readable warning, or '' when the folder was renamed.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function renameHomeFolder(object $object, array $payload, string $name): string {
 		$folder = $this->homeFolder(object: $object, payload: $payload);
@@ -176,12 +180,16 @@ class DossierFileService {
 	 * @param string $name The dossier name.
 	 *
 	 * @return string The sanitised name.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function safeFolderName(string $name): string {
 		$safe = trim(str_replace(['/', '\\'], '-', $name));
 		if ($safe === '') {
-			// A name made entirely of slashes, or of whitespace, still has to
-			// land somewhere the operator can find it.
+			// A name that is nothing but whitespace still has to land
+			// somewhere the operator can find it. A name of separators does
+			// NOT reach here: they become dashes first, so "///" is the
+			// perfectly valid folder "---".
 			return 'Dossier';
 		}
 
@@ -196,6 +204,8 @@ class DossierFileService {
 	 * @param array<string, mixed> $payload Its payload.
 	 *
 	 * @return Folder|null The folder, or null when it is gone or unreadable.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function homeFolder(object $object, array $payload): ?Folder {
 		try {
@@ -228,6 +238,8 @@ class DossierFileService {
 	 * @param Folder $folder The dossier home folder.
 	 *
 	 * @return array<int, Node> The files, never folders.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function enumerateFolder(Folder $folder): array {
 		try {
@@ -251,6 +263,8 @@ class DossierFileService {
 	 * @param int $fileId The Nextcloud file node id.
 	 *
 	 * @return Node|null The node, or null when absent or unreadable.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function nodeFor(int $fileId): ?Node {
 		$user = $this->userSession->getUser();
@@ -277,6 +291,8 @@ class DossierFileService {
 	 * @param Folder $folder The folder.
 	 *
 	 * @return bool True when the node is inside.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function isInFolder(Node $node, Folder $folder): bool {
 		try {
@@ -293,6 +309,8 @@ class DossierFileService {
 	 * @param int $fileId The Nextcloud file node id.
 	 *
 	 * @return void
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function trash(int $fileId): void {
 		$node = $this->nodeFor(fileId: $fileId);

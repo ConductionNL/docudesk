@@ -68,6 +68,8 @@ class DossierObjectReader {
 	 * @param object $object The OpenRegister object.
 	 *
 	 * @return array<string, mixed> The payload.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function payloadOf(object $object): array {
 		if (method_exists($object, 'jsonSerialize') === true) {
@@ -95,6 +97,8 @@ class DossierObjectReader {
 	 * @param array<string, mixed> $payload Its payload.
 	 *
 	 * @return string The UUID, or '' when it has none.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function uuidOf(object $object, array $payload): string {
 		$uuid = ($payload['@self']['id'] ?? $payload['id'] ?? $payload['uuid'] ?? '');
@@ -112,6 +116,8 @@ class DossierObjectReader {
 	 * @param array<string, mixed> $payload The dossier payload.
 	 *
 	 * @return string The status.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function statusOf(array $payload): string {
 		$status = trim((string)($payload['status'] ?? ''));
@@ -126,6 +132,8 @@ class DossierObjectReader {
 	 * @param array<string, mixed> $payload The dossier payload.
 	 *
 	 * @return array<int, string> The references.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function documentRefs(array $payload): array {
 		$refs = ($payload['documents'] ?? []);
@@ -149,6 +157,8 @@ class DossierObjectReader {
 	 * @param string $schema The schema slug.
 	 *
 	 * @return array<int, object> The objects.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function findAllOf(object $objectService, string $schema): array {
 		return $objectService->findAll(
@@ -169,6 +179,8 @@ class DossierObjectReader {
 	 * @param string $fallback The value to use when $value is empty.
 	 *
 	 * @return string Whichever is non-empty.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function firstNonEmpty(string $value, string $fallback): string {
 		if ($value !== '') {

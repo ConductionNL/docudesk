@@ -77,6 +77,8 @@ class DossierContextService {
 	 * @param array<string, mixed> $payload Its payload.
 	 *
 	 * @return array{documents: array<int, array<string, mixed>>, missing: int} Members and the missing count.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function members(object $object, array $payload): array {
 		$documents = [];
@@ -127,6 +129,8 @@ class DossierContextService {
 	 * @param bool $referenced Whether it is a reference rather than a home-folder file.
 	 *
 	 * @return array<string, mixed> The row.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function documentRow(Node $node, bool $referenced): array {
 		return [
@@ -156,6 +160,8 @@ class DossierContextService {
 	 * @param array<string, mixed> $payload The dossier payload.
 	 *
 	 * @return array<int, array{slug: string, label: string, known: bool}> The resolved bases.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function resolveBases(array $payload): array {
 		$slugs = ($payload['bases'] ?? []);
@@ -185,6 +191,8 @@ class DossierContextService {
 	 * The `base` vocabulary as slug => name.
 	 *
 	 * @return array<string, string> The labels, empty when OpenRegister is unavailable.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function baseLabels(): array {
 		if ($this->baseLabels !== null) {
@@ -226,6 +234,8 @@ class DossierContextService {
 	 * @param array<string, mixed> $payload Its payload.
 	 *
 	 * @return array<int, array<string, mixed>> The batch runs, newest first.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function batchRuns(object $object, array $payload): array {
 		$objectService = $this->repository->objectService();
@@ -269,6 +279,8 @@ class DossierContextService {
 	 * The publication section, presence-gated on the Woo pipeline.
 	 *
 	 * @return array{installed: bool, state: string} The publication state.
+	 *
+	 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 	 */
 	public function publication(): array {
 		// The woo-publicatie-pipeline has not shipped. Reporting `installed:

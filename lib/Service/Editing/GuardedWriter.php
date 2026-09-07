@@ -117,6 +117,8 @@ class GuardedWriter {
 	 * @param string $packageBytes The document package, exactly as read.
 	 *
 	 * @return string The version token.
+	 *
+	 * @spec openspec/specs/document-editing/spec.md#requirement-an-in-place-write-is-guarded-by-the-lock-and-a-version-precondition
 	 */
 	public function versionOf(string $packageBytes): string {
 		return 'sha256:' . hash('sha256', $packageBytes);

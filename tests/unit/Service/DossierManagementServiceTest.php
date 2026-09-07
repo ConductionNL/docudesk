@@ -95,6 +95,17 @@ final class DossierManagementServiceTest extends TestCase {
 	private array $saved = [];
 
 	/**
+	 * A refusal the fake ObjectService raises instead of saving.
+	 *
+	 * OpenRegister's lifecycle guard is what actually says this, and it says
+	 * it in a sentence naming the states. The service has to carry that
+	 * sentence out as a 409 rather than flattening it to a 500.
+	 *
+	 * @var string
+	 */
+	public string $saveRefusal = '';
+
+	/**
 	 * Build the service over fakes.
 	 *
 	 * @return void
@@ -212,6 +223,10 @@ final class DossierManagementServiceTest extends TestCase {
 			 * @return object The saved object.
 			 */
 			public function saveObject(array $object, string $register = '', string $schema = ''): object {
+				if ($this->test->saveRefusal !== '') {
+					throw new RuntimeException($this->test->saveRefusal);
+				}
+
 				$this->test->recordSave($object);
 
 				return $this->test->makeObject($object);
@@ -837,5 +852,147 @@ final class DossierManagementServiceTest extends TestCase {
 		self::assertSame([], $this->saved);
 
 	}//end testAFileNamedFilinqIsRefused()
+
+	/**
+	 * 🔴 THE ONLY PATH THAT DELETES. A file that lives in this dossier's own
+	 * folder and is referenced by no other dossier is trashed rather than
+	 * unlinked, because unlinking it would leave a file nothing admits to
+	 * holding.
+	 *
+	 * The existing removal tests all seed `folder: null`, so every one of them
+	 * short-circuits before the exclusivity check and none of them reaches
+	 * this branch. That is why it is here.
+	 *
+	 * @return void
+	 */
+	public function testAFileOnlyThisDossierHoldsIsTrashed(): void {
+		$this->seedDossier([
+			'@self' => ['id' => 'd1', 'folder' => 4242],
+			'name' => 'Dossier A',
+			'documents' => ['77'],
+		]);
+		$this->seedDossier([
+			'@self' => ['id' => 'd2', 'folder' => null],
+			'name' => 'Dossier B',
+			'documents' => ['999'],
+		]);
+
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getPath')->willReturn('/alice/files/Filinq/Dossier A');
+		$this->repository->method('resolveDossierFolder')->willReturn($folder);
+
+		$node = $this->createMock(File::class);
+		$node->method('getId')->willReturn(77);
+		$node->method('getPath')->willReturn('/alice/files/Filinq/Dossier A/bijlage.pdf');
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('getById')->willReturn([$node]);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		self::assertSame('trash', $this->service->removalMode('d1', 77));
+
+	}//end testAFileOnlyThisDossierHoldsIsTrashed()
+
+	/**
+	 * The same file, once a SECOND dossier references it, is unlinked. The
+	 * exclusivity check is what separates this from the case above, and both
+	 * are needed: a test of only one of them passes on a check that always
+	 * answers the same way.
+	 *
+	 * @return void
+	 */
+	public function testAFileAnotherDossierAlsoHoldsIsUnlinkedEvenFromItsOwnFolder(): void {
+		$this->seedDossier([
+			'@self' => ['id' => 'd1', 'folder' => 4242],
+			'name' => 'Dossier A',
+			'documents' => ['77'],
+		]);
+		$this->seedDossier([
+			'@self' => ['id' => 'd2', 'folder' => null],
+			'name' => 'Dossier B',
+			'documents' => ['77'],
+		]);
+
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getPath')->willReturn('/alice/files/Filinq/Dossier A');
+		$this->repository->method('resolveDossierFolder')->willReturn($folder);
+
+		$node = $this->createMock(File::class);
+		$node->method('getId')->willReturn(77);
+		$node->method('getPath')->willReturn('/alice/files/Filinq/Dossier A/bijlage.pdf');
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('getById')->willReturn([$node]);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		self::assertSame('unlink', $this->service->removalMode('d1', 77));
+
+	}//end testAFileAnotherDossierAlsoHoldsIsUnlinkedEvenFromItsOwnFolder()
+
+	/**
+	 * A file sitting OUTSIDE the dossier's folder is unlinked, however
+	 * exclusively this dossier references it. The dossier does not own a file
+	 * it never held.
+	 *
+	 * @return void
+	 */
+	public function testAFileOutsideTheDossierFolderIsUnlinked(): void {
+		$this->seedDossier([
+			'@self' => ['id' => 'd1', 'folder' => 4242],
+			'name' => 'Dossier A',
+			'documents' => ['77'],
+		]);
+
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getPath')->willReturn('/alice/files/Filinq/Dossier A');
+		$this->repository->method('resolveDossierFolder')->willReturn($folder);
+
+		$node = $this->createMock(File::class);
+		$node->method('getId')->willReturn(77);
+		$node->method('getPath')->willReturn('/alice/files/Elders/bijlage.pdf');
+
+		$userFolder = $this->createMock(Folder::class);
+		$userFolder->method('getById')->willReturn([$node]);
+		$this->rootFolder->method('getUserFolder')->willReturn($userFolder);
+
+		self::assertSame('unlink', $this->service->removalMode('d1', 77));
+
+	}//end testAFileOutsideTheDossierFolderIsUnlinked()
+
+	/**
+	 * A dossier the caller cannot read answers `unlink`, which is the safe
+	 * side of a question it could not resolve.
+	 *
+	 * @return void
+	 */
+	public function testRemovalModeForAnUnknownDossierIsUnlink(): void {
+		self::assertSame('unlink', $this->service->removalMode('no-such-dossier', 77));
+
+	}//end testRemovalModeForAnUnknownDossierIsUnlink()
+
+	/**
+	 * 🔴 A LIFECYCLE REFUSAL KEEPS ITS MESSAGE. OpenRegister's guard rejects
+	 * an illegal transition with a sentence naming the states; a bare 500
+	 * here would leave the operator with nothing to act on.
+	 *
+	 * @return void
+	 */
+	public function testALifecycleRefusalIsSurfacedAsA409WithItsReason(): void {
+		$this->seedDossier([
+			'@self' => ['id' => 'd1'],
+			'name' => 'Dossier A',
+			'status' => 'open',
+		]);
+		$this->saveRefusal = 'No transition allows moving from "open"';
+
+		try {
+			$this->service->rename('d1', 'Nieuwe naam');
+			self::fail('a refused save must not read as success');
+		} catch (RuntimeException $e) {
+			self::assertSame(409, $e->getCode());
+			self::assertStringContainsString('No transition allows moving from', $e->getMessage());
+		}
+
+	}//end testALifecycleRefusalIsSurfacedAsA409WithItsReason()
 
 }//end class

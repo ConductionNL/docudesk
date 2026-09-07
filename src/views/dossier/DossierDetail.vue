@@ -340,6 +340,8 @@ export default {
 		 * offering one it knows means nothing here.
 		 *
 		 * @return {Array<string>} The targets to render a button for.
+		 *
+		 * @spec openspec/changes/dossier-management-ui/specs/dossier-management-ui/spec.md
 		 */
 		offeredTransitions() {
 			const targets = this.dossierStore.dossier?.availableTransitions || []
