@@ -293,9 +293,25 @@ test.describe('page components — dossiers', () => {
 		// created it rather than this page.
 		const detail = page.locator('.dossier-detail')
 		await expect(detail).toBeVisible()
+
+		// ASSERT THE HEADING, NOT THE DESCRIPTION. The empty state's
+		// description is `dossierStore.error || <fallback copy>`, and an absent
+		// id is exactly the case where the store HAS an error — so the fallback
+		// this used to pin is the branch that does not run. It failed on the
+		// only page it was written for.
+		//
+		// The name is unconditional, so it is what proves this component
+		// painted rather than the SPA shell, which is the whole job of a
+		// gate-26 page test.
 		await expect(
-			detail.getByText('This dossier does not exist, or you cannot open it.'),
+			detail.getByText('Dossier not found', { exact: true }),
 		).toBeVisible()
+
+		// A reason is always given, whichever branch supplies it. Empty copy
+		// under a "not found" heading is the state this page must never reach.
+		// `.empty-content__description` is NcEmptyContent's own class, checked
+		// against the installed @nextcloud/vue rather than guessed.
+		await expect(detail.locator('.empty-content__description')).not.toBeEmpty()
 	})
 })
 
