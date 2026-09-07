@@ -257,6 +257,49 @@ test.describe('page components — custom dictionaries', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Dossiers
+// ---------------------------------------------------------------------------
+
+test.describe('page components — dossiers', () => {
+	test('DossierIndex paints its grouping description at /dossiers', async ({
+		page,
+	}) => {
+		await go(page, 'dossiers')
+		// CnIndexPage's description, written in this template and nowhere
+		// else in the app. The SPA shell renders no such text, so this cannot
+		// pass on a route that resolves to the shell.
+		await expect(
+			page.getByText(
+				/A dossier groups the documents that are anonymised together/,
+			),
+		).toBeVisible()
+		// The column headers are this component's own table definition. Legal
+		// bases in particular appears in no other index.
+		await expect(
+			page.getByRole('columnheader', { name: 'Legal bases' }),
+		).toBeVisible()
+		await expect(
+			page.getByRole('columnheader', { name: 'Last reviewed' }),
+		).toBeVisible()
+	})
+
+	test('DossierDetail paints its not-found state at /dossiers/<absent-id>', async ({
+		page,
+	}) => {
+		await go(page, `dossiers/${ABSENT_ID}`)
+		// The component mounts and paints its OWN empty state: the store
+		// catches the failed read and leaves `dossier` null, which is the
+		// branch under test. A seeded dossier would exercise the index that
+		// created it rather than this page.
+		const detail = page.locator('.dossier-detail')
+		await expect(detail).toBeVisible()
+		await expect(
+			detail.getByText('This dossier does not exist, or you cannot open it.'),
+		).toBeVisible()
+	})
+})
+
+// ---------------------------------------------------------------------------
 // Comparison, gallery, documents
 // ---------------------------------------------------------------------------
 
