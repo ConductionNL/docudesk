@@ -11,7 +11,7 @@ raises — *how many products is Filinq being asked to be?*
 |---|---:|---|
 | Not started | 48 | No task ticked. A wish list, not a queue. |
 | In progress | 12 | Some tasks ticked, some open. |
-| Ticked complete | 12 | Every task ticked, not yet archived. Candidates for `/opsx-archive`. |
+| Ticked complete | 12 | Every task ticked, not yet archived. **Not yet archivable — see below.** |
 
 Counts are derived from checkbox state, which is **not always truthful**. Three
 changes were found on 2026-09-07 carrying `DEFERRED` inside ticked boxes
@@ -20,6 +20,36 @@ changes were found on 2026-09-07 carrying `DEFERRED` inside ticked boxes
 `publication-policy-labels-and-nav`, was ticked 6 of 6 while half of it had been
 silently undone by the manifest migration. All four have been corrected. Treat
 "ticked complete" as an upper bound and read the tasks file before trusting it.
+
+## ⚠️ The twelve finished changes cannot be archived yet
+
+Archiving is `git mv openspec/changes/<c> openspec/changes/archive/`, and doing
+that to any of these twelve **buries requirements**. Checked 2026-09-07: every
+one of them carries a spec delta whose requirements are NOT present in
+`openspec/specs/`. `portal-contribution` is representative — its main spec holds
+one requirement (`REQ-DDPORT-000`) while its delta adds six.
+
+Nothing reports a buried requirement. The change disappears from
+`openspec/changes/`, the capability spec never gains what the change specified,
+and the only trace is a directory under `archive/` nobody reads.
+
+**The precondition is `/opsx-sync` per change, not a move.** Roughly forty
+requirements across eight capabilities (`anonymization`, `batch-anonymization`,
+`document-creatie-sjablonen`, `document-editing`, `document-preview`,
+`portal-contribution`, plus `beta-alignment`, `filinq-mcp-surface` and
+`filinq-signing-events`, which have no `openspec/specs/` directory at all) need
+to land in their specs first.
+
+Verify before moving anything:
+
+```sh
+c=portal-contribution
+for cap in openspec/changes/$c/specs/*/; do
+  cap=$(basename "$cap")
+  diff <(grep '^### Requirement:' "openspec/changes/$c/specs/$cap/spec.md") \
+       <(grep '^### Requirement:' "openspec/specs/$cap/spec.md")
+done
+```
 
 ## The scope question
 
