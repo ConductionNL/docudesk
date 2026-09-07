@@ -98,6 +98,13 @@
 			"order": 40
 		},
 		{
+			"id": "Dossiers",
+			"label": "Dossiers",
+			"icon": "FolderAccount",
+			"route": "Dossiers",
+			"order": 45
+		},
+		{
 			"id": "Templates",
 			"label": "Templates",
 			"icon": "FileReplaceOutline",
@@ -187,6 +194,12 @@
 		},
 		{
 			"registerSlug": "filinq",
+			"schemaSlug": "dossier",
+			"urlTemplate": "/apps/filinq/dossiers/{uuid}",
+			"displayName": "Dossier"
+		},
+		{
+			"registerSlug": "filinq",
 			"schemaSlug": "customDictionary",
 			"urlTemplate": "/apps/filinq/custom-dictionaries/{uuid}",
 			"displayName": "Custom dictionary"
@@ -263,6 +276,22 @@
 			"title": "Folder Analysis",
 			"component": "FolderAnonymizationView",
 			"_note": "Folder-level anonymization scan; fetches via folderAnonymizationStore (filinq API); type:custom preserves the existing data path."
+		},
+		{
+			"id": "Dossiers",
+			"route": "/dossiers",
+			"type": "custom",
+			"title": "Dossiers",
+			"component": "DossierIndex",
+			"_note": "The dossier is Filinq's unit of municipal work \u2014 folder batches run on it, the legal-bases summary reports on it \u2014 and until 2026-09-07 it had a schema, a spec and a controller but NO surface: a user could not create or open one anywhere in the app. type:custom rather than type:index because the row context (document count as home-folder \u222a documents[], resolved legal-basis chips, lifecycle status) is aggregated by DossierManagementController, not readable from a plain OR index."
+		},
+		{
+			"id": "DossierDetail",
+			"route": "/dossiers/:id",
+			"type": "custom",
+			"title": "Dossier",
+			"component": "DossierDetail",
+			"_note": "Aggregates documents, legal bases, anonymisation runs and publication state. Selecting a document swaps the inline viewer through store state, never a route push, so switching causes no reload. Every dossier-level action calls the endpoint that already owns it \u2014 nothing here reimplements batch, report or publication logic."
 		},
 		{
 			"id": "Templates",
