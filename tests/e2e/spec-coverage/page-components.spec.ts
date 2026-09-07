@@ -198,11 +198,13 @@ test.describe('page components — consent', () => {
 		//    API payload` in ./consent-management.spec.ts, which is what
 		//    carries the `#view-consent-statistics` tag.
 		//
-		//    A FOURTH view, views/consent/StandingConsentIndex, still carries
-		//    the dead `#above-table` name and was deliberately left alone: it
-		//    is an orphaned legacy duplicate that no registry entry mounts (see
-		//    the `orphaned-view` record for it in tests/unit/reachability.spec.js),
-		//    so there is no route on which the rename could be verified.
+		//    A FOURTH view, views/consent/StandingConsentIndex, carried the
+		//    dead `#above-table` name and was left alone at the time as an
+		//    orphaned legacy duplicate that no registry entry mounted. It was
+		//    DELETED on 2026-09-06 along with its exclusive
+		//    src/modals/CreateStandingConsentModal.vue — the follow-up cleanup
+		//    decision its `orphaned-view` record was waiting on. Nothing is
+		//    outstanding here now.
 		//
 		// 2. STILL OPEN. The h1 reads "Consent Management" (the manifest page
 		//    title), not the "Consent Workflow" this component binds to
